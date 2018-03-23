@@ -45,11 +45,14 @@ class CropParameters(object):
 
         self.nCrop = self.CropType.shape[0]
 
+    def computeVariables(self, currTimeStep, meteo):
+        
         # The following adapted from lines 160-240 of AOS_ComputeVariables.m
 
-        # "Fractional canopy cover size at emergence"
+        # Fractional canopy cover size at emergence
         self.CC0 = np.round(10000 * self.PlantPop * self.SeedSize * 10 ** -8) / 10000
-        # "Root extraction terms"
+        
+        # Root extraction terms
         S1 = self.SxTopQ
         S2 = self.SxBotQ
         self.SxTop = np.zeros((self.nCrop, self.nLat, self.nLon))
@@ -76,9 +79,24 @@ class CropParameters(object):
         cond25 = (cond2 & np.logical_not(cond24))
         self.SxTop[cond25] = SS2[cond25]
         self.SxBot[cond25] = SS1[cond25]
-        # ... TBC
 
-    def GrowingDegreeDay(self, meteo, currTimeStep):
+        # Water stress thresholds
+        # TODO
+
+        # Flowering function
+        cond3 = (self.CropType == 3)
+        # TODO - function handle but not clear where it's used???
+
+        # Crop calendar - see ComputeCropCalendar
+        self.computeCropCalendar(currTimeStep, meteo)
+
+        # Harvest index growth coefficient
+        self.AOS_CalculateHIGC()
+
+        # Days to linear HI switch point
+        self.AOS_CalculateHILinear()
+        
+    def GrowingDegreeDay(self, currTimeStep, meteo):
 
         tmax = meteo.tmax[None,:,:] * np.ones((self.nCrop))[:,None,None]
         tmin = meteo.tmin[None,:,:] * np.ones((self.nCrop))[:,None,None]
@@ -97,6 +115,51 @@ class CropParameters(object):
             
         self.GDD = (tmean - self.Tbase)
         # self.GDDcum += GDD
+
+    def AOS_CalculateHILinear(self):
+        """Function to calculate time to switch to linear harvest index 
+        build-up, and associated linear rate of build-up. Only for 
+        fruit/grain crops
+        """
+        # Determine linear switch point
+        cond1 = (self.CropType == 3)
+        ti = np.zeros((self.nCrop, self.nLat, self.nLon))
+        tmax = self.YldFormCD
+        HIest = np.zeros((self.nCrop, self.nLat, self.nLon))
+        HIprev = self.HIini
+
+        # Iterate to find linear switch point
+        while np.any((self.CropType == 3) & (HIest <= self.HI0) & (ti < tmax)):
+            
+            ti += 1
+            HInew = ((self.HIini * self.HI0) / (self.HIini + (self.HI0 - self.HIini) * np.exp(-self.HIGC * ti)))
+            HIest = (HInew + (tmax - ti) * (HInew - HIprev))
+            HIprev = HInew
+
+        self.tLinSwitch = ti
+        self.tLinSwitch[self.CropType != 3] = np.nan
+            
+        # Determine linear build-up rate
+        cond1 = (self.tLinSwitch > 0)
+        HIest[cond1] = ((self.HIini * self.HI0) / (self.HIini + (self.HI0 - self.HIini) * np.exp(-self.HIGC * self.tLinSwitch)))[cond1]
+        HIest[np.logical_not(cond1)] = 0
+        self.dHILinear = ((self.HI0 - HIest) / (tmax - self.tLinSwitch))  # dHILin will be set to nan in the same cells as tSwitch
+        
+            
+    def AOS_CalculateHIGC(self):
+        """Function to calculate harvest index growth coefficient"""
+        # Total yield formation days
+        tHI = self.YldFormCD
+
+        # Iteratively estimate HIGC
+        self.HIGC = np.full((self.nCrop, self.nLat, self.nLon), 0.001)
+        HIest = np.zeros((self.nCrop, self.nLat, self.nLon))
+        while np.any(HIest < (0.98 * self.HI0)):
+            cond1 = (HIest < (0.98 * self.HI0))
+            self.HIGC += 0.001
+            HIest = ((self.HIini * self.HI0) / (self.HIini + (self.HI0 - self.HIini) * np.exp(-self.HIGC * tHI)))
+            
+        self.HIGC[HIest >= self.HI0] -= 0.001
         
     def computeCropCalendar(self, currTimeStep, meteo):
        
