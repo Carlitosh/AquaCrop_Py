@@ -3542,7 +3542,7 @@ class LandSurface(object):
         F1 = np.clip(F1, 0, None)
 
         # Fractional flowering on current day
-        t2[cond1] = HIt[cond2]
+        t2[cond1] = HIt[cond1]
         cond12 = (t2 > 0)
         t2pct = 100 * (t2 / FloweringCD)
         t2pct = np.clip(t2pct, 0, 100)
@@ -3557,7 +3557,7 @@ class LandSurface(object):
         # Calculate pollination adjustment for current day
         dFpol = np.zeros((nr, nlat, nlon))
         cond2 = (self.CC >= CCmin)
-        Ks = np.minimum(Ksw_Pol, Ksw_PolC, Ksw_PolH)
+        Ks = np.minimum(self.Ksw_Pol, self.Kst_PolC, self.Kst_PolH)
         dFpol[cond2] = (Ks * FracFlow * (1 + (exc / 100)))[cond2]
 
         # Calculate pollination adjustment to date
@@ -3608,8 +3608,8 @@ class LandSurface(object):
             & (tmax1 > 0)
             & (self.Fpre > 0.99)
             & (self.CC > 0.001)
-            & (self.a_HI > 0))
-        dCor = (1 + (1 - Ksw_Exp) / a_HI)
+            & (a_HI > 0))
+        dCor = (1 + (1 - self.Ksw_Exp) / a_HI)
         self.sCor1[cond1] += (dCor / tmax1)[cond1]
         DayCor = (DAP - 1 - HIstartCD)
         self.fpost_upp[cond1] = ((tmax1 / DayCor) * self.sCor1)[cond1]
@@ -3621,8 +3621,8 @@ class LandSurface(object):
             & (tmax2 > 0)
             & (self.Fpre > 0.99)
             & (self.CC > 0.001)
-            & (self.b_HI > 0))
-        dCor = ((np.exp(0.1 * np.log(self.Ksw_sto))) * (1 - (1 - self.Ksw_sto) / b_HI))
+            & (b_HI > 0))
+        dCor = ((np.exp(0.1 * np.log(self.Ksw_Sto))) * (1 - (1 - self.Ksw_Sto) / b_HI))
         self.sCor2[cond2] += (dCor / tmax2)[cond2]
         DayCor = (DAP - 1 - HIstartCD)
         self.fpost_dwn[cond2] = ((tmax2 / DayCor) * self.sCor2)[cond2]
@@ -3664,16 +3664,18 @@ class LandSurface(object):
         # grown crops
         HIstartCD = self.crop.HIstartCD[:,None,:,:] * np.ones((nr))[None,:,None,None]
         CropType = self.crop.CropType[:,None,:,:] * np.ones((nr))[None,:,None,None]
-        FloweringCD = self.crop.FLoweringCD[:,None,:,:] * np.ones((nr))[None,:,None,None]
+        FloweringCD = self.crop.FloweringCD[:,None,:,:] * np.ones((nr))[None,:,None,None]
         HI0 = self.crop.HI0[:,None,:,:] * np.ones((nr))[None,:,None,None]
         dHI0 = self.crop.dHI0[:,None,:,:] * np.ones((nr))[None,:,None,None]
         
         HIstartCD = HIstartCD[crop_index,I,J,K]
         CropType = CropType[crop_index,I,J,K]
-        FLoweringCD = FloweringCD[crop_index,I,J,K]
+        FloweringCD = FloweringCD[crop_index,I,J,K]
         HI0 = HI0[crop_index,I,J,K]
         dHI0 = dHI0[crop_index,I,J,K]
 
+        HIadj = np.zeros((nr, nlat, nlon))
+        
         # Calculate root zone water content
         self.RootZoneWater()
 
@@ -3687,13 +3689,13 @@ class LandSurface(object):
         HIi = self.HIref
 
         # Get time for harvest index build up
-        HIt = self.DAP - self.DelayedCDs - self.HIstartCD - 1
+        HIt = self.DAP - self.DelayedCDs - HIstartCD - 1
 
         # Calculate harvest index
         cond1 = (growing_season_index & self.YieldForm & (HIt > 0))
 
         # Root/tuber or fruit/grain crops
-        cond11 = (cond1 & ((CropType == 2) | CropType == 3))
+        cond11 = (cond1 & ((CropType == 2) | (CropType == 3)))
 
         # Determine adjustment for water stress before anthesis
         cond111 = (cond11 & np.logical_not(self.PreAdj))
@@ -3704,8 +3706,8 @@ class LandSurface(object):
         HImax = np.zeros((nr, nlat, nlon))  # TODO: is this in the right place?
         cond112 = (cond11 & (CropType == 3))
         cond1121 = (cond112 & ((HIt > 0) & (HIt <= FloweringCD)))
-        self.AOS_HIadjPollination()  # TODO
-        HImax[cond112] = self.Fpol * HI0
+        self.AOS_HIadjPollination(HIt)  # TODO
+        HImax[cond112] = (self.Fpol * HI0)[cond112]
         cond113 = (cond11 & np.logical_not(cond112))
         HImax[cond113] = HI0[cond113]
 

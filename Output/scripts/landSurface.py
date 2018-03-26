@@ -3447,6 +3447,304 @@ class LandSurface(object):
         # No biomass accumulation outside growing season
         self.B[np.logical_not(growing_season_index)] = 0
         self.B_NS[np.logical_not(growing_season_index)] = 0
+
+    def AOS_HIadjPreAnthesis(self):
+        """Function to calculate adjustment to harvest index for 
+        pre-anthesis water stress
+        """
+        ncomp, nc, nr, nlat, nlon = (self.soil.nComp,
+                                     self.crop.nCrop,
+                                     self.nRotation,
+                                     self.nLat,
+                                     self.nLon)
+        
+        # Get index of crops currently grown
+        I,J,K = np.ogrid[:nr,:nlat,:nlon]
+        crop_index = (
+            np.arange(0, nc)[:,None,None,None]
+            * np.ones((nr, nlat, nlon))[None,:,:,:])
+        crop_index *= self.GrowingSeason
+        crop_index = np.max(crop_index, axis=0)
+        crop_index = crop_index.astype(int)
+        growing_season_index = np.any(self.GrowingSeason, axis=0)
+        
+        # Add rotation dimension to crop parameters, then select currently
+        # grown crops
+        dHI_pre = self.crop.dHI_pre[:,None,:,:] * np.ones((nr))[None,:,None,None]        
+        dHI_pre = dHI_pre[crop_index,I,J,K]
+
+        # Calculate adjustment
+        Br = self.B / self.B_NS
+        Br_range = np.log(dHI_pre) / 5.62
+        Br_upp = 1
+        Br_low = 1 - Br_range
+        Br_top = Br_upp - (Br_range / 3)
+
+        # Get biomass ratio
+        ratio_low = (Br - Br_low) / (Br_top - Br_low)
+        ratio_upp = (Br - Br_top) / (Br_upp - Br_top)
+
+        # Calculate adjustment factor
+        self.Fpre = np.ones((nr, nlat, nlon))
+        cond1 = (Br >= Br_low) & (Br < Br_top)
+        self.Fpre[cond1] = (1 + (((1 + np.sin((1.5 - ratio_low) * np.pi)) / 2) * (dHI_pre / 100)))[cond1]
+        cond2 = (((Br > Br_top) & (Br <= Br_upp)) & np.logical_not(cond1))
+        self.Fpre[cond2] = (1 + (((1 + np.sin((0.5 + ratio_upp) * np.pi)) / 2) * (dHI_pre / 100)))[cond2]
+
+        # No green canopy left at start of flowering so no harvestable crop
+        # will develop
+        self.Fpre[self.CC <= 0.01] = 0
+        
+    def AOS_HIadjPollination(self, HIt):
+        """Function to calculate adjustment to harvest index for 
+        failure of pollination due to water or temperature stress
+        """
+        ncomp, nc, nr, nlat, nlon = (self.soil.nComp,
+                                     self.crop.nCrop,
+                                     self.nRotation,
+                                     self.nLat,
+                                     self.nLon)
+        
+        # Get index of crops currently grown
+        I,J,K = np.ogrid[:nr,:nlat,:nlon]
+        crop_index = (
+            np.arange(0, nc)[:,None,None,None]
+            * np.ones((nr, nlat, nlon))[None,:,:,:])
+        crop_index *= self.GrowingSeason
+        crop_index = np.max(crop_index, axis=0)
+        crop_index = crop_index.astype(int)
+        growing_season_index = np.any(self.GrowingSeason, axis=0)
+        
+        # Add rotation dimension to crop parameters, then select currently
+        # grown crops
+        FloweringCD = self.crop.FloweringCD[:,None,:,:] * np.ones((nr))[None,:,None,None]
+        CCmin = self.crop.CCmin[:,None,:,:] * np.ones((nr))[None,:,None,None]
+        exc = self.crop.exc[:,None,:,:] * np.ones((nr))[None,:,None,None]
+        
+        FloweringCD = FloweringCD[crop_index,I,J,K]
+        CCmin = CCmin[crop_index,I,J,K]
+        exc = exc[crop_index,I,J,K]
+
+        FracFlow = np.zeros((nr, nlat, nlon))
+        t1 = np.zeros((nr, nlat, nlon))
+        t2 = np.zeros((nr, nlat, nlon))
+        F1 = np.zeros((nr, nlat, nlon))
+        F2 = np.zeros((nr, nlat, nlon))
+        F = np.zeros((nr, nlat, nlon))
+
+        # Fractional flowering on previous day
+        cond1 = (HIt > 0)
+        t1[cond1] = HIt[cond1] - 1
+        cond11 = (t1 > 0)
+        t1pct = 100 * (t1 / FloweringCD)
+        t1pct = np.clip(t1pct, 0, 100)
+        F1[cond11] = (0.00558 * np.exp(0.63 * np.log(t1pct)) - (0.000969 * t1pct) - 0.00383)[cond11]
+        F1 = np.clip(F1, 0, None)
+
+        # Fractional flowering on current day
+        t2[cond1] = HIt[cond1]
+        cond12 = (t2 > 0)
+        t2pct = 100 * (t2 / FloweringCD)
+        t2pct = np.clip(t2pct, 0, 100)
+        F2[cond12] = (0.00558 * np.exp(0.63 * np.log(t2pct)) - (0.000969 * t2pct) - 0.00383)[cond11]
+        F2 = np.clip(F2, 0, None)
+
+        # Weight values
+        cond13 = (np.abs(F1 - F2) >= 0.0000001)
+        F[cond13] = (100 * ((F1 + F2) / 2) / FloweringCD)[cond13]
+        FracFlow[cond1] = F[cond1]
+        
+        # Calculate pollination adjustment for current day
+        dFpol = np.zeros((nr, nlat, nlon))
+        cond2 = (self.CC >= CCmin)
+        Ks = np.minimum(self.Ksw_Pol, self.Kst_PolC, self.Kst_PolH)
+        dFpol[cond2] = (Ks * FracFlow * (1 + (exc / 100)))[cond2]
+
+        # Calculate pollination adjustment to date
+        self.Fpol += dFpol
+        self.Fpol = np.clip(self.Fpol, None, 1)
+
+    def AOS_HIadjPostAnthesis(self):
+        """Function to calculate adjustment to harvest index for 
+        post-anthesis water stress
+        """
+        ncomp, nc, nr, nlat, nlon = (self.soil.nComp,
+                                     self.crop.nCrop,
+                                     self.nRotation,
+                                     self.nLat,
+                                     self.nLon)
+        
+        # Get index of crops currently grown
+        I,J,K = np.ogrid[:nr,:nlat,:nlon]
+        crop_index = (
+            np.arange(0, nc)[:,None,None,None]
+            * np.ones((nr, nlat, nlon))[None,:,:,:])
+        crop_index *= self.GrowingSeason
+        crop_index = np.max(crop_index, axis=0)
+        crop_index = crop_index.astype(int)
+        growing_season_index = np.any(self.GrowingSeason, axis=0)
+        
+        # Add rotation dimension to crop parameters, then select currently
+        # grown crops
+        CanopyDevEndCD = self.crop.CanopyDevEndCD[:,None,:,:] * np.ones((nr))[None,:,None,None]
+        HIstartCD = self.crop.HIstartCD[:,None,:,:] * np.ones((nr))[None,:,None,None]
+        a_HI = self.crop.a_HI[:,None,:,:] * np.ones((nr))[None,:,None,None]
+        b_HI = self.crop.b_HI[:,None,:,:] * np.ones((nr))[None,:,None,None]
+        YldFormCD = self.crop.YldFormCD[:,None,:,:] * np.ones((nr))[None,:,None,None]
+        HIendCD = self.crop.HIendCD[:,None,:,:] * np.ones((nr))[None,:,None,None]
+
+        CanopyDevEndCD = CanopyDevEndCD[crop_index,I,J,K]
+        HIstartCD = HIstartCD[crop_index,I,J,K]
+        a_HI = a_HI[crop_index,I,J,K]
+        b_HI = b_HI[crop_index,I,J,K]
+        YldFormCD = YldFormCD[crop_index,I,J,K]
+        HIendCD = HIendCD[crop_index,I,J,K]
+
+        # 1 Adjustment for leaf expansion
+        tmax1 = CanopyDevEndCD - HIstartCD
+        DAP = self.DAP - self.DelayedCDs
+        cond1 = (
+            (DAP <= (CanopyDevEndCD + 1))
+            & (tmax1 > 0)
+            & (self.Fpre > 0.99)
+            & (self.CC > 0.001)
+            & (a_HI > 0))
+        dCor = (1 + (1 - self.Ksw_Exp) / a_HI)
+        self.sCor1[cond1] += (dCor / tmax1)[cond1]
+        DayCor = (DAP - 1 - HIstartCD)
+        self.fpost_upp[cond1] = ((tmax1 / DayCor) * self.sCor1)[cond1]
+
+        # 2 Adjustment for stomatal closure
+        tmax2 = YldFormCD
+        cond2 = (
+            (DAP <= (HIendCD + 1))
+            & (tmax2 > 0)
+            & (self.Fpre > 0.99)
+            & (self.CC > 0.001)
+            & (b_HI > 0))
+        dCor = ((np.exp(0.1 * np.log(self.Ksw_Sto))) * (1 - (1 - self.Ksw_Sto) / b_HI))
+        self.sCor2[cond2] += (dCor / tmax2)[cond2]
+        DayCor = (DAP - 1 - HIstartCD)
+        self.fpost_dwn[cond2] = ((tmax2 / DayCor) * self.sCor2)[cond2]
+
+        # Determine total multiplier
+        cond3 = (tmax1 == 0) & (tmax2 == 0)
+        self.Fpost[cond3] = 1
+        cond4 = np.logical_not(cond3)
+        cond41 = (cond4 & (tmax2 == 0))
+        self.Fpost[cond41] = self.fpost_upp[cond41]
+        cond42 = (cond4 & (tmax1 <= tmax2) & np.logical_not(cond41))
+        self.Fpost[cond42] = (
+            self.fpost_dwn
+            * (((tmax1 * self.fpost_upp) + (tmax2 - tmax1)) / tmax2))[cond42]
+        cond43 = (cond4 & np.logical_not(cond41 | cond42))
+        self.Fpost[cond43] = (
+            self.fpost_upp
+            * (((tmax2 * self.fpost_dwn) + (tmax1 - tmax2)) / tmax2))[cond43]
+
+    def AOS_HarvestIndex(self, meteo):
+        """Function to simulate build up of harvest index"""
+        ncomp, nc, nr, nlat, nlon = (self.soil.nComp,
+                                     self.crop.nCrop,
+                                     self.nRotation,
+                                     self.nLat,
+                                     self.nLon)
+        
+        # Get index of crops currently grown
+        I,J,K = np.ogrid[:nr,:nlat,:nlon]
+        crop_index = (
+            np.arange(0, nc)[:,None,None,None]
+            * np.ones((nr, nlat, nlon))[None,:,:,:])
+        crop_index *= self.GrowingSeason
+        crop_index = np.max(crop_index, axis=0)
+        crop_index = crop_index.astype(int)
+        growing_season_index = np.any(self.GrowingSeason, axis=0)
+        
+        # Add rotation dimension to crop parameters, then select currently
+        # grown crops
+        HIstartCD = self.crop.HIstartCD[:,None,:,:] * np.ones((nr))[None,:,None,None]
+        CropType = self.crop.CropType[:,None,:,:] * np.ones((nr))[None,:,None,None]
+        FloweringCD = self.crop.FloweringCD[:,None,:,:] * np.ones((nr))[None,:,None,None]
+        HI0 = self.crop.HI0[:,None,:,:] * np.ones((nr))[None,:,None,None]
+        dHI0 = self.crop.dHI0[:,None,:,:] * np.ones((nr))[None,:,None,None]
+        
+        HIstartCD = HIstartCD[crop_index,I,J,K]
+        CropType = CropType[crop_index,I,J,K]
+        FloweringCD = FloweringCD[crop_index,I,J,K]
+        HI0 = HI0[crop_index,I,J,K]
+        dHI0 = dHI0[crop_index,I,J,K]
+
+        HIadj = np.zeros((nr, nlat, nlon))
+        
+        # Calculate root zone water content
+        self.RootZoneWater()
+
+        # Calculate water stress
+        self.AOS_WaterStress(meteo, beta = True)
+
+        # Calculate temperature stress
+        self.AOS_TemperatureStress(meteo)
+
+        # Get reference harvest index on current day
+        HIi = self.HIref
+
+        # Get time for harvest index build up
+        HIt = self.DAP - self.DelayedCDs - HIstartCD - 1
+
+        # Calculate harvest index
+        cond1 = (growing_season_index & self.YieldForm & (HIt > 0))
+
+        # Root/tuber or fruit/grain crops
+        cond11 = (cond1 & ((CropType == 2) | (CropType == 3)))
+
+        # Determine adjustment for water stress before anthesis
+        cond111 = (cond11 & np.logical_not(self.PreAdj))
+        self.PreAdj[cond111] = True
+        self.AOS_HIadjPreAnthesis()  # TODO
+
+        # Adjustment only for fruit/grain crops
+        HImax = np.zeros((nr, nlat, nlon))  # TODO: is this in the right place?
+        cond112 = (cond11 & (CropType == 3))
+        cond1121 = (cond112 & ((HIt > 0) & (HIt <= FloweringCD)))
+        self.AOS_HIadjPollination(HIt)  # TODO
+        HImax[cond112] = (self.Fpol * HI0)[cond112]
+        cond113 = (cond11 & np.logical_not(cond112))
+        HImax[cond113] = HI0[cond113]
+
+        # Determine adjustments for post-anthesis water stress
+        cond114 = (cond11 & (HIt > 0))
+        self.AOS_HIadjPostAnthesis()  # TODO
+
+        # Limit HI to maximum allowable increase due to pre- and post-anthesis
+        # water stress combinations
+        HImult = np.ones((nr, nlat, nlon))
+        HImult[cond11] = (self.Fpre * self.Fpost)[cond11]
+        cond115 = (cond11 & (HImult > (1 + (dHI0 / 100))))
+        HImult[cond115] = (1 + (dHI0 / 100))[cond115]
+
+        # Determine harvest index on current day, adjusted for stress effects
+        cond116 = (cond11 & (HImax >= HIi))
+        HIadj[cond116] = (HImult * HIi)[cond116]
+        cond117 = (cond11 & np.logical_not(cond116))
+        HIadj[cond117] = (HImult * HImax)[cond117]
+
+        # Leafy vegetable crops - no adjustment, harvest index equal to
+        # reference value for current day
+        cond12 = (cond1 & np.logical_not(cond11))
+        HIadj[cond12] = HIi[cond12]
+
+        # Otherwise no build-up of harvest index if outside yield formation
+        # period
+        HIi = self.HI
+        HIadj = self.HIadj
+
+        # Store final values for current time step
+        self.HI = HIi
+        self.HIadj = HIadj
+
+        # No harvestable crop outside of a growing season
+        self.HI[np.logical_not(growing_season_index)] = 0
+        self.HIadj[np.logical_not(growing_season_index)] = 0
     
     def update(self, meteo, groundwater, currTimeStep):
         """Function to update model state at each time point"""
@@ -3508,3 +3806,4 @@ class LandSurface(object):
         self.AOS_GroundwaterInflow(groundwater)
         self.AOS_HIrefCurrentDay()
         self.AOS_BiomassAccumulation(meteo)
+        self.AOS_HarvestIndex(meteo)

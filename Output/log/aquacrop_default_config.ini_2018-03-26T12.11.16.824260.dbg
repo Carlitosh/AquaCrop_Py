@@ -1,0 +1,629 @@
+2018-03-26 12:11:16,827 configuration INFO Model run started at 2018-03-26 12:11:16.824260
+2018-03-26 12:11:16,827 configuration INFO Logging output to /home/simon/projects/AquaCrop/AquaCrop_Py/Output/log/aquacrop_default_config.ini_2018-03-26T12.11.16.824260.log
+2018-03-26 12:11:16,828 configuration INFO Debugging output to /home/simon/projects/AquaCrop/AquaCrop_Py/Output/log/aquacrop_default_config.ini_2018-03-26T12.11.16.824260.dbg
+2018-03-26 12:11:16,828 currTimeStep INFO number of time steps: 4018
+2018-03-26 12:11:16,828 __main__ INFO Transient simulation run has started
+2018-03-26 12:11:16,828 virtualOS DEBUG read file/values: Gandak30min.landmask.map
+2018-03-26 12:11:16,843 virtualOS DEBUG read file/values: Gandak30min.landmask.map
+2018-03-26 12:11:16,861 virtualOS DEBUG read file/values: Gandak30min.landmask.map
+2018-03-26 12:11:16,890 virtualOS DEBUG reading variable: ksat from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:16,909 virtualOS DEBUG reading variable: th_s from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:16,917 virtualOS DEBUG reading variable: th_fc from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:16,925 virtualOS DEBUG reading variable: th_wp from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:16,933 virtualOS DEBUG reading variable: CalcSHP from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:16,941 virtualOS DEBUG reading variable: EvapZsurf from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:16,950 virtualOS DEBUG reading variable: EvapZmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:16,960 virtualOS DEBUG reading variable: EvapZmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:16,968 virtualOS DEBUG reading variable: Kex from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:16,977 virtualOS DEBUG reading variable: fevap from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:16,986 virtualOS DEBUG reading variable: fWrelExp from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:16,994 virtualOS DEBUG reading variable: fwcc from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,002 virtualOS DEBUG reading variable: AdjREW from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,011 virtualOS DEBUG reading variable: REW from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,019 virtualOS DEBUG reading variable: AdjCN from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,027 virtualOS DEBUG reading variable: CN from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,035 virtualOS DEBUG reading variable: zCN from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,044 virtualOS DEBUG reading variable: zGerm from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,052 virtualOS DEBUG reading variable: zRes from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,062 virtualOS DEBUG reading variable: fshape_cr from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,081 virtualOS DEBUG reading variable: CropType from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,090 virtualOS DEBUG reading variable: PlantingDate from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,100 virtualOS DEBUG reading variable: HarvestDate from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,109 virtualOS DEBUG reading variable: Emergence from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,117 virtualOS DEBUG reading variable: MaxRooting from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,125 virtualOS DEBUG reading variable: Senescence from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,134 virtualOS DEBUG reading variable: Maturity from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,142 virtualOS DEBUG reading variable: HIstart from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,150 virtualOS DEBUG reading variable: Flowering from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,159 virtualOS DEBUG reading variable: YldForm from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,167 virtualOS DEBUG reading variable: PolHeatStress from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,175 virtualOS DEBUG reading variable: PolColdStress from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,183 virtualOS DEBUG reading variable: BioTempStress from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,192 virtualOS DEBUG reading variable: PlantPop from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,200 virtualOS DEBUG reading variable: Determinant from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,210 virtualOS DEBUG reading variable: ETadj from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,219 virtualOS DEBUG reading variable: LagAer from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,229 virtualOS DEBUG reading variable: Tbase from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,238 virtualOS DEBUG reading variable: Tupp from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,247 virtualOS DEBUG reading variable: Tmax_up from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,255 virtualOS DEBUG reading variable: Tmax_lo from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,264 virtualOS DEBUG reading variable: Tmin_up from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,272 virtualOS DEBUG reading variable: Tmin_lo from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,280 virtualOS DEBUG reading variable: GDD_up from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,289 virtualOS DEBUG reading variable: GDD_lo from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,297 virtualOS DEBUG reading variable: fshape_b from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,305 virtualOS DEBUG reading variable: PctZmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,313 virtualOS DEBUG reading variable: Zmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,321 virtualOS DEBUG reading variable: Zmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,329 virtualOS DEBUG reading variable: fshape_r from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,337 virtualOS DEBUG reading variable: fshape_ex from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,346 virtualOS DEBUG reading variable: SxTopQ from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,355 virtualOS DEBUG reading variable: SxBotQ from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,363 virtualOS DEBUG reading variable: a_Tr from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,372 virtualOS DEBUG reading variable: SeedSize from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,380 virtualOS DEBUG reading variable: CCmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,389 virtualOS DEBUG reading variable: CCx from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,397 virtualOS DEBUG reading variable: CDC from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,405 virtualOS DEBUG reading variable: CGC from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,413 virtualOS DEBUG reading variable: Kcb from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,421 virtualOS DEBUG reading variable: fage from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,429 virtualOS DEBUG reading variable: WP from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,437 virtualOS DEBUG reading variable: WPy from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,445 virtualOS DEBUG reading variable: fsink from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,453 virtualOS DEBUG reading variable: bsted from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,462 virtualOS DEBUG reading variable: bface from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,472 virtualOS DEBUG reading variable: HI0 from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,482 virtualOS DEBUG reading variable: HIini from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,493 virtualOS DEBUG reading variable: dHI_pre from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,503 virtualOS DEBUG reading variable: a_HI from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,514 virtualOS DEBUG reading variable: b_HI from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,525 virtualOS DEBUG reading variable: dHI0 from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,538 virtualOS DEBUG reading variable: exc from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,548 virtualOS DEBUG reading variable: MaxFlowPct from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,558 virtualOS DEBUG reading variable: p_up1 from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,568 virtualOS DEBUG reading variable: p_up2 from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,577 virtualOS DEBUG reading variable: p_up3 from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,586 virtualOS DEBUG reading variable: p_up4 from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,595 virtualOS DEBUG reading variable: p_lo1 from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,603 virtualOS DEBUG reading variable: p_lo2 from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,612 virtualOS DEBUG reading variable: p_lo3 from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,620 virtualOS DEBUG reading variable: p_lo4 from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,628 virtualOS DEBUG reading variable: fshape_w1 from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,637 virtualOS DEBUG reading variable: fshape_w2 from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,646 virtualOS DEBUG reading variable: fshape_w3 from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,656 virtualOS DEBUG reading variable: fshape_w4 from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,666 virtualOS DEBUG reading variable: Aer from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,677 virtualOS DEBUG reading variable: beta from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,688 virtualOS DEBUG reading variable: GermThr from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,699 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:17,701 virtualOS DEBUG The date 2000-1-1 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:17,701 virtualOS DEBUG Using the date index 0
+2018-03-26 12:11:17,702 virtualOS DEBUG The date 2001-12-31 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:17,702 virtualOS DEBUG Using the date index 730
+2018-03-26 12:11:17,719 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:17,720 virtualOS DEBUG The date 2000-1-1 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:17,720 virtualOS DEBUG Using the date index 0
+2018-03-26 12:11:17,721 virtualOS DEBUG The date 2001-12-31 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:17,721 virtualOS DEBUG Using the date index 730
+2018-03-26 12:11:17,746 virtualOS DEBUG reading variable: CropSequence from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,755 virtualOS DEBUG reading variable: IrrMethod from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,766 virtualOS DEBUG reading variable: IrrInterval from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,776 virtualOS DEBUG reading variable: SMT1 from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,785 virtualOS DEBUG reading variable: SMT2 from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,794 virtualOS DEBUG reading variable: SMT3 from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,803 virtualOS DEBUG reading variable: SMT4 from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,811 virtualOS DEBUG reading variable: MaxIrr from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,820 virtualOS DEBUG reading variable: AppEff from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,830 virtualOS DEBUG reading variable: NetIrrSMT from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,841 virtualOS DEBUG reading variable: WetSurf from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,852 virtualOS DEBUG reading variable: Mulches from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,863 virtualOS DEBUG reading variable: MulchPctGS from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,874 virtualOS DEBUG reading variable: MulchPctOS from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,884 virtualOS DEBUG reading variable: fMulch from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,894 virtualOS DEBUG reading variable: Bunds from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,904 virtualOS DEBUG reading variable: zBund from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,913 virtualOS DEBUG reading variable: BundWater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/test.nc
+2018-03-26 12:11:17,922 virtualOS DEBUG reading variable: th from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/initial.nc
+2018-03-26 12:11:17,932 aquacrop INFO Reading forcings for time 2000-01-01
+2018-03-26 12:11:17,932 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:17,935 virtualOS DEBUG The date 2000-1-1 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:17,935 virtualOS DEBUG Using the date index 0
+2018-03-26 12:11:17,944 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:17,944 virtualOS DEBUG The date 2000-1-1 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:17,944 virtualOS DEBUG Using the date index 0
+2018-03-26 12:11:17,956 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:17,957 virtualOS DEBUG The date 2000-1-1 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:17,957 virtualOS DEBUG Using the date index 0
+2018-03-26 12:11:17,967 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:17,969 virtualOS DEBUG The date 2000-1-1 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:17,969 virtualOS DEBUG Using the date index 0
+2018-03-26 12:11:17,980 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:17,982 virtualOS DEBUG The date 2000-1-1 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:17,982 virtualOS DEBUG Using the date index 0
+2018-03-26 12:11:17,993 aquacrop INFO Updating model for time 2000-01-01
+2018-03-26 12:11:18,019 aquacrop INFO Reading forcings for time 2000-01-02
+2018-03-26 12:11:18,019 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,021 virtualOS DEBUG The date 2000-1-2 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,021 virtualOS DEBUG Using the date index 1
+2018-03-26 12:11:18,037 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,038 virtualOS DEBUG The date 2000-1-2 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,038 virtualOS DEBUG Using the date index 1
+2018-03-26 12:11:18,050 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,050 virtualOS DEBUG The date 2000-1-2 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,051 virtualOS DEBUG Using the date index 1
+2018-03-26 12:11:18,062 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,063 virtualOS DEBUG The date 2000-1-2 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,063 virtualOS DEBUG Using the date index 1
+2018-03-26 12:11:18,074 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,075 virtualOS DEBUG The date 2000-1-2 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,075 virtualOS DEBUG Using the date index 1
+2018-03-26 12:11:18,085 aquacrop INFO Updating model for time 2000-01-02
+2018-03-26 12:11:18,104 aquacrop INFO Reading forcings for time 2000-01-03
+2018-03-26 12:11:18,104 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,105 virtualOS DEBUG The date 2000-1-3 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,105 virtualOS DEBUG Using the date index 2
+2018-03-26 12:11:18,116 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,116 virtualOS DEBUG The date 2000-1-3 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,116 virtualOS DEBUG Using the date index 2
+2018-03-26 12:11:18,126 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,127 virtualOS DEBUG The date 2000-1-3 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,127 virtualOS DEBUG Using the date index 2
+2018-03-26 12:11:18,137 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,137 virtualOS DEBUG The date 2000-1-3 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,138 virtualOS DEBUG Using the date index 2
+2018-03-26 12:11:18,149 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,150 virtualOS DEBUG The date 2000-1-3 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,150 virtualOS DEBUG Using the date index 2
+2018-03-26 12:11:18,161 aquacrop INFO Updating model for time 2000-01-03
+2018-03-26 12:11:18,185 aquacrop INFO Reading forcings for time 2000-01-04
+2018-03-26 12:11:18,185 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,186 virtualOS DEBUG The date 2000-1-4 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,186 virtualOS DEBUG Using the date index 3
+2018-03-26 12:11:18,200 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,201 virtualOS DEBUG The date 2000-1-4 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,201 virtualOS DEBUG Using the date index 3
+2018-03-26 12:11:18,213 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,214 virtualOS DEBUG The date 2000-1-4 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,214 virtualOS DEBUG Using the date index 3
+2018-03-26 12:11:18,227 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,227 virtualOS DEBUG The date 2000-1-4 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,228 virtualOS DEBUG Using the date index 3
+2018-03-26 12:11:18,240 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,241 virtualOS DEBUG The date 2000-1-4 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,241 virtualOS DEBUG Using the date index 3
+2018-03-26 12:11:18,252 aquacrop INFO Updating model for time 2000-01-04
+2018-03-26 12:11:18,271 aquacrop INFO Reading forcings for time 2000-01-05
+2018-03-26 12:11:18,271 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,272 virtualOS DEBUG The date 2000-1-5 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,272 virtualOS DEBUG Using the date index 4
+2018-03-26 12:11:18,284 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,285 virtualOS DEBUG The date 2000-1-5 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,285 virtualOS DEBUG Using the date index 4
+2018-03-26 12:11:18,297 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,297 virtualOS DEBUG The date 2000-1-5 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,297 virtualOS DEBUG Using the date index 4
+2018-03-26 12:11:18,308 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,309 virtualOS DEBUG The date 2000-1-5 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,309 virtualOS DEBUG Using the date index 4
+2018-03-26 12:11:18,317 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,318 virtualOS DEBUG The date 2000-1-5 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,318 virtualOS DEBUG Using the date index 4
+2018-03-26 12:11:18,327 aquacrop INFO Updating model for time 2000-01-05
+2018-03-26 12:11:18,342 aquacrop INFO Reading forcings for time 2000-01-06
+2018-03-26 12:11:18,342 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,343 virtualOS DEBUG The date 2000-1-6 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,343 virtualOS DEBUG Using the date index 5
+2018-03-26 12:11:18,355 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,355 virtualOS DEBUG The date 2000-1-6 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,356 virtualOS DEBUG Using the date index 5
+2018-03-26 12:11:18,369 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,370 virtualOS DEBUG The date 2000-1-6 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,370 virtualOS DEBUG Using the date index 5
+2018-03-26 12:11:18,382 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,383 virtualOS DEBUG The date 2000-1-6 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,383 virtualOS DEBUG Using the date index 5
+2018-03-26 12:11:18,394 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,395 virtualOS DEBUG The date 2000-1-6 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,395 virtualOS DEBUG Using the date index 5
+2018-03-26 12:11:18,406 aquacrop INFO Updating model for time 2000-01-06
+2018-03-26 12:11:18,428 aquacrop INFO Reading forcings for time 2000-01-07
+2018-03-26 12:11:18,429 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,429 virtualOS DEBUG The date 2000-1-7 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,429 virtualOS DEBUG Using the date index 6
+2018-03-26 12:11:18,444 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,445 virtualOS DEBUG The date 2000-1-7 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,445 virtualOS DEBUG Using the date index 6
+2018-03-26 12:11:18,461 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,462 virtualOS DEBUG The date 2000-1-7 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,462 virtualOS DEBUG Using the date index 6
+2018-03-26 12:11:18,473 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,474 virtualOS DEBUG The date 2000-1-7 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,474 virtualOS DEBUG Using the date index 6
+2018-03-26 12:11:18,484 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,485 virtualOS DEBUG The date 2000-1-7 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,485 virtualOS DEBUG Using the date index 6
+2018-03-26 12:11:18,495 aquacrop INFO Updating model for time 2000-01-07
+2018-03-26 12:11:18,514 aquacrop INFO Reading forcings for time 2000-01-08
+2018-03-26 12:11:18,515 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,515 virtualOS DEBUG The date 2000-1-8 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,515 virtualOS DEBUG Using the date index 7
+2018-03-26 12:11:18,524 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,525 virtualOS DEBUG The date 2000-1-8 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,525 virtualOS DEBUG Using the date index 7
+2018-03-26 12:11:18,533 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,534 virtualOS DEBUG The date 2000-1-8 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,534 virtualOS DEBUG Using the date index 7
+2018-03-26 12:11:18,546 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,547 virtualOS DEBUG The date 2000-1-8 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,547 virtualOS DEBUG Using the date index 7
+2018-03-26 12:11:18,557 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,558 virtualOS DEBUG The date 2000-1-8 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,558 virtualOS DEBUG Using the date index 7
+2018-03-26 12:11:18,566 aquacrop INFO Updating model for time 2000-01-08
+2018-03-26 12:11:18,583 aquacrop INFO Reading forcings for time 2000-01-09
+2018-03-26 12:11:18,583 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,584 virtualOS DEBUG The date 2000-1-9 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,584 virtualOS DEBUG Using the date index 8
+2018-03-26 12:11:18,594 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,595 virtualOS DEBUG The date 2000-1-9 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,596 virtualOS DEBUG Using the date index 8
+2018-03-26 12:11:18,610 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,611 virtualOS DEBUG The date 2000-1-9 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,611 virtualOS DEBUG Using the date index 8
+2018-03-26 12:11:18,626 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,627 virtualOS DEBUG The date 2000-1-9 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,627 virtualOS DEBUG Using the date index 8
+2018-03-26 12:11:18,639 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,640 virtualOS DEBUG The date 2000-1-9 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,640 virtualOS DEBUG Using the date index 8
+2018-03-26 12:11:18,653 aquacrop INFO Updating model for time 2000-01-09
+2018-03-26 12:11:18,675 aquacrop INFO Reading forcings for time 2000-01-10
+2018-03-26 12:11:18,675 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,676 virtualOS DEBUG The date 2000-1-10 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,676 virtualOS DEBUG Using the date index 9
+2018-03-26 12:11:18,688 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,689 virtualOS DEBUG The date 2000-1-10 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,689 virtualOS DEBUG Using the date index 9
+2018-03-26 12:11:18,700 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,700 virtualOS DEBUG The date 2000-1-10 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,700 virtualOS DEBUG Using the date index 9
+2018-03-26 12:11:18,711 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,712 virtualOS DEBUG The date 2000-1-10 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,712 virtualOS DEBUG Using the date index 9
+2018-03-26 12:11:18,721 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,722 virtualOS DEBUG The date 2000-1-10 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,722 virtualOS DEBUG Using the date index 9
+2018-03-26 12:11:18,731 aquacrop INFO Updating model for time 2000-01-10
+2018-03-26 12:11:18,746 aquacrop INFO Reading forcings for time 2000-01-11
+2018-03-26 12:11:18,746 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,747 virtualOS DEBUG The date 2000-1-11 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,747 virtualOS DEBUG Using the date index 10
+2018-03-26 12:11:18,758 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,758 virtualOS DEBUG The date 2000-1-11 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,759 virtualOS DEBUG Using the date index 10
+2018-03-26 12:11:18,772 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,773 virtualOS DEBUG The date 2000-1-11 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,773 virtualOS DEBUG Using the date index 10
+2018-03-26 12:11:18,784 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,785 virtualOS DEBUG The date 2000-1-11 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,785 virtualOS DEBUG Using the date index 10
+2018-03-26 12:11:18,796 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,797 virtualOS DEBUG The date 2000-1-11 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,797 virtualOS DEBUG Using the date index 10
+2018-03-26 12:11:18,808 aquacrop INFO Updating model for time 2000-01-11
+2018-03-26 12:11:18,832 aquacrop INFO Reading forcings for time 2000-01-12
+2018-03-26 12:11:18,832 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,833 virtualOS DEBUG The date 2000-1-12 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,833 virtualOS DEBUG Using the date index 11
+2018-03-26 12:11:18,849 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,850 virtualOS DEBUG The date 2000-1-12 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,850 virtualOS DEBUG Using the date index 11
+2018-03-26 12:11:18,862 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,863 virtualOS DEBUG The date 2000-1-12 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,863 virtualOS DEBUG Using the date index 11
+2018-03-26 12:11:18,876 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,876 virtualOS DEBUG The date 2000-1-12 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,877 virtualOS DEBUG Using the date index 11
+2018-03-26 12:11:18,888 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,889 virtualOS DEBUG The date 2000-1-12 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,889 virtualOS DEBUG Using the date index 11
+2018-03-26 12:11:18,900 aquacrop INFO Updating model for time 2000-01-12
+2018-03-26 12:11:18,922 aquacrop INFO Reading forcings for time 2000-01-13
+2018-03-26 12:11:18,922 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,923 virtualOS DEBUG The date 2000-1-13 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,923 virtualOS DEBUG Using the date index 12
+2018-03-26 12:11:18,934 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,935 virtualOS DEBUG The date 2000-1-13 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,935 virtualOS DEBUG Using the date index 12
+2018-03-26 12:11:18,947 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,948 virtualOS DEBUG The date 2000-1-13 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,948 virtualOS DEBUG Using the date index 12
+2018-03-26 12:11:18,958 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,959 virtualOS DEBUG The date 2000-1-13 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,959 virtualOS DEBUG Using the date index 12
+2018-03-26 12:11:18,968 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,969 virtualOS DEBUG The date 2000-1-13 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,969 virtualOS DEBUG Using the date index 12
+2018-03-26 12:11:18,978 aquacrop INFO Updating model for time 2000-01-13
+2018-03-26 12:11:18,994 aquacrop INFO Reading forcings for time 2000-01-14
+2018-03-26 12:11:18,995 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:18,995 virtualOS DEBUG The date 2000-1-14 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:18,995 virtualOS DEBUG Using the date index 13
+2018-03-26 12:11:19,008 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,009 virtualOS DEBUG The date 2000-1-14 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,010 virtualOS DEBUG Using the date index 13
+2018-03-26 12:11:19,024 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,025 virtualOS DEBUG The date 2000-1-14 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,025 virtualOS DEBUG Using the date index 13
+2018-03-26 12:11:19,036 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,037 virtualOS DEBUG The date 2000-1-14 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,037 virtualOS DEBUG Using the date index 13
+2018-03-26 12:11:19,048 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,049 virtualOS DEBUG The date 2000-1-14 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,049 virtualOS DEBUG Using the date index 13
+2018-03-26 12:11:19,061 aquacrop INFO Updating model for time 2000-01-14
+2018-03-26 12:11:19,080 aquacrop INFO Reading forcings for time 2000-01-15
+2018-03-26 12:11:19,080 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,081 virtualOS DEBUG The date 2000-1-15 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,082 virtualOS DEBUG Using the date index 14
+2018-03-26 12:11:19,094 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,094 virtualOS DEBUG The date 2000-1-15 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,094 virtualOS DEBUG Using the date index 14
+2018-03-26 12:11:19,107 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,108 virtualOS DEBUG The date 2000-1-15 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,108 virtualOS DEBUG Using the date index 14
+2018-03-26 12:11:19,117 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,118 virtualOS DEBUG The date 2000-1-15 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,118 virtualOS DEBUG Using the date index 14
+2018-03-26 12:11:19,127 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,128 virtualOS DEBUG The date 2000-1-15 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,128 virtualOS DEBUG Using the date index 14
+2018-03-26 12:11:19,136 aquacrop INFO Updating model for time 2000-01-15
+2018-03-26 12:11:19,153 aquacrop INFO Reading forcings for time 2000-01-16
+2018-03-26 12:11:19,153 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,154 virtualOS DEBUG The date 2000-1-16 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,154 virtualOS DEBUG Using the date index 15
+2018-03-26 12:11:19,164 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,165 virtualOS DEBUG The date 2000-1-16 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,165 virtualOS DEBUG Using the date index 15
+2018-03-26 12:11:19,178 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,179 virtualOS DEBUG The date 2000-1-16 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,179 virtualOS DEBUG Using the date index 15
+2018-03-26 12:11:19,190 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,191 virtualOS DEBUG The date 2000-1-16 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,191 virtualOS DEBUG Using the date index 15
+2018-03-26 12:11:19,202 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,203 virtualOS DEBUG The date 2000-1-16 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,203 virtualOS DEBUG Using the date index 15
+2018-03-26 12:11:19,214 aquacrop INFO Updating model for time 2000-01-16
+2018-03-26 12:11:19,234 aquacrop INFO Reading forcings for time 2000-01-17
+2018-03-26 12:11:19,234 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,235 virtualOS DEBUG The date 2000-1-17 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,235 virtualOS DEBUG Using the date index 16
+2018-03-26 12:11:19,245 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,246 virtualOS DEBUG The date 2000-1-17 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,246 virtualOS DEBUG Using the date index 16
+2018-03-26 12:11:19,257 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,258 virtualOS DEBUG The date 2000-1-17 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,258 virtualOS DEBUG Using the date index 16
+2018-03-26 12:11:19,269 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,269 virtualOS DEBUG The date 2000-1-17 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,269 virtualOS DEBUG Using the date index 16
+2018-03-26 12:11:19,278 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,279 virtualOS DEBUG The date 2000-1-17 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,279 virtualOS DEBUG Using the date index 16
+2018-03-26 12:11:19,288 aquacrop INFO Updating model for time 2000-01-17
+2018-03-26 12:11:19,303 aquacrop INFO Reading forcings for time 2000-01-18
+2018-03-26 12:11:19,303 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,304 virtualOS DEBUG The date 2000-1-18 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,304 virtualOS DEBUG Using the date index 17
+2018-03-26 12:11:19,315 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,316 virtualOS DEBUG The date 2000-1-18 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,317 virtualOS DEBUG Using the date index 17
+2018-03-26 12:11:19,329 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,330 virtualOS DEBUG The date 2000-1-18 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,331 virtualOS DEBUG Using the date index 17
+2018-03-26 12:11:19,343 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,344 virtualOS DEBUG The date 2000-1-18 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,344 virtualOS DEBUG Using the date index 17
+2018-03-26 12:11:19,355 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,356 virtualOS DEBUG The date 2000-1-18 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,356 virtualOS DEBUG Using the date index 17
+2018-03-26 12:11:19,367 aquacrop INFO Updating model for time 2000-01-18
+2018-03-26 12:11:19,387 aquacrop INFO Reading forcings for time 2000-01-19
+2018-03-26 12:11:19,387 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,388 virtualOS DEBUG The date 2000-1-19 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,388 virtualOS DEBUG Using the date index 18
+2018-03-26 12:11:19,399 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,399 virtualOS DEBUG The date 2000-1-19 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,400 virtualOS DEBUG Using the date index 18
+2018-03-26 12:11:19,410 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,411 virtualOS DEBUG The date 2000-1-19 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,411 virtualOS DEBUG Using the date index 18
+2018-03-26 12:11:19,420 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,421 virtualOS DEBUG The date 2000-1-19 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,421 virtualOS DEBUG Using the date index 18
+2018-03-26 12:11:19,429 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,430 virtualOS DEBUG The date 2000-1-19 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,430 virtualOS DEBUG Using the date index 18
+2018-03-26 12:11:19,439 aquacrop INFO Updating model for time 2000-01-19
+2018-03-26 12:11:19,454 aquacrop INFO Reading forcings for time 2000-01-20
+2018-03-26 12:11:19,454 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,455 virtualOS DEBUG The date 2000-1-20 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,455 virtualOS DEBUG Using the date index 19
+2018-03-26 12:11:19,463 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,464 virtualOS DEBUG The date 2000-1-20 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,464 virtualOS DEBUG Using the date index 19
+2018-03-26 12:11:19,476 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,477 virtualOS DEBUG The date 2000-1-20 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,477 virtualOS DEBUG Using the date index 19
+2018-03-26 12:11:19,490 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,491 virtualOS DEBUG The date 2000-1-20 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,491 virtualOS DEBUG Using the date index 19
+2018-03-26 12:11:19,503 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,504 virtualOS DEBUG The date 2000-1-20 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,504 virtualOS DEBUG Using the date index 19
+2018-03-26 12:11:19,515 aquacrop INFO Updating model for time 2000-01-20
+2018-03-26 12:11:19,536 aquacrop INFO Reading forcings for time 2000-01-21
+2018-03-26 12:11:19,536 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,537 virtualOS DEBUG The date 2000-1-21 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,537 virtualOS DEBUG Using the date index 20
+2018-03-26 12:11:19,549 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,550 virtualOS DEBUG The date 2000-1-21 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,550 virtualOS DEBUG Using the date index 20
+2018-03-26 12:11:19,561 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,562 virtualOS DEBUG The date 2000-1-21 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,562 virtualOS DEBUG Using the date index 20
+2018-03-26 12:11:19,571 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,572 virtualOS DEBUG The date 2000-1-21 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,572 virtualOS DEBUG Using the date index 20
+2018-03-26 12:11:19,581 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,581 virtualOS DEBUG The date 2000-1-21 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,581 virtualOS DEBUG Using the date index 20
+2018-03-26 12:11:19,590 aquacrop INFO Updating model for time 2000-01-21
+2018-03-26 12:11:19,606 aquacrop INFO Reading forcings for time 2000-01-22
+2018-03-26 12:11:19,606 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,608 virtualOS DEBUG The date 2000-1-22 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,608 virtualOS DEBUG Using the date index 21
+2018-03-26 12:11:19,619 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,620 virtualOS DEBUG The date 2000-1-22 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,620 virtualOS DEBUG Using the date index 21
+2018-03-26 12:11:19,635 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,636 virtualOS DEBUG The date 2000-1-22 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,636 virtualOS DEBUG Using the date index 21
+2018-03-26 12:11:19,648 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,649 virtualOS DEBUG The date 2000-1-22 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,649 virtualOS DEBUG Using the date index 21
+2018-03-26 12:11:19,660 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,661 virtualOS DEBUG The date 2000-1-22 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,661 virtualOS DEBUG Using the date index 21
+2018-03-26 12:11:19,673 aquacrop INFO Updating model for time 2000-01-22
+2018-03-26 12:11:19,699 aquacrop INFO Reading forcings for time 2000-01-23
+2018-03-26 12:11:19,699 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,700 virtualOS DEBUG The date 2000-1-23 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,700 virtualOS DEBUG Using the date index 22
+2018-03-26 12:11:19,713 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,714 virtualOS DEBUG The date 2000-1-23 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,714 virtualOS DEBUG Using the date index 22
+2018-03-26 12:11:19,728 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,729 virtualOS DEBUG The date 2000-1-23 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,729 virtualOS DEBUG Using the date index 22
+2018-03-26 12:11:19,741 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,742 virtualOS DEBUG The date 2000-1-23 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,742 virtualOS DEBUG Using the date index 22
+2018-03-26 12:11:19,751 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,752 virtualOS DEBUG The date 2000-1-23 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,752 virtualOS DEBUG Using the date index 22
+2018-03-26 12:11:19,761 aquacrop INFO Updating model for time 2000-01-23
+2018-03-26 12:11:19,778 aquacrop INFO Reading forcings for time 2000-01-24
+2018-03-26 12:11:19,779 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,779 virtualOS DEBUG The date 2000-1-24 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,779 virtualOS DEBUG Using the date index 23
+2018-03-26 12:11:19,791 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,791 virtualOS DEBUG The date 2000-1-24 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,791 virtualOS DEBUG Using the date index 23
+2018-03-26 12:11:19,804 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,804 virtualOS DEBUG The date 2000-1-24 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,805 virtualOS DEBUG Using the date index 23
+2018-03-26 12:11:19,815 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,815 virtualOS DEBUG The date 2000-1-24 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,815 virtualOS DEBUG Using the date index 23
+2018-03-26 12:11:19,825 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,826 virtualOS DEBUG The date 2000-1-24 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,826 virtualOS DEBUG Using the date index 23
+2018-03-26 12:11:19,837 aquacrop INFO Updating model for time 2000-01-24
+2018-03-26 12:11:19,861 aquacrop INFO Reading forcings for time 2000-01-25
+2018-03-26 12:11:19,862 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,862 virtualOS DEBUG The date 2000-1-25 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,863 virtualOS DEBUG Using the date index 24
+2018-03-26 12:11:19,877 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,878 virtualOS DEBUG The date 2000-1-25 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,879 virtualOS DEBUG Using the date index 24
+2018-03-26 12:11:19,890 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,891 virtualOS DEBUG The date 2000-1-25 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,891 virtualOS DEBUG Using the date index 24
+2018-03-26 12:11:19,903 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,904 virtualOS DEBUG The date 2000-1-25 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,904 virtualOS DEBUG Using the date index 24
+2018-03-26 12:11:19,916 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,917 virtualOS DEBUG The date 2000-1-25 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,917 virtualOS DEBUG Using the date index 24
+2018-03-26 12:11:19,928 aquacrop INFO Updating model for time 2000-01-25
+2018-03-26 12:11:19,947 aquacrop INFO Reading forcings for time 2000-01-26
+2018-03-26 12:11:19,947 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,947 virtualOS DEBUG The date 2000-1-26 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,948 virtualOS DEBUG Using the date index 25
+2018-03-26 12:11:19,957 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,958 virtualOS DEBUG The date 2000-1-26 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,958 virtualOS DEBUG Using the date index 25
+2018-03-26 12:11:19,970 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,970 virtualOS DEBUG The date 2000-1-26 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,970 virtualOS DEBUG Using the date index 25
+2018-03-26 12:11:19,983 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,983 virtualOS DEBUG The date 2000-1-26 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,983 virtualOS DEBUG Using the date index 25
+2018-03-26 12:11:19,992 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:19,993 virtualOS DEBUG The date 2000-1-26 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:19,993 virtualOS DEBUG Using the date index 25
+2018-03-26 12:11:20,001 aquacrop INFO Updating model for time 2000-01-26
+2018-03-26 12:11:20,017 aquacrop INFO Reading forcings for time 2000-01-27
+2018-03-26 12:11:20,017 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:20,018 virtualOS DEBUG The date 2000-1-27 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:20,018 virtualOS DEBUG Using the date index 26
+2018-03-26 12:11:20,029 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:20,030 virtualOS DEBUG The date 2000-1-27 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:20,030 virtualOS DEBUG Using the date index 26
+2018-03-26 12:11:20,042 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:20,043 virtualOS DEBUG The date 2000-1-27 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:20,043 virtualOS DEBUG Using the date index 26
+2018-03-26 12:11:20,057 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:20,058 virtualOS DEBUG The date 2000-1-27 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:20,058 virtualOS DEBUG Using the date index 26
+2018-03-26 12:11:20,069 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:20,070 virtualOS DEBUG The date 2000-1-27 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:20,070 virtualOS DEBUG Using the date index 26
+2018-03-26 12:11:20,083 aquacrop INFO Updating model for time 2000-01-27
+2018-03-26 12:11:20,107 aquacrop INFO Reading forcings for time 2000-01-28
+2018-03-26 12:11:20,108 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:20,108 virtualOS DEBUG The date 2000-1-28 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:20,108 virtualOS DEBUG Using the date index 27
+2018-03-26 12:11:20,122 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:20,123 virtualOS DEBUG The date 2000-1-28 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:20,123 virtualOS DEBUG Using the date index 27
+2018-03-26 12:11:20,133 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:20,134 virtualOS DEBUG The date 2000-1-28 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:20,134 virtualOS DEBUG Using the date index 27
+2018-03-26 12:11:20,143 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:20,144 virtualOS DEBUG The date 2000-1-28 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:20,144 virtualOS DEBUG Using the date index 27
+2018-03-26 12:11:20,154 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:20,154 virtualOS DEBUG The date 2000-1-28 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:20,154 virtualOS DEBUG Using the date index 27
+2018-03-26 12:11:20,163 aquacrop INFO Updating model for time 2000-01-28
+2018-03-26 12:11:20,178 aquacrop INFO Reading forcings for time 2000-01-29
+2018-03-26 12:11:20,179 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:20,179 virtualOS DEBUG The date 2000-1-29 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:20,179 virtualOS DEBUG Using the date index 28
+2018-03-26 12:11:20,191 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:20,192 virtualOS DEBUG The date 2000-1-29 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:20,192 virtualOS DEBUG Using the date index 28
+2018-03-26 12:11:20,204 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:20,205 virtualOS DEBUG The date 2000-1-29 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:20,205 virtualOS DEBUG Using the date index 28
+2018-03-26 12:11:20,216 virtualOS DEBUG reading variable: evapotranspiration from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_referencePotET_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:20,217 virtualOS DEBUG The date 2000-1-29 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:20,217 virtualOS DEBUG Using the date index 28
+2018-03-26 12:11:20,228 virtualOS DEBUG reading variable: groundwater from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_groundwater_2000_to_2010_cropped.nc4
+2018-03-26 12:11:20,229 virtualOS DEBUG The date 2000-1-29 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:20,229 virtualOS DEBUG Using the date index 28
+2018-03-26 12:11:20,240 aquacrop INFO Updating model for time 2000-01-29
+2018-03-26 12:11:20,264 aquacrop INFO Reading forcings for time 2000-01-30
+2018-03-26 12:11:20,264 virtualOS DEBUG reading variable: precipitation from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_precipitation_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:20,265 virtualOS DEBUG The date 2000-1-30 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:20,265 virtualOS DEBUG Using the date index 29
+2018-03-26 12:11:20,282 virtualOS DEBUG reading variable: Tmin from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:20,283 virtualOS DEBUG The date 2000-1-30 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:20,284 virtualOS DEBUG Using the date index 29
+2018-03-26 12:11:20,296 virtualOS DEBUG reading variable: Tmax from the file: /home/simon/projects/AquaCrop/AquaCrop_Py/Input/daily_temperature_cru_era-interim_2000_to_2010_cropped.nc4
+2018-03-26 12:11:20,297 virtualOS DEBUG The date 2000-1-30 is available. The 'exact' option is used while selecting netcdf time.
+2018-03-26 12:11:20,298 virtualOS DEBUG Using the date index 29
