@@ -7,8 +7,8 @@
 import types
 import pcraster as pcr
 import virtualOS as vos
-import parameterSoilAndTopo as parSoilAndTopo
-import parameterCrop as parCrop
+import SoilAndTopoParameters as parSoilAndTopo
+import CropParameters as parCrop
 
 import logging
 logger = logging.getLogger(__name__)
@@ -52,7 +52,7 @@ class LandSurface(object):
         # crop parameters
         self.crop = parCrop.CropParameters(iniItems, self.landmask)
         self.crop.read()
-        self.crop.computeVariables(currTimeStep, meteo)
+        self.crop.compute_variables(currTimeStep, meteo)
         # self.crop.computeCropCalendar(currTimeStep, meteo)
         
         # rotation parameters
@@ -286,7 +286,7 @@ class LandSurface(object):
         #         land_cover_states = vars(self.landCoverObj[coverType])[var]
         #         vars(self)[var]  += land_cover_states * land_cover_fraction
 
-    def AOS_CheckGroundwaterTable(self, groundwater, currTimeStep):
+    def check_groundwater_table(self, groundwater, currTimeStep):
 
         # expand soil properties to compartments
         th_fc = self.soil.th_fc[self.soil.layerIndex,:]
@@ -3782,7 +3782,7 @@ class LandSurface(object):
         self.DAP[np.logical_not(growing_season_index)] = 0
 
         # Compute growing degree day
-        self.crop.GrowingDegreeDay(currTimeStep, meteo)  # crop,lat,lon
+        self.crop.growing_degree_day(currTimeStep, meteo)  # crop,lat,lon
         GDD = self.crop.GDD[:,None,:,:] * np.ones((nr))[None,:,None,None]
         GDD = GDD[crop_index,I,J,K]
         
@@ -3790,7 +3790,7 @@ class LandSurface(object):
         self.GDDcum[np.logical_not(growing_season_index)] = 0
 
         # TODO: only do this if a given option is set
-        self.AOS_CheckGroundwaterTable(groundwater, currTimeStep)
+        self.check_groundwater_table(groundwater, currTimeStep)
         self.AOS_PreIrrigation()
         self.Drainage()
         self.RainfallPartition(meteo)

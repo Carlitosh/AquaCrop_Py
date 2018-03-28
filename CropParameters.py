@@ -17,35 +17,33 @@ class CropParameters(object):
         object.__init__(self)
 
         self.cloneMap = iniItems.cloneMap
-        self.tmpDir   = iniItems.tmpDir
-        self.inputDir = iniItems.globalOptions['inputDir']
         self.landmask = landmask
 
         attr = vos.getMapAttributesALL(self.cloneMap)
         self.nLat = int(attr['rows'])
         self.nLon = int(attr['cols'])
 
-        # Parse options:
-        # TODO: add section in repair_ini_... in configuration.py
         self.cropParameterFileNC = iniItems.cropOptions['cropParameterNC']
         self.CalendarType = int(iniItems.cropOptions['CalendarType'])
         self.SwitchGDD = bool(int(iniItems.cropOptions['SwitchGDD']))
         self.GDDmethod = int(iniItems.cropOptions['GDDmethod'])
+
+    def read_crop_parameters(self):
+        """Function to read crop input parameters"""
         
-    def read(self):
+        self.parameter_names = ['CropType','PlantingDate','HarvestDate','Emergence','MaxRooting','Senescence','Maturity','HIstart','Flowering','YldForm','PolHeatStress','PolColdStress','BioTempStress','PlantPop','Determinant','ETadj','LagAer','Tbase','Tupp','Tmax_up','Tmax_lo','Tmin_up','Tmin_lo','GDD_up','GDD_lo','fshape_b','PctZmin','Zmin','Zmax','fshape_r','fshape_ex','SxTopQ','SxBotQ','a_Tr','SeedSize','CCmin','CCx','CDC','CGC','Kcb','fage','WP','WPy','fsink','bsted','bface','HI0','HIini','dHI_pre','a_HI','b_HI','dHI0','exc','MaxFlowPct','p_up1','p_up2','p_up3','p_up4','p_lo1','p_lo2','p_lo3','p_lo4','fshape_w1','fshape_w2','fshape_w3','fshape_w4','Aer','beta','GermThr']
 
-        # using LandCover.read_land_cover_parameters() as a template
-
-        cropParams = ['CropType','PlantingDate','HarvestDate','Emergence','MaxRooting','Senescence','Maturity','HIstart','Flowering','YldForm','PolHeatStress','PolColdStress','BioTempStress','PlantPop','Determinant','ETadj','LagAer','Tbase','Tupp','Tmax_up','Tmax_lo','Tmin_up','Tmin_lo','GDD_up','GDD_lo','fshape_b','PctZmin','Zmin','Zmax','fshape_r','fshape_ex','SxTopQ','SxBotQ','a_Tr','SeedSize','CCmin','CCx','CDC','CGC','Kcb','fage','WP','WPy','fsink','bsted','bface','HI0','HIini','dHI_pre','a_HI','b_HI','dHI0','exc','MaxFlowPct','p_up1','p_up2','p_up3','p_up4','p_lo1','p_lo2','p_lo3','p_lo4','fshape_w1','fshape_w2','fshape_w3','fshape_w4','Aer','beta','GermThr']
-
-        for var in cropParams:
-            vars(self)[var] = vos.netcdf2PCRobjCloneWithoutTime(self.cropParameterFileNC,\
-                                                                var,\
-                                                                cloneMapFileName=self.cloneMap)
+        for var in self.parameter_names:
+            vars(self)[var] = vos.netcdf2PCRobjCloneWithoutTime(
+                self.cropParameterFileNC,
+                var,
+                cloneMapFileName=self.cloneMap)
 
         self.nCrop = self.CropType.shape[0]
 
-    def computeVariables(self, currTimeStep, meteo):
+    def compute_variables(self, currTimeStep, meteo):
+        """Function to compute additional crop variables required to run 
+        AquaCrop"""
         
         # The following adapted from lines 160-240 of AOS_ComputeVariables.m
 
@@ -57,9 +55,11 @@ class CropParameters(object):
         S2 = self.SxBotQ
         self.SxTop = np.zeros((self.nCrop, self.nLat, self.nLon))
         self.SxBot = np.zeros((self.nCrop, self.nLat, self.nLon))
+
         cond1 = (S1 == S2)
         self.SxTop[cond1] = S1[cond1]
         self.SxBot[cond1] = S2[cond1]
+
         cond2 = np.logical_not(cond1)
         cond21 = (cond2 & (self.SxTopQ < self.SxBotQ))
         S1[cond21] = self.SxBotQ[cond21]
@@ -67,54 +67,60 @@ class CropParameters(object):
         xx = 3 * (S2 / (S1 - S2))
         SS1 = np.zeros((self.nCrop, self.nLat, self.nLon))
         SS2 = np.zeros((self.nCrop, self.nLat, self.nLon))
+
         cond22 = (cond2 & (xx < 0.5))
         SS1[cond22] = ((4 / 3.5) * S1)[cond22]
         SS2[cond22] = 0
+
         cond23 = (cond2 & np.logical_not(cond22))
         SS1[cond23] = ((xx + 3.5) * (S1 / (xx + 3)))[cond23]
         SS2[cond23] = ((xx - 0.5) * (S2 / xx))[cond23]
+
         cond24 = (cond2 & (self.SxTopQ > self.SxBotQ))
         self.SxTop[cond24] = SS1[cond24]
         self.SxBot[cond24] = SS2[cond24]
+
         cond25 = (cond2 & np.logical_not(cond24))
         self.SxTop[cond25] = SS2[cond25]
         self.SxBot[cond25] = SS1[cond25]
 
-        # Water stress thresholds
-        # TODO
-
-        # Flowering function
-        cond3 = (self.CropType == 3)
-        # TODO - function handle but not clear where it's used???
-
-        # Crop calendar - see ComputeCropCalendar
-        self.computeCropCalendar(currTimeStep, meteo)
+        # Crop calender
+        self.AOS_ComputeCropCalendar(currTimeStep, meteo)
 
         # Harvest index growth coefficient
         self.AOS_CalculateHIGC()
 
         # Days to linear HI switch point
         self.AOS_CalculateHILinear()
-        
-    def GrowingDegreeDay(self, currTimeStep, meteo):
 
-        tmax = meteo.tmax[None,:,:] * np.ones((self.nCrop))[:,None,None]
-        tmin = meteo.tmin[None,:,:] * np.ones((self.nCrop))[:,None,None]
+        # Update crop parameter names
+        new_parameter_names = ['CC0','SxTop','SxBot']
+        for nm in new_parameter_names:
+            if nm not in self.parameter_names:
+                self.parameter_names.append(nm)
         
-        if self.GDDmethod == 1:
-            tmean = ((tmax + tmin) / 2)
-            tmean = np.clip(tmean, self.Tbase, self.Tupp)
-        elif self.GDDmethod == 2:
-            tmax = np.clip(tmax, self.Tbase, self.Tupp)
-            tmin = np.clip(tmin, self.Tbase, self.Tupp)
-            tmean = ((tmax + tmin) / 2)
-        elif self.GDDmethod == 3:
-            tmax = np.clip(tmax, self.Tbase, self.Tupp)
-            tmin = np.clip(tmin, None, self.Tupp)
-            tmean = np.clip(tmean, self.Tbase, None)
+    # def growing_degree_day(self, currTimeStep, meteo):
+    #     """Function to calculate number of growing degree days on 
+    #     current day
+    #     """
+    #     tmax = meteo.tmax[None,:,:] * np.ones((self.nCrop))[:,None,None]
+    #     tmin = meteo.tmin[None,:,:] * np.ones((self.nCrop))[:,None,None]
+        
+    #     if self.GDDmethod == 1:
+    #         tmean = ((tmax + tmin) / 2)
+    #         tmean = np.clip(tmean, self.Tbase, self.Tupp)
+    #     elif self.GDDmethod == 2:
+    #         tmax = np.clip(tmax, self.Tbase, self.Tupp)
+    #         tmin = np.clip(tmin, self.Tbase, self.Tupp)
+    #         tmean = ((tmax + tmin) / 2)
+    #     elif self.GDDmethod == 3:
+    #         tmax = np.clip(tmax, self.Tbase, self.Tupp)
+    #         tmin = np.clip(tmin, None, self.Tupp)
+    #         tmean = np.clip(tmean, self.Tbase, None)
             
-        self.GDD = (tmean - self.Tbase)
-        # self.GDDcum += GDD
+    #     self.GDD = (tmean - self.Tbase)
+    #     # TODO: why have you commented this out?
+    #     # self.GDDcum += GDD
 
     def AOS_CalculateHILinear(self):
         """Function to calculate time to switch to linear harvest index 
@@ -144,8 +150,7 @@ class CropParameters(object):
         HIest[cond1] = ((self.HIini * self.HI0) / (self.HIini + (self.HI0 - self.HIini) * np.exp(-self.HIGC * self.tLinSwitch)))[cond1]
         HIest[np.logical_not(cond1)] = 0
         self.dHILinear = ((self.HI0 - HIest) / (tmax - self.tLinSwitch))  # dHILin will be set to nan in the same cells as tSwitch
-        
-            
+                    
     def AOS_CalculateHIGC(self):
         """Function to calculate harvest index growth coefficient"""
         # Total yield formation days
@@ -161,7 +166,7 @@ class CropParameters(object):
             
         self.HIGC[HIest >= self.HI0] -= 0.001
         
-    def computeCropCalendar(self, currTimeStep, meteo):
+    def AOS_ComputeCropCalendar(self, currTimeStep, meteo):
        
         # "Time from sowing to end of vegetative growth period"
         cond1 = (self.Determinant == 1)
@@ -369,3 +374,5 @@ class CropParameters(object):
 
                 # "2 Duration of flowering in calendar days"
                 self.FloweringCD = FloweringEnd - self.HIstartCD
+
+                

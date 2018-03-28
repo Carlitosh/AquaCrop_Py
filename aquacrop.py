@@ -14,6 +14,7 @@ import pcraster as pcr
 import virtualOS as vos
 import meteo
 import groundwater
+import CropParameters as cropParams
 import landSurface
 
 import logging
@@ -33,6 +34,31 @@ class AquaCrop(object):
                                             configuration.globalOptions['inputDir'],\
                                             True)
 
+        # Soil parameters
+        self.soil = soilParams.SoilAndTopoParameters(iniItems, self.landmask)
+        self.soil.read()
+        if groundwater.WaterTable:
+            self.soil.compute_capillary_rise_parameters()
+
+        # Crop parameters
+        self.crop = cropParams.CropParameters(iniItems, landmask)
+        self.crop.read_crop_parameters()
+        self.crop.compute_variables()
+        arr_ones = np.ones((self.nRotation))[None,:,None,None]
+        self.PlantingDate = self.crop.PlantingDate[:,None,:,:] * arr_ones
+        self.HarvestDate = self.crop.HarvestDate[:,None,:,:] * arr_ones
+
+        # Irrigation management parameters
+        self.irrigation_mgmt = irriMgmtParams.IrrigationMgmtParameters(iniItems, landmask)
+        self.irrigation_mgmt.read_irrigation_mgmt_parameters()
+
+        # Field management parameters
+        self.field_mgmt = fieldMgmtParams.FieldMgmtParameters(iniItems, landmask)
+        self.field_mgmt.read_field_mgmt_parameters()
+
+        # Initialize submodels
+        # ???
+        
         # number of soil layers/compartments
         self.nLayer = int(configuration.soilOptions['nLayer'])
         self.nComp = int(configuration.soilOptions['nComp'])
@@ -45,9 +71,22 @@ class AquaCrop(object):
         return self._configuration
 
     def createSubmodels(self, initialState):
-        self.meteo = meteo.Meteo(self._configuration,self.landmask,initialState)
-        self.groundwater = groundwater.Groundwater(self._configuration,self.landmask,initialState)
-        self.landSurface = landSurface.LandSurface(self._configuration,self._modelTime,self.meteo,self.groundwater,self.landmask,initialState)
+        self.meteo = meteo.Meteo(
+            self._configuration,
+            self.landmask,initialState)
+        
+        self.groundwater = groundwater.Groundwater(
+            self._configuration,
+            self.landmask,initialState)
+        
+        self.landSurface = landSurface.LandSurface(
+            self._configuration,
+            self._modelTime,
+            self.meteo,
+            self.groundwater,
+            self.landmask,
+            initialState)
+        
         # TODO: identify other submodels
 
     def dumpState(self, outputDirectory, specific_date_string = None):

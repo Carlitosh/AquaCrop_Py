@@ -86,13 +86,13 @@ class SoilAndTopoParameters(object):
         self.tau[self.tau > 1] = 1
         self.tau[self.tau < 0] = 0
 
+        # The following is adapted from AOS_ComputeVariables.m, lines 25
+        self.th_dry = self.th_wp / 2
+
         # The following is adapted from AOS_ComputeVariables.m, lines 147-151
         # "Calculate upper and lower curve numbers"
         self.CNbot = np.round(1.4 * (np.exp(-14 * np.log(10))) + (0.507 * self.CN) - (0.00374 * self.CN ** 2) + (0.0000867 * self.CN ** 3))
         self.CNtop = np.round(5.6 * (np.exp(-14 * np.log(10))) + (2.33 * self.CN) - (0.0209 * self.CN ** 2) + (0.000076 * self.CN ** 3))
-
-        # The following is adapted from AOS_ComputeVariables.m, lines 25
-        self.th_dry = self.th_wp / 2
 
     def compute_capillary_rise_parameters(self):
         # Function adapted from AOS_ComputeVariables.m, lines 60-127
