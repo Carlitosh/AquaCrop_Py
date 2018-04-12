@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class Groundwater(object):
 
-    def __init__(self,iniItems,landmask,spinUp):
+    def __init__(self, iniItems, landmask, spinUp):
         object.__init__(self)
 
         self.cloneMap = iniItems.cloneMap

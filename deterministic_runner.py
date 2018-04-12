@@ -36,7 +36,7 @@ class DeterministicRunner(DynamicModel):
         self.modelTime.update(self.currentTimeStep())
 
         # update model
-        self.model.read_forcings()
+        # self.model.read_forcings()
         self.model.update()
 
         # # do any reporting

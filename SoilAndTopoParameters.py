@@ -147,5 +147,87 @@ class SoilAndTopoParameters(object):
         self.bCR[cond42] = (-1.9165 + (0.7063 * np.log(1)))
         self.aCR[cond43] = (-0.6366 + (8 * (10 ** -4) * 150))
         self.bCR[cond43] = (-1.9165 + (0.7063 * np.log(150)))
+
+    def check_groundwater_table(self, groundwater):
+        """Function to check for presence of a groundwater table and, if 
+        present, to adjust compartment water contents and field 
+        capacities where necessary
+        """
+        # expand soil properties to compartments
+        th_fc = self.th_fc[self.layerIndex,:]
+        th_s  = self.th_s[self.layerIndex,:]
         
+        # These are options which apply to the entire study area (not just a
+        # selection of cells), so we can use an if statement.
+        if groundwater.WaterTable:
         
+            # get the mid point of each compartment (TODO: put this in initialization)
+            zBot = np.cumsum(self.dz)
+            zTop = zBot - self.dz
+            zMid = (zTop + zBot) / 2
+        
+            # Convenient to add compartment + rotation dimensions to groundwater
+            # and rotation, latitude and longitude dimensions to zMid
+            self.zGW = groundwater.zGW[None,:,:] * np.ones((self.nRotation))[:,:,None,None]
+            zMid = zMid[:,None,None,None] * np.ones((self.nRotation,self.nLat,self.nLon))[None,:,:,:]
+
+            # Check if water table is within modelled soil profile
+            WTinSoilComp = (zMid >= self.zGW)
+            self.th[WTinSoilComp] = th_s[WTinSoilComp]
+
+            # Flatten WTinSoilComp to provide an array with dimensions
+            # (nrotation, nLat, nLon), indicating rotations where the water
+            # table is in the soil profile
+            self.WTinSoil = np.sum(WTinSoilComp, axis=0).astype(bool)
+
+            # get Xmax (TODO: find out what this variable represents)
+            Xmax = np.zeros((self.nComp,self.nRotation,self.nLat,self.nLon))
+            cond1 = th_fc <= 0.1
+            cond2 = th_fc >= 0.3
+            cond3 = np.logical_not(cond1 | cond2) # i.e. 0.1 < fc < 0.3
+            Xmax[cond1] = 1
+            Xmax[cond2] = 2
+            pF = 2 + 0.3 * (th_fc - 0.1) / 0.2
+            Xmax_cond3 = np.exp(pF * np.log(10)) / 100
+            Xmax[cond3] = Xmax_cond3[cond3]
+            cond4 = (self.zGW < 0) | ((self.zGW - zMid) >= Xmax)
+
+            # Index of the compartment to which each element belongs (shallow ->
+            # deep, i.e. 1 is the shallowest)
+            compartment = (
+                np.arange(1, self.nComp + 1)[:,None,None,None]
+                * np.ones((self.nRotation, self.nLat, self.nLon))[None,:,:,:])
+
+            # Index of the lowest compartment (i.e. the maximum value) for which
+            # cond4 is met, cast to all compartments (achieved by multiplying
+            # compartments by cond4 to set elements that do not equal the
+            # condition to zero, but retain the compartment number of elements
+            # that do meet the condition
+            cond4_max_compartment = (
+                np.amax(compartment * cond4, axis=0)[None,:,:,:]
+                * np.ones((self.nComp))[:,None,None,None])
+
+            # Now, identify compartments that are shallower than the deepest
+            # compartment for which cond4 is met
+            cond4 = (compartment <= cond4_max_compartment)
+
+            # 'cond4' is a special case because if ANY compartment meets the
+            # condition then all overlying compartments are automatically assumed to
+            # meet the condition. Thus in subsequent conditions we have to be careful
+            # to ensure that True elements in 'cond4' do not also belong to 'cond5',
+            # 'cond6' or 'cond7'. We use numpy.logical_not(...) for this purpose.
+            cond5 = (th_fc >= th_s) & np.logical_not(cond4)
+            cond6 = (zMid >= self.zGW) & np.logical_not(cond4 | cond5)
+            cond7 = np.logical_not(cond4 | cond5 | cond6)
+            dV = th_s - th_fc
+            dFC = (dV / (Xmax ** 2)) * ((zMid - (self.zGW - Xmax)) ** 2)
+
+            self.th_fc_adj[cond4] = th_fc[cond4]
+            self.th_fc_adj[cond5] = th_fc[cond5]
+            self.th_fc_adj[cond6] = th_s[cond6]
+            self.th_fc_adj[cond7] = th_fc[cond7] + dFC[cond7]
+
+        else:
+            self.zGW = np.ones((self.nRotation, self.nLat, self.nLon)) * -999
+            self.WTinSoil = np.full((self.nRotation, self.nLat, self.nLon), False)
+            self.th_fc_adj = th_fc
