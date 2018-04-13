@@ -175,8 +175,8 @@ class InitialConditions(object):
         self.Zroot[cond1] = cropParams.Zmin[cond1]
 
         # Update C02 concentration
-        # TODO
-
+        # NB this is done in CropParameters class
+        
         # Reset soil water conditions (if not running off-season)
         # TODO
 

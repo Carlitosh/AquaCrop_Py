@@ -98,6 +98,35 @@ class CropParameters(object):
         for nm in new_parameter_names:
             if nm not in self.parameter_names:
                 self.parameter_names.append(nm)
+
+    def compute_water_productivity_adjustment_factor(self, CO2):
+        """Function to calculate water productivity adjustment factor 
+        for elevation in C02 concentration"""
+
+        # convenient to add crop dimension to CO2 variables
+        CO2ref = CO2.ref[None,:,:] * np.ones((self.nCrop))[:,None,None]
+        CO2conc = CO2.conc[None,:,:] * np.ones((self.nCrop))[:,None,None]
+        
+        # Get C02 weighting factor
+        fw = np.zeros((self.nCrop, self.nLat, self.nLon))
+        cond1 = (CO2conc > CO2ref)
+        cond11 = (cond1 & (CO2conc >= 550))
+        fw[cond11] = 1
+        cond12 = (cond1 & np.logical_not(cond11))
+        fw[cond12] = 1 - ((550 - CO2conc) / (550 - CO2ref))
+
+        # Determine adjustment for each crop in first year of simulation
+        fCO2 = ((CO2conc / CO2ref) /
+                (1 + (CO2conc - CO2ref) * ((1 - fw)
+                                           * self.bsted + fw
+                                           * ((self.bsted * self.fsink)
+                                              + (self.bface
+                                                 * (1 - self.fsink))))))
+
+        # Consider crop type
+        ftype = (40 - self.WP) / (40 - 20)
+        ftype = np.clip(ftype, 0, 1)
+        self.fCO2 = 1 + ftype * (fCO2 - 1)
         
     # def growing_degree_day(self, currTimeStep, meteo):
     #     """Function to calculate number of growing degree days on 

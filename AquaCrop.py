@@ -195,7 +195,8 @@ class AquaCrop(object):
 
         # Update season counter for crops planted on current day
         cond1 = (self.CropSequence & (currTimeStep.doy == self.PlantingDate))
-        self.initCond.reset()   # TODO
+        self.initCond.reset()
+        self.crop.compute_water_productivity_adjustment_factor(self.C02)
         self.SeasonCounter[cond1] += 1
 
         # Update growing season
