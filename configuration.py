@@ -165,6 +165,12 @@ class Configuration(object):
             if self.meteoOptions[item] != "None":
                 self.meteoOptions[item] = vos.getFullPath(self.meteoOptions[item], self.globalOptions['inputDir'])
 
+        # CO2 concentration input file
+        co2InputFiles = ['carbonDioxideNC']
+        for item in co2InputFiles:
+            if self.carbonDioxideOptions[item] != "None":
+                self.carbonDioxideOptions[item] = vos.getFullPath(self.carbondDioxideOptions[item], self.globalOptions['inputDir'])
+                
         # groundwater input file
         item = 'groundwaterNC'
         if self.groundwaterOptions[item] != "None":

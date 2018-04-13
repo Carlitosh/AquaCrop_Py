@@ -12,8 +12,9 @@ import gc
 import pcraster as pcr
 
 import VirtualOS as vos
-import Meteo
-import Groundwater
+import Meteo as meteo
+import C02
+import Groundwater as groundwater
 import CropParameters as cropParams
 import SoilAndTopoParameters as soilParams
 import InitialConditions as initCond
@@ -59,20 +60,15 @@ class AquaCrop(object):
             self.landmask,
             initialState)
 
+        self.C02 = CO2.C02(
+            self._configuration,
+            self.landmask,
+            initialState)
+        
         self.groundwater = groundwater.Groundwater(
             self._configuration,
             self.landmask,
             initialState)
-
-        # self.soilwater = soilwater.SoilWater(
-        #     self._configuration,
-        #     self.landmask,
-        #     initialState)
-
-        # self.rotation = rotation.Rotation(
-        #     self._configuration,
-        #     self.landmask,
-        #     initialState)
 
         # Compute capillary rise parameters if water table is modelled
         if groundwater.WaterTable:
@@ -195,6 +191,7 @@ class AquaCrop(object):
         logger.info("Updating model for time %s", self._modelTime)
         self.meteo.read_forcings(self._modelTime)
         self.groundwater.read_forcings(self._modelTime)
+        self.C02.read_forcings(self._modelTime)
 
         # Update season counter for crops planted on current day
         cond1 = (self.CropSequence & (currTimeStep.doy == self.PlantingDate))
