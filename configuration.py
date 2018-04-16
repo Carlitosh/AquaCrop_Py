@@ -226,7 +226,6 @@ class Configuration(object):
 
         if os.path.exists(self.tmpDir):
             shutil.rmtree(self.tmpDir)
-
         os.makedirs(self.tmpDir)
 
         # make netcdf directory
@@ -234,27 +233,19 @@ class Configuration(object):
         
         if os.path.exists(self.outNCDir):
             shutil.rmtree(self.outNCDir)
-
         os.makedirs(self.outNCDir)
 
-        # make and populate backup directory for Python
-        # scripts
-
-        # SM: I guess the idea here is that the output
-        # directory contains the exact version of the model
-        # used to create the output
+        # make and populate backup directory for Python scripts
         self.scriptDir = vos.getFullPath("scripts/", self.globalOptions['outputDir'])
 
         if os.path.exists(self.scriptDir):
             shutil.rmtree(self.scriptDir)
-
         os.makedirs(self.scriptDir)
 
-        # working/starting directory where all Python scripts
-        # are located
+        # working/starting directory where all Python scripts are located
         path_of_this_module = os.path.abspath(os.path.dirname(__file__))
         self.starting_directory = path_of_this_module
-
+        
         all_files = glob.glob(os.path.join(path_of_this_module, '*.py'))
         for filename in all_files:
             shutil.copy(filename, self.scriptDir)
@@ -265,7 +256,6 @@ class Configuration(object):
         cleanLogDir = True
         if os.path.exists(self.logFileDir) and cleanLogDir:
             shutil.rmtree(self.logFileDir)
-
         os.makedirs(self.logFileDir)
 
         # make end state directory
@@ -273,16 +263,12 @@ class Configuration(object):
 
         if os.path.exists(self.endStateDir):
             shutil.rmtree(self.endStateDir)
-
         os.makedirs(self.endStateDir)
 
-        # PCRaster maps directory? I don't think this is needed
-        
     def repair_ini_key_names(self):
-        """
-        If needed, change/modify some key names for initial condition fields. 
-        This is introduced because Edwin was very stupid as once he changed some key names of initial conditions! Yet, it is also useful particularly for runs without complete ini files. 
-        """
+        """This function is used to change or modify key names of
+        options, to check the validity of options and to infill 
+        missing keys"""
 
         # temporal resolution of the model
         self.timeStep = 1.0

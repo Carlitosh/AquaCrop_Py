@@ -25,7 +25,7 @@ class DeterministicRunner(DynamicModel):
         DynamicModel.__init__(self)
         self.modelTime = modelTime
         self.model = AquaCrop(configuration, modelTime, initialState)
-        # self.reporting = Reporting(configuration, self.model, modelTime)
+        self.reporting = Reporting(configuration, self.model, modelTime)
 
     def initial(self):
         pass
@@ -39,8 +39,8 @@ class DeterministicRunner(DynamicModel):
         # self.model.read_forcings()
         self.model.update()
 
-        # # do any reporting
-        # self.reporting.report()
+        # do any reporting
+        self.reporting.report()
 
 def main():
 
