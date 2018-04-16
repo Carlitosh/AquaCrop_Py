@@ -164,8 +164,7 @@ class CropParameters(object):
         HIprev = self.HIini
 
         # Iterate to find linear switch point
-        while np.any((self.CropType == 3) & (HIest <= self.HI0) & (ti < tmax)):
-            
+        while np.any((self.CropType == 3) & (HIest <= self.HI0) & (ti < tmax)):    
             ti += 1
             HInew = ((self.HIini * self.HI0) / (self.HIini + (self.HI0 - self.HIini) * np.exp(-self.HIGC * ti)))
             HIest = (HInew + (tmax - ti) * (HInew - HIprev))
@@ -194,7 +193,98 @@ class CropParameters(object):
             HIest = ((self.HIini * self.HI0) / (self.HIini + (self.HI0 - self.HIini) * np.exp(-self.HIGC * tHI)))
             
         self.HIGC[HIest >= self.HI0] -= 0.001
-        
+
+    def update_growing_degree_day(self, Meteo, startTime, MASK=None):
+        """Function to compute growing degree day parameter for upcoming 
+        growing season"""
+
+        if MASK is None:
+            MASK = np.full(self.PlantingDate.shape, True)
+
+        if not np.any(MASK):
+            GDD = np.full(self.PlantingDate.shape, np.nan)
+        else:
+            st = startTime
+            sd = startTime.timetuple().tm_yday # (Julian day: 1 Jan = 1)
+
+            # objective of the following code section is to obtain an
+            # index of the first complete growing season of the given
+            # crop in each grid cell
+
+            # planting/harvesting date of crop
+            pd = self.PlantingDate
+            hd = self.HarvestDate
+
+            # if start day of simulation is greater than planting day the
+            # first complete growing season will not be until the
+            # following year
+            hd[sd > pd] += 365
+            pd[sd > pd] += 365
+
+            # if start day is less than or equal to planting day, but
+            # harvest day is less than planting day, the harvest day will
+            # occur in the following year
+            hd[((sd <= pd) & (hd < pd))] += 365
+
+            # adjust values for leap year
+            isLeapYear1 = calendar.isleap(st.year)
+            isLeapYear2 = calendar.isleap(st.year + 1)
+            pd[(isLeapYear1 & (pd >= 60))] += 1  # TODO: check these
+            hd[(isLeapYear1 & (hd >= 60))] += 1
+            pd[(isLeapYear2 & (pd >= 425))] += 1
+            hd[(isLeapYear2 & (hd >= 425))] += 1
+
+            pd[np.logical_not(MASK)] = np.nan
+            hd[np.logical_not(MASK)] = np.nan
+
+            ndays = np.nanmax(hd)  # numpy.nanmax calculates the maximum value, ignoring NaN cell values
+            day_idx = np.arange(1, ndays + 1)[:,None,None,None] * np.ones((self.nCrop, self.nLon, self.nLat))[None,:,:,:]
+
+            # Dimensions of pd are crop,lat,lon; day_idx dims are
+            # time,crop,lat,lon - broadcasting should work automatically
+            growing_season_idx = ((pd >= day_idx) & (hd <= day_idx))
+
+            # Extract weather data for first growing season
+            tmin = vos.netcdf2NumPyTimeSlice(meteo.tmpFileNC, meteo.tmnVarName,
+                                             startTime,
+                                             startTime + datetime.timedelta(ndays),
+                                             cloneMapFileName = self.cloneMap,
+                                             LatitudeLongitude = True)
+
+            tmax = vos.netcdf2NumPyTimeSlice(meteo.tmpFileNC, meteo.tmxVarName,
+                                             startTime,
+                                             startTime + datetime.timedelta(ndays),
+                                             cloneMapFileName = self.cloneMap,
+                                             LatitudeLongitude = True)
+
+            # broadcast to crop dimension
+            tmax = tmax[:,None,:,:] * np.ones((self.nCrop))[None,:,None,None]
+            tmin = tmin[:,None,:,:] * np.ones((self.nCrop))[None,:,None,None] 
+
+            # for convenience
+            tupp = self.Tupp[None,:,:,:] * np.ones((ndays))[:,None,None,None]
+            tbase = self.Tbase[None,:,:,:] * np.ones((ndays))[:,None,None,None]
+
+            # calculate GDD according to the various methods
+            if self.GDDmethod == 1:
+                tmean = ((tmax + tmin) / 2)
+                tmean = np.clip(tmean, self.Tbase, self.Tupp)
+            elif self.GDDmethod == 2:
+                tmax = np.clip(tmax, self.Tbase, self.Tupp)
+                tmin = np.clip(tmin, self.Tbase, self.Tupp)
+                tmean = ((tmax + tmin) / 2)
+            elif self.GDDmethod == 3:
+                tmax = np.clip(tmax, self.Tbase, self.Tupp)
+                tmin = np.clip(tmin, None, self.Tupp)
+                tmean = np.clip(tmean, self.Tbase, None)
+
+            tmean[np.logical_not(growing_season_idx)] = 0
+            tbase[np.logical_not(growing_season_idx)] = 0
+            GDD = (tmean - tbase)
+
+        return GDD
+
+    
     def AOS_ComputeCropCalendar(self, currTimeStep, meteo):
        
         # "Time from sowing to end of vegetative growth period"
@@ -235,83 +325,7 @@ class CropParameters(object):
 
         # Pre-compute cumulative GDD during growing season
         if (Mode == 1 & self.SwitchGDD) | (Mode == 2):
-
-            # Start time/day of simulation 
-            st = currTimeStep.startTime
-            sd = currTimeStep.startTime.timetuple().tm_yday # (Julian day: 1 Jan = 1)
-
-            # TODO: could run into memory problems here - investigate ways to mitigate potential problems
-
-            # "Extract weather data for first growing season"
-            tmin = vos.netcdf2NumPyTimeSlice(meteo.tmpFileNC, meteo.tmnVarName,\
-                                             currTimeStep.startTime,\
-                                             currTimeStep.startTime + datetime.timedelta(730),\
-                                             cloneMapFileName = self.cloneMap,\
-                                             LatitudeLongitude = True)
-
-            tmax = vos.netcdf2NumPyTimeSlice(meteo.tmpFileNC, meteo.tmxVarName,\
-                                             currTimeStep.startTime,\
-                                             currTimeStep.startTime + datetime.timedelta(730),\
-                                             cloneMapFileName = self.cloneMap,\
-                                             LatitudeLongitude = True)
-
-            # broadcast to crop dimension
-            tmax = tmax[:,None,:,:] * np.ones((self.nCrop))[None,:,None,None]
-            tmin = tmin[:,None,:,:] * np.ones((self.nCrop))[None,:,None,None] 
-            
-            # objective of the following code section is to obtain an
-            # index of the first complete growing season of the given
-            # crop in each grid cell
-
-            # planting/harvesting date of crop
-            pd = self.PlantingDate
-            hd = self.HarvestDate
-
-            # if start day of simulation is greater than planting day the
-            # first complete growing season will not be until the
-            # following year
-            hd[sd > pd] += 365
-            pd[sd > pd] += 365
-
-            # if start day is less than or equal to planting day, but
-            # harvest day is less than planting day, the harvest day will
-            # occur in the following year
-            hd[((sd <= pd) & (hd < pd))] += 365
-
-            # adjust values for leap year
-            isLeapYear1 = calendar.isleap(st.year)
-            isLeapYear2 = calendar.isleap(st.year + 1)
-            pd[(isLeapYear1 & (pd >= 60))] += 1  # TODO: check these
-            hd[(isLeapYear1 & (hd >= 60))] += 1
-            pd[(isLeapYear2 & (pd >= 425))] += 1
-            hd[(isLeapYear2 & (hd >= 425))] += 1
-
-            ndays = 731  # maximum number of days in the first two years (=365+366) 
-            day_idx = np.arange(1, ndays + 1)[:,None,None,None] * np.ones((self.nCrop, self.nLon, self.nLat))[None,:,:,:]
-
-            # pd dims are crop,lat,lon; day_idx dims are time,crop,lat,lon - broadcasting should work automatically
-            growing_season_idx = ((pd >= day_idx) & (hd <= day_idx))  # time,crop,lat,lon
-
-            # for convenience
-            tupp = self.Tupp[None,:,:,:] * np.ones((ndays))[:,None,None,None]
-            tbase = self.Tbase[None,:,:,:] * np.ones((ndays))[:,None,None,None]
-
-            # calculate GDD according to the various methods
-            if self.GDDmethod == 1:
-                tmean = ((tmax + tmin) / 2)
-                tmean = np.clip(tmean, self.Tbase, self.Tupp)
-            elif self.GDDmethod == 2:
-                tmax = np.clip(tmax, self.Tbase, self.Tupp)
-                tmin = np.clip(tmin, self.Tbase, self.Tupp)
-                tmean = ((tmax + tmin) / 2)
-            elif self.GDDmethod == 3:
-                tmax = np.clip(tmax, self.Tbase, self.Tupp)
-                tmin = np.clip(tmin, None, self.Tupp)
-                tmean = np.clip(tmean, self.Tbase, None)
-
-            tmean[np.logical_not(growing_season_idx)] = 0
-            tbase[np.logical_not(growing_season_idx)] = 0
-            GDD = (tmean - tbase)
+            GDD = update_growing_degree_day(self, Meteo, currTimeStep.startTime)
             GDDcum = np.cumsum(GDD, axis=0)
 
             # "Check if converting crop calendar to GDD mode"
@@ -402,6 +416,66 @@ class CropParameters(object):
                 FloweringEnd = floweringend_idx - pd + 1
 
                 # "2 Duration of flowering in calendar days"
-                self.FloweringCD = FloweringEnd - self.HIstartCD
+                self.FloweringCD[cond1] = (FloweringEnd - self.HIstartCD)[cond1]
 
+    def update_crop_parameters(self, currTimeStep, Meteo):
+
+        # Identify crops which are growing in the cell and planted on the
+        # current day
+        cond1 = (self.CropSequence & (currTimeStep.doy == self.PlantingDate))
+
+        GDD = update_growing_degree_day(self, Meteo, currTimeStep.fulldate, MASK=cond1)
+        GDDcum = np.cumsum(GDD, axis=0)
+
+        day_idx = np.arange(1, GDD.shape[0])[:,None,None,None] * np.ones((self.nCrop, self.nLon, self.nLat))[None,:,:,:]
+        
+        # Find calendar days [equivalent] for some variables
+
+        # 1 - Calendar days from sowing to maximum canopy cover
+        maxcanopy_idx = day_idx
+        maxcanopy_idx[np.logical_not(GDDcum > self.MaxCanopy)] = np.nan
+        maxcanopy_idx = np.nanmin(maxcanopy_idx, axis=0)
+        MaxCanopyCD = (maxcanopy_idx - pd + 1)
+        self.MaxCanopyCD[cond1] = MaxCanopyCD[cond1]
+
+        # 2 - Calendar days from sowing to end of vegetative growth
+        canopydevend_idx = day_idx
+        canopydevend_idx[np.logical_not(GDDcum > self.CanopyDevEnd)] = np.nan
+        canopydevend_idx = np.nanmin(canopydevend_idx, axis=0)
+        CanopyDevEndCD = canopydevend_idx - pd + 1
+        self.CanopyDevEndCD[cond1] = CanopyDevEndCD[cond1]
+
+        # 3 - Calendar days from sowing to start of yield formation
+        histart_idx = day_idx
+        histart_idx[np.logical_not(GDDcum > self.HIstart)] = np.nan
+        histart_idx = np.nanmin(histart_idx, axis=0)
+        HIstartCD = histart_idx - pd + 1
+        self.HIstartCD[cond1] = HIstartCD[cond1]
+        
+        # 4 - Calendar days from sowing to end of yield formation
+        hiend_idx = day_idx
+        hiend_idx[np.logical_not(GDDcum > self.HIend)] = np.nan
+        hiend_idx = np.nanmin(hiend_idx, axis=0)
+        HIendCD = hiend_idx - pd + 1
+        self.HIendCD[cond1] = HIendCD[cond1]
+        
+        # Duration of yield formation in calendar days
+        self.YldFormCD[cond1] = (self.HIendCD - self.HIstartCD)[cond1]
+
+        cond11 = (cond1 & (self.CropType == 3))
+
+        # 1 Calendar days from sowing to end of flowering
+        floweringend_idx = day_idx
+        floweringend_idx[np.logical_not(GDDcum > self.FloweringEnd)] = np.nan
+        floweringend_idx = np.nanmin(floweringend_idx, axis=0)
+        FloweringEnd = floweringend_idx - pd + 1
+
+        # 2 Duration of flowering in calendar days
+        self.FloweringCD[cond11] = (FloweringEnd - self.HIstartCD)[cond11]
+
+        # Harvest index growth coefficient
+        self.AOS_CalculateHIGC()
+
+        # Days to linear HI switch point
+        self.AOS_CalculateHILinear()
                 

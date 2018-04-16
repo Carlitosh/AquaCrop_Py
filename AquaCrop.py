@@ -199,6 +199,9 @@ class AquaCrop(object):
         self.crop.compute_water_productivity_adjustment_factor(self.C02)
         self.SeasonCounter[cond1] += 1
 
+        # TODO: this is only necessary if SeasonCounter > 1
+        self.crop.update_crop_parameters(self, currTimeStep, Meteo)
+
         # Update growing season
         cond2 = (self.SeasonCounter > 0)
         cond3 = ((self.PlantingDate <= currTimeStep.doy) & (currTimeStep.doy <= self.HarvestDate))
