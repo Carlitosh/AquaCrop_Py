@@ -34,7 +34,7 @@ class Reporting(object):
         self.outNCDir  = self.configuration.outNCDir
 
         # object for reporting:
-        self.netcdfObj = PCR2netCDF(self.configuration)
+        self.netcdfObj = PCR2netCDF(self.configuration, self._model)
 
         # initiating netcdf files for reporting
 

@@ -41,6 +41,20 @@ class CropParameters(object):
 
         self.nCrop = self.CropType.shape[0]
 
+        # Crop sequence - i.e. the order in which crops are grown
+        CropSequence = vos.netcdf2PCRobjCloneWithoutTime(
+            cropParameterFileNC,
+            'CropSequence',
+            cloneMapFileName=self.cloneMap)
+
+        CropSequence = (
+            CropSequence[:,:,None,None]
+            * np.ones((self.nLat, self.nLon))[None,None,:,:])
+        self.CropSequence = CropSequence.astype(bool)
+
+        self.nCrop = self.CropSequence.shape[0]
+        self.nRotation = self.CropSequence.shape[1]
+        
     def compute_variables(self, currTimeStep, meteo):
         """Function to compute additional crop variables required to run 
         AquaCrop"""

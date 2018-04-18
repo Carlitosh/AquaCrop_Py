@@ -31,11 +31,15 @@ class AquaCrop(object):
 
         # clone map, land mask
         pcr.setclone(configuration.cloneMap)
-        self.landmask = vos.readPCRmapClone(configuration.globalOptions['landmask'],\
-                                            configuration.cloneMap,\
-                                            configuration.tmpDir,\
-                                            configuration.globalOptions['inputDir'],\
+        self.cloneMap = configuration.cloneMap
+        self.landmask = vos.readPCRmapClone(configuration.globalOptions['landmask'],
+                                            configuration.cloneMap,
+                                            configuration.tmpDir,
+                                            configuration.globalOptions['inputDir'],
                                             True)
+        attr = vos.getMapAttributesALL(self.cloneMap)
+        self.nLat = int(attr['rows'])
+        self.nLon = int(attr['cols'])
 
         # Soil parameters
         self.soil = soilParams.SoilAndTopoParameters(iniItems, self.landmask)
@@ -45,7 +49,7 @@ class AquaCrop(object):
         self.crop = cropParams.CropParameters(iniItems, landmask)
         self.crop.read()
         self.crop.compute_variables()
-
+        
         # Irrigation management parameters
         self.irrigation_mgmt = irriMgmtParams.IrrigationMgmtParameters(self._configuration, landmask)
         self.irrigation_mgmt.read()
@@ -169,7 +173,8 @@ class AquaCrop(object):
         logger.error("cannot set state")
 
     def getState(self):
-        pass
+        result = {}
+        # now list all state variables - only those which are required to restart model
 
     def getPseudoState(self):
         pass
@@ -177,10 +182,11 @@ class AquaCrop(object):
     def getAllState(self):
         pass
 
-    # def read_forcings(self):
-    #     logger.info("Reading forcings for time %s", self._modelTime)
-    #     self.meteo.read_forcings(self._modelTime)
-    #     self.groundwater.read_forcings(self._modelTime)
+    def read_forcings(self):
+        logger.info("Reading forcings for time %s", self._modelTime)
+        self.meteo.read_forcings(self._modelTime)
+        self.groundwater.read_forcings(self._modelTime)
+        self.C02.read_forcings(self._modelTime)
 
     def update(self, meteo, currTimeStep):
         """Function to update parameters for current crop grown as well 
@@ -188,10 +194,7 @@ class AquaCrop(object):
         """
 
         # Read forcings for current time step
-        logger.info("Updating model for time %s", self._modelTime)
-        self.meteo.read_forcings(self._modelTime)
-        self.groundwater.read_forcings(self._modelTime)
-        self.C02.read_forcings(self._modelTime)
+        self.read_forcings()
 
         # Update season counter for crops planted on current day
         cond1 = (self.CropSequence & (currTimeStep.doy == self.PlantingDate))
