@@ -95,7 +95,6 @@ class AquaCrop(object):
         # Groundwater
         self.GwIn = arr_zeros
         self.zGW = arr_zeros
-        self.th_fc_adj = np.zeros((self.nComp, self.nRotation, self.nLat, self.nLon))
 
         # Drainage
         self.FluxOut = arr_zeros
@@ -118,9 +117,9 @@ class AquaCrop(object):
         self.Wsurf = arr_zeros
         
         # Irrigation
-        self.Irr
-        self.PreIrr_req
-        self.PreIrr
+        self.Irr = arr_zeros
+        self.PreIrr_req = arr_zeros
+        self.PreIrr = arr_zeros
         self.IrrNet = arr_zeros
         
         # Root zone
@@ -145,7 +144,7 @@ class AquaCrop(object):
         self.Ksa_Aer = arr_zeros
         self.TrPot0 = arr_zeros
         self.TrPot_NS = arr_zeros
-        self.TrAct,
+        self.TrAct = arr_zeros
         self.TrAct0 = arr_zeros
         self.Tpot = arr_zeros
         
@@ -160,9 +159,6 @@ class AquaCrop(object):
                     'PolH': arr_zeros,
                     'PolC': arr_zeros}
 
-    # def reset_initial_conditions(self):
-    #     pass
-        
     def dumpState(self, outputDirectory, specific_date_string = None):
         pass
 
@@ -174,7 +170,7 @@ class AquaCrop(object):
 
     def getState(self):
         result = {}
-        # now list all state variables - only those which are required to restart model
+        # list all state variables which are required to restart model
 
     def getPseudoState(self):
         pass
@@ -666,6 +662,10 @@ class AquaCrop(object):
         """
         # Add rotation dimension to precipitation
         P = meteo.precipitation[None,:,:] * np.ones((self.nRotation))[:,None,None]
+
+        # Initialize variables
+        self.Runoff = np.zeros((self.nRotation, self.nLat, self.nLon))
+        self.Infl = np.zeros((self.nRotation, self.nLat, self.nLon))
         
         # Expand soil properties to compartments
         th_fc = self.soil.th_fc[self.soil.layerIndex,:]
@@ -728,7 +728,7 @@ class AquaCrop(object):
         self.Runoff[cond2] = 0
         self.Infl[cond2] = P[cond2]
 
-    def root_zone_water(self, soil_water):
+    def root_zone_water(self, soil):
         """Function to calculate actual and total available water in the 
         root zone at current time step
         """
@@ -755,7 +755,7 @@ class AquaCrop(object):
 
         # Water storages in root zone (mm) - initially compute value in each
         # compartment, then sum to get overall root zone storages
-        Wr_comp = factor * 1000 * soil_water.th * dz
+        Wr_comp = factor * 1000 * self.th * dz
         WrS_comp = factor * 1000 * th_s * dz
         WrFC_comp = factor * 1000 * th_fc * dz
         WrWP_comp = factor * 1000 * th_wp * dz
@@ -2597,6 +2597,10 @@ class AquaCrop(object):
         """Function to calculate reference (no adjustment for stress 
         effects) harvest index on current day
         """
+
+        # Initialize (TODO: check it is OK to do this)
+        self.HIref = np.zeros((self.nRotation, self.nLat, self.nLon))
+        
         # Check if in yield formation period
         if self.CalendarType == 1:
             tAdj = self.DAP - self.DelayedCDs
