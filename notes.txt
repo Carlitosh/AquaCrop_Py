@@ -58,6 +58,110 @@ Ksw
 
 canopy_cover_development()
 **************************
-TODO
+None
 
-...
+canopy_cover_required_time()
+****************************
+None
+
+adjust_CCx()
+************
+None
+
+update_CCx_and_CDC()
+********************
+None
+
+canopy_cover()
+**************
+CCprev          (updates)
+CC              (updates)
+CC_NS           (updates)
+CCadj_NS        (updates)
+CCxW            (updates)
+CCxAct          (updates)
+CCxW_NS         (updates)
+CCxAct_NS       (updates)
+CropDead        (updates)
+PrematSenes     (updates)
+CCxEarlySen     (updates)
+tEarlySen       (updates)
+
+evap_layer_water_content()
+**************************
+Wevap
+
+soil_evaporation()
+******************
+Wsurf           (updates)
+EvapZ           (updates)
+Stage2          (updates)
+Wstage2         (updates)
+SurfaceStorage  (updates)
+th              (updates)
+EsAct
+Epot
+
+aeration_stress()
+*****************
+Ksa_Aer
+AerDays
+
+transpiration()
+***************
+AgeDays_NS      (updates)
+AgeDays         (updates)
+TrPot_NS
+TrPot0
+TrAct0
+TrAct
+DaySubmerged    (updates)
+AerDaysComp     (updates)
+th
+IrrNet
+IrrNetCum       (updates)
+CC              (updates)
+TrRatio         (updates)
+Tpot            
+
+groundwater_inflow()
+********************
+GwIn
+th              (updates)
+
+harvest_index_ref_current_day()
+*******************************
+HIref
+YieldForm
+PctLagPhase     (updates)
+
+temperature_stress()
+********************
+Kst
+
+biomass_accumulation()
+**********************
+B               (updates)
+B_NS            (updates)
+
+harvest_index_adj_pre_anthesis()
+********************************
+Fpre            
+
+harvest_index_adj_pollination()
+*******************************
+Fpol            (updates)
+
+harvest_index_adj_post_anthesis()
+*********************************
+sCor1           (updates)
+sCor2           (updates)
+fpost_upp       (updates)
+fpost_dwn       (updates)
+Fpost
+
+harvest_index()
+***************
+PreAdj          (updates)
+HI              (updates)
+HIadj           (updates)

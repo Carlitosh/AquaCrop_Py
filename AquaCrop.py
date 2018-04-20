@@ -1638,7 +1638,7 @@ class AquaCrop(object):
 
         # Canopy growth can occur
         cond5 = (growing_season_index
-                 & (tCCadj < CanopyDevEnd)
+                 & (tCCadj < self.CanopyDevEnd)
                  & np.logical_not(cond4))
         cond51 = (cond5 & (self.CCprev <= self.CC0adj))
 
@@ -1688,7 +1688,15 @@ class AquaCrop(object):
                                         self.CDC, tmp_tCC, 'Growth')
         self.CC[cond5221121] = tmp_CC[cond5221121]
 
-        # No canopy growth
+        # No canopy growth (line 110)
+        cond5221122 = (cond522112 & np.logical_not(cond5221121))
+        self.CC[cond5221122] = self.CCprev[cond5221122]
+
+        # No canopy growth (line 115)
+        cond52212 = (cond5221 & np.logical_not(cond52211))
+        self.CC[cond52212] = self.CCprev[cond52212]
+        
+        # No canopy growth (line 119)
         cond5222 = (cond522 & np.logical_not(cond5221))
 
         # Update CC0 if current canopy cover if less than initial canopy cover
@@ -1696,12 +1704,12 @@ class AquaCrop(object):
         cond52221 = (cond5222 & (self.CC < self.CC0adj))
         self.CC0adj[cond52221] = self.CC[cond52221]
 
-        # "Update actual maximum canopy cover size during growing season"
+        # Update actual maximum canopy cover size during growing season
         cond53 = (cond5 & (self.CC > self.CCxAct))
         self.CCxAct[cond53] = self.CC[cond53]
         
-        # No more canopy growth is possible or canopy is in decline
-        cond6 = (growing_season_index & (tCCadj > CanopyDevEnd))
+        # No more canopy growth is possible or canopy is in decline (line 132)
+        cond6 = (growing_season_index & (tCCadj > self.CanopyDevEnd))
 
         # Mid-season stage - no canopy growth: update actual maximum canopy
         # cover size during growing season only (i.e. do not update CC)
@@ -1833,7 +1841,7 @@ class AquaCrop(object):
         cond8 = (growing_season_index & (self.CC_NS < self.CC))
         self.CC_NS[cond8] = self.CC[cond8]
 
-        cond81 = (cond8 & (tCC < CanopyDevEnd))
+        cond81 = (cond8 & (tCC < self.CanopyDevEnd))
         self.CCxAct_NS[cond81] = self.CC_NS[cond81]
 
         # Actual (with water stress)
@@ -1959,8 +1967,10 @@ class AquaCrop(object):
         cond3 = (growing_season_index & (tAdj > self.rotation.Senescence) & (self.CCxAct > 0))
         mult = np.zeros((nr, nlat, nlon))
         cond31 = (cond3 & (self.CC > (self.CCxAct / 2)))
-        cond311 = (cond31 & (self.CC <= self.CCxAct))
-        mult[cond311] = ((self.CCxAct - self.CC) / (self.CCxAct / 2))[cond311]
+        cond311 = (cond31 & (self.CC > self.CCxAct))
+        mult[cond311] = 0
+        cond312 = (cond31 & np.logical_not(cond311))
+        mult[cond312] = ((self.CCxAct - self.CC) / (self.CCxAct / 2))[cond312]
         cond32 = (cond3 & np.logical_not(cond31))
         mult[cond32] = 1
         EsPot[cond3] = (EsPot * (1 - self.CCxAct * (self.soil.fwcc / 100) * mult))[cond3]
@@ -1968,6 +1978,8 @@ class AquaCrop(object):
         EsPotMin = np.zeros((nr, nlat, nlon))
         EsPotMin[cond3] = (self.soil.Kex * (1 - CCxActAdj) * et0)[cond3]
         EsPotMin = np.clip(EsPotMin, 0, None)
+
+        # Line 85-89 of AOS_SoilEvaporation.m
         EsPot[cond3] = np.clip(EsPot, EsPotMin, EsPotMax)[cond3]
 
         cond4 = (growing_season_index & self.PrematSenes)
@@ -1991,7 +2003,7 @@ class AquaCrop(object):
 
         # self.rotation.Mulches present (percentage soil surface covered may vary depending
         # on whether within or outside growing season"
-        cond52 = (cond5 & (self.rotation.Mulches == 1))
+        cond52 = (cond5 & (self.Mulches == 1))
         cond521 = (cond52 & growing_season_index)
         EsPotMul[cond521] = (EsPot * (1 - self.rotation.fMulch * (self.rotation.MulchPctGS / 100)))[cond521]
         cond522 = (cond52 & np.logical_not(growing_season_index))
@@ -2177,9 +2189,11 @@ class AquaCrop(object):
                 ToExtractStg2 = (Kr * Edt)
 
                 # Determine fraction of compartments covered by evaporation layer
-                comp_sto = ((dzsum - dz) < self.soil.EvapZmin)
-                factor = 1 - ((dzsum - self.soil.EvapZmin) / dz)
-                factor = np.clip(factor, 0, 1) * comp_sto
+                comp_sto = ((dzsum - dz) < self.soil.EvapZ)
+                factor = 1 - ((dzsum - self.soil.EvapZ) / dz)
+
+                # multiply by comp_sto to ensure factor is zero in compartments entirely below EvapZ
+                factor = np.clip(factor, 0, 1) * comp_sto  
 
                 comp_sto = np.sum(comp_sto, axis=0)
                 comp = 0
@@ -2338,10 +2352,14 @@ class AquaCrop(object):
         cond103 = (cond10 & (self.TrAct0 < (fSub * self.TrPot0)))
         TrPot[cond103] = ((fSub * self.TrPot0) - self.TrAct0)[cond103]
 
+        cond11 = (growing_season_index & np.logical_not(cond10))
+        self.TrPot[cond11] = 0
+        self.TrAct0[cond11] = 0
+        
         # ######################################################################
-        # "Update potential root zone transpiration for water stress"
+        # Update potential root zone transpiration for water stress
 
-        # "Determine root zone water content"
+        # Determine root zone water content
         self.root_zone_water()
 
         # Calculate water stress coefficients
@@ -2430,9 +2448,11 @@ class AquaCrop(object):
 
                 # Check for soil water stress
                 KsComp = np.zeros((self.nRotation, self.nLat, self.nLon))
+
                 # No stress
                 cond142 = (cond14 & (self.th[comp,:] >= thCrit))
                 KsComp[cond142] = 1
+
                 # Transpiration from compartment is affected by water stress
                 cond143 = (cond14 & (self.th[comp,:] > th_wp[comp,:]) & np.logical_not(cond142))
                 Wrel = ((th_fc[comp,:] - self.th[comp,:]) / (th_fc[comp,:] - th_wp[comp,:]))
@@ -2441,13 +2461,14 @@ class AquaCrop(object):
                 KsComp = np.clip(KsComp, 0, 1)
                 KsComp[pRel <= 0] = 1
                 KsComp[pRel >= 1] = 0
-                
+
                 # Otherwise no transpiration is possible from the compartment
-                # as water does not exceed wilting point (no need to explicitly
-                # assign zero because KsComp is initialized with zeros)
+                # as water does not exceed wilting point
+                KsComp[(cond14 & np.logical_not(cond142 | cond143))] = 0
 
                 # Adjust compartment stress factor for aeration stress
                 AerComp = np.zeros((self.nRotation, self.nLat, self.nLon))
+
                 # Full aeration stress - no transpiration possible from
                 # compartment
                 cond144 = (cond14 & (self.DaySubmerged >= self.LagAer))
@@ -2479,6 +2500,7 @@ class AquaCrop(object):
                 # Extract water
                 ThToExtract = ((ToExtract / 1000) / dz[comp,:])
                 Sink = np.zeros((self.nRotation, self.nLat, self.nLon))
+
                 # Don't reduce compartment sink for stomatal water stress if in
                 # net irrigation mode. Stress only occurs due to deficient
                 # aeration conditions
@@ -2838,7 +2860,7 @@ class AquaCrop(object):
     def harvest_index_adj_post_anthesis(self):
         """Function to calculate adjustment to harvest index for 
         post-anthesis water stress
-        """
+        """        
         # 1 Adjustment for leaf expansion
         tmax1 = self.CanopyDevEndCD - self.HIstartCD
         DAP = self.DAP - self.DelayedCDs
@@ -2883,7 +2905,6 @@ class AquaCrop(object):
 
     def harvest_index(self, meteo):
         """Function to simulate build up of harvest index"""
-        HIadj = np.zeros((self.nRotation, self.nLat, self.nLon))
         
         # Calculate stresses, after updating root zone water content
         self.root_zone_water()
@@ -2894,6 +2915,7 @@ class AquaCrop(object):
 
         # Get reference harvest index on current day
         HIi = self.HIref
+        HIadj = np.zeros((self.nRotation, self.nLat, self.nLon))
 
         # Get time for harvest index build up
         HIt = self.DAP - self.DelayedCDs - self.HIstartCD - 1
@@ -2937,17 +2959,18 @@ class AquaCrop(object):
 
         # Leafy vegetable crops - no adjustment, harvest index equal to
         # reference value for current day
-        cond12 = (cond1 & np.logical_not(cond11))
+        cond12 = (cond1 & (self.CropType == 1))
         HIadj[cond12] = HIi[cond12]
 
         # Otherwise no build-up of harvest index if outside yield formation
         # period
-        HIi = self.HI
-        HIadj = self.HIadj
+        cond2 = (growing_season_index & np.logical_not(cond1))
+        HIi[cond2] = self.HI[cond2]
+        HIadj[cond2] = self.HIadj[cond2]
 
         # Store final values for current time step
-        self.HI = HIi
-        self.HIadj = HIadj
+        self.HI[growing_season_index] = HIi[growing_season_index]
+        self.HIadj[growing_season_index] = HIadj[growing_season_index]
 
         # No harvestable crop outside of a growing season
         self.HI[np.logical_not(growing_season_index)] = 0
