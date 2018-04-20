@@ -11,7 +11,10 @@ description       = {}
 comment           = {}
 latex_symbol      = {}
 
-# *Counters*
+# State variables (those that should be included in dumpState method):
+
+# Counters
+# ********
 # AgeDays
 # AgeDays_NS
 # AerDays
@@ -27,7 +30,8 @@ latex_symbol      = {}
 # Epot
 # Tpot
         
-# *States*
+# States
+# ******
 # WTinSoil
 # PreAdj
 # CropMature
@@ -36,7 +40,8 @@ latex_symbol      = {}
 # PrematSenes
 # HarvestFlag
 
-# *Harvest index*
+# Harvest index
+# *************
 # Stage
 # Fpre
 # Fpost

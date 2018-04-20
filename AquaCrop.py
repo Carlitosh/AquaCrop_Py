@@ -91,7 +91,7 @@ class AquaCrop(object):
 
     def set_initial_conditions(self):
         self.init_conditions = initCond.InitialConditions(self._configuration, self._modelTime, self.crop)
-            
+
         # Groundwater
         self.GwIn = arr_zeros
         self.zGW = arr_zeros
@@ -103,7 +103,6 @@ class AquaCrop(object):
         # Infiltration
         self.Runoff = arr_zeros
         self.Infl = arr_zeros
-        self.SurfaceStorage = arr_zeros
 
         # Soil evaporation
         self.Wevap = {'Act': arr_zeros,
@@ -118,7 +117,6 @@ class AquaCrop(object):
         
         # Irrigation
         self.Irr = arr_zeros
-        self.PreIrr_req = arr_zeros
         self.PreIrr = arr_zeros
         self.IrrNet = arr_zeros
         
@@ -322,7 +320,7 @@ class AquaCrop(object):
     #         self.WTinSoil = np.full((self.nRotation, self.nLat, self.nLon), False)
     #         self.th_fc_adj = th_fc
     
-    def pre_irrigation(self, rotation):
+    def pre_irrigation(self):
         """Function to calculate pre-irrigation when in net irrigation 
         mode.
         """
@@ -349,7 +347,7 @@ class AquaCrop(object):
         # Update pre-irrigation and root zone water content (mm)
         PreIrr_req = ((thCrit - self.th) * 1000 * dz)
         PreIrr_req[np.logical_not(cond1)] = 0
-        self.PreIrr_req = PreIrr_req
+        # self.PreIrr_req = PreIrr_req
         self.PreIrr = np.sum(PreIrr_req, axis=0)
 
     def drainage(self):
@@ -362,8 +360,8 @@ class AquaCrop(object):
         tau = self.soil.tau[self.soil.layerIndex,:]
         
         # Preallocate arrays        
-        drainsum = np.zeros((self.nRotation, self.nLat, self.nLon))
         thnew = self.th
+        drainsum = np.zeros((self.nRotation, self.nLat, self.nLon))
 
         for comp in range(self.soil.nComp):
 
@@ -481,7 +479,6 @@ class AquaCrop(object):
             drainsum[cond6415] = ksat[comp,:][cond6415]
 
             # ##################################################################
-
             cond642 = (
                 cond64
                 & np.logical_not(cond641)
@@ -521,7 +518,15 @@ class AquaCrop(object):
             drainsum[cond6425] = ksat[comp,:][cond6425]
 
             # ##################################################################
+            cond643 = (
+                cond64
+                & np.logical_not(cond641 | cond642))
 
+            # Drainage and cumulative drainage are zero as water content has not
+            # risen above field capacity in the present compartment
+            drainsum[cond643] = 0
+                
+            # ##################################################################
             # Increase water content in compartment ii with cumulative drainage
             # from above
             cond65 = (np.logical_not(drainability) & (thX > th_s[comp,:]))
@@ -532,7 +537,7 @@ class AquaCrop(object):
             # Check new water content against hydraulic properties of soil layer
             cond651 = (cond65 & (thnew[comp,:] <= th_s[comp,:]))
 
-            # "Calculate new drainage ability
+            # Calculate new drainage ability
             cond6511 = (cond651 & (thnew[comp,:] > self.soil.th_fc_adj[comp,:]))
 
             cond65111 = (cond6511 & (thnew[comp,:] <= th_fc[comp,:]))
@@ -569,6 +574,9 @@ class AquaCrop(object):
             excess[cond65115] += (drainsum - ksat[comp,:])[cond65115]
             drainsum[cond65115] = ksat[comp,:][cond65115]
 
+            cond6512 = (cond651 & (np.logical_not(cond6511)))
+            drainsum[cond6512] = 0
+            
             # ##################################################################
 
             cond652 = (cond65 & (thnew[comp,:] > th_s[comp,:]))
@@ -663,10 +671,6 @@ class AquaCrop(object):
         # Add rotation dimension to precipitation
         P = meteo.precipitation[None,:,:] * np.ones((self.nRotation))[:,None,None]
 
-        # Initialize variables
-        self.Runoff = np.zeros((self.nRotation, self.nLat, self.nLon))
-        self.Infl = np.zeros((self.nRotation, self.nLat, self.nLon))
-        
         # Expand soil properties to compartments
         th_fc = self.soil.th_fc[self.soil.layerIndex,:]
         th_wp = self.soil.th_wp[self.soil.layerIndex,:]
@@ -677,7 +681,7 @@ class AquaCrop(object):
         zcn = self.soil.zCN[None,:,:,:] * np.ones((self.nComp))[:,None,None,None]
 
         # Calculate runoff
-        cond1 = ((rotation.Bunds == 0) | (rotation.zBund < 0.001))
+        cond1 = ((self.Bunds == 0) | (rotation.zBund < 0.001))
         self.DaySubmerged[cond1] = 0
         cond11 = (cond1 & (self.soil.AdjCN == 1))
 
@@ -816,6 +820,8 @@ class AquaCrop(object):
         self.GrowthStage[cond2] = 1
 
         # Run irrigation depth calculation
+
+        # No irrigation if rainfed (i.e. IrrMethod == 0)
         condX = (growing_season_index & (self.IrrMethod == 0))
         self.Irr[condX] = 0
         
@@ -845,18 +851,20 @@ class AquaCrop(object):
         Dr[cond5] = np.clip(Dr, 0, None)[cond5]
 
         # check if conditions for irrigation method 1 or 2 are met
-        cond6 = ((cond3 & (Dr > IrrThr))
-                 | (cond4 & ((nDays % IrrInterval) == 0)))
+        cond6 = ((cond3 & (Dr > IrrThr)) | (cond4 & ((nDays % IrrInterval) == 0)))
         
         IrrReq = Dr
         EffAdj = ((100 - self.AppEff) + 100) / 100
         IrrReq *= EffAdj
         self.Irr[cond6] = np.clip(IrrReq, 0, self.MaxIrr)[cond6]
 
+        cond7 = (cond5 & np.logical_not(cond6))
+        self.Irr[cond7] = 0
+
         # If irrigation is based on a pre-defined schedule then the irrigation
         # requirement for each rotation is read from a netCDF file. Note that if
         # the option 'irrScheduleFileNC' is None, then nothing will be imported
-        # and the irrigation requirement will be set to zero
+        # and the irrigation requirement will be zero
         cond8 = (growing_season_index & (self.IrrMethod == 3))
         if self.irrScheduleFileNC != None:
             IrrReq = vos.netcdf2PCRobjClone(self.irrScheduleFileNC,\
@@ -883,6 +891,8 @@ class AquaCrop(object):
     def infiltration(self, rotation):
         """Function to infiltrate incoming water (rainfall and 
         irrigation)
+        
+        Updates Infl, DeepPerc and Runoff.
         """
         # Expand soil properties to compartments
         ksat   = self.soil.ksat[self.soil.layerIndex,:]
@@ -899,10 +909,10 @@ class AquaCrop(object):
         
         # Update infiltration rate for irrigation
         # Note: irrigation amount adjusted for specified application efficiency
-        self.Infl += rotation.Irr * (rotation.AppEff / 100)  # TODO: has efficiency not already been accounted for?
+        self.Infl += self.Irr * (rotation.AppEff / 100)  # TODO: has efficiency not already been accounted for?
 
         # Determine surface storage if bunds are present
-        cond1 = (rotation.Bunds == 1)
+        cond1 = (self.Bunds == 1)
         cond11 = (cond1 & (rotation.zBund > 0.001))
         InflTot = self.Infl + self.SurfaceStorage
 
@@ -929,10 +939,15 @@ class AquaCrop(object):
         # Otherwise excess water does not overtop bunds and there is no runoff
         cond1114 = (cond111 & np.logical_not(cond1113))
         RunoffIni[cond1114] = 0
+
+        # If total infiltration is zero then there is no storage or runoff
+        cond112 = (cond11 & np.logical_not(cond111))
+        ToStore[cond112] = 0
+        RunoffIni[cond112] = 0
         
         # If bunds are not on field then infiltration is limited by saturated
         # hydraulic conductivity of top soil layer
-        cond2 = (rotation.Bunds == 0)
+        cond2 = (self.Bunds == 0)
         cond21 = (cond2 & (self.Infl > ksat[0,:]))
         ToStore[cond21] = ksat[0,:][cond21]
         RunoffIni[cond21] = (self.Infl - ksat[0,:])[cond21]
@@ -1065,7 +1080,7 @@ class AquaCrop(object):
         # Update surface storage (if bunds are present)
         cond5 = ((Runoff > RunoffIni)
                  & (self.Bunds == 1)
-                 & rotation.zBund > 0.001)
+                 & self.zBund > 0.001)
         self.SurfaceStorage += (Runoff - RunoffIni)
 
         # Limit surface storage to bund height: additional water above top of
@@ -1101,7 +1116,7 @@ class AquaCrop(object):
         arr_ones = np.ones((self.nRotation, self.nLat, self.nLon))[None,:,:,:]
         dz = self.soil.dz[:,None,None,None] * arr_ones
         dzsum = self.soil.dzsum[:,None,None,None] * arr_ones
-        
+
         if groundwater.WaterTable:
 
             # Get maximum capillary rise for bottom compartment
@@ -1321,6 +1336,7 @@ class AquaCrop(object):
         self.GrowthStage[cond2] = 2
         self.GrowthStage[cond3] = 3
         self.GrowthStage[cond4] = 4
+        self.GrowthStage[np.logical_not(growing_season_index)] = 0
 
     def root_development(self, groundwater):
         """Function to calculate root zone expansion"""

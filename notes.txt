@@ -1,0 +1,63 @@
+pre_irrigation()
+****************
+PreIrr
+
+drainage()
+**********
+FluxOut
+DeepPerc
+th (updates)
+
+rainfall_partition()
+********************
+DaySubmerged (counter - updates)
+Runoff
+Infl
+
+root_zone_water()
+*****************
+thRZ
+TAW
+Dr
+
+irrigation()
+************
+Irr
+IrrCum (updates)
+GrowthStage (updates)
+
+infiltration()
+**************
+Infl     (updates for irrigation)
+DeepPerc (updates for irrigation)
+Runoff   (updates for irrigation)
+
+capillary_rise()
+****************
+th (updates)
+CrTot
+
+germination()
+*************
+Germination
+DelayedCDs  (counter - updates)
+DelayedGDDs (counter - updates)
+
+growth_stage()
+**************
+GrowthStage (counter - updates)
+
+root_development()
+******************
+Zroot
+rCor
+
+water_stress()
+**************
+Ksw
+
+canopy_cover_development()
+**************************
+TODO
+
+...
