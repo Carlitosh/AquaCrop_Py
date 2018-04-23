@@ -85,6 +85,20 @@ class AquaCrop(object):
         # TODO: take out of function
         self.set_initial_conditions()
 
+        # List state variables
+        self.state_vars = ['AgeDays','AgeDays_NS','AerDays','IrrCum','IrrNetCum',
+                           'DelayedGDDs','DelayedCDs','PctLagPhase','tEarlySen',
+                           'GDDcum','DaySubmerged','DAP','Epot','Tpot',
+                           'WTinSoil','PreAdj','CropMature','CropDead',
+                           'Germination','PrematSenes','HarvestFlag','Stage',
+                           'Fpre','Fpost','fpost_dwn','fpost_upp','Fpol','sCor1',
+                           'sCor2','GrowthStage','AerDaysComp','TrRatio','CC',
+                           'CCadj','CC_NS','CCadj_NS','B','B_NS','HI','HIadj',
+                           'CCxAct','CCxAct_NS','CCxW','CCxW_NS','CCxEarlySen',
+                           'rCor','Zroot','CC0adj','SurfaceStorage',
+                           'SurfaceStorageIni','th','Wsurf','EvapZ','Stage2',
+                           'Wstage2']
+        
     @property
     def configuration(self):
         return self._configuration
@@ -158,8 +172,19 @@ class AquaCrop(object):
                     'PolC': arr_zeros}
 
     def dumpState(self, outputDirectory, specific_date_string = None):
-        pass
 
+        if specific_date_string is None:
+            specific_date_string = str(self._modelTime.fulldate)
+        
+        state = self.getState()
+
+        # for variable in state.iterItems():
+        #     # creating netCDF file to store model state:
+        #     self.netcdfObj.createNetCDF(self.outNCDir+"/"
+        #                                 +str(var)
+        #                                 +specific_date_string+".nc",
+        #                                 short_name,unit,long_name)
+        
     def resume(self):
         pass
 
@@ -168,7 +193,9 @@ class AquaCrop(object):
 
     def getState(self):
         result = {}
-        # list all state variables which are required to restart model
+        for var in self.state_vars:
+            result[var] = vars(self)[var]
+        return result
 
     def getPseudoState(self):
         pass

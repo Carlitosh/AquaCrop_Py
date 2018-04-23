@@ -97,7 +97,7 @@ class PCR2netCDF():
             self.attributeDictionary['title'      ] = specificAttributeDictionary['title'      ]
             self.attributeDictionary['description'] = specificAttributeDictionary['description']
 
-    def createNetCDF(self, ncFileName):# , varName, varUnits, longName = None):
+    def createNetCDF(self, ncFileName, varName, varUnits, includeDepthDimension=False, longName = None):
         """Function to create output netCDF"""
         
         rootgrp = nc.Dataset(ncFileName,'w',format= self.format)
@@ -105,28 +105,31 @@ class PCR2netCDF():
         # Create dimensions - time is unlimited, others are fixed
         rootgrp.createDimension('rotation',len(self.rotations))
         rootgrp.createDimension('time',None)
-        rootgrp.createDimension('depth',len(self.depths))
+        if includeDepthDimension:
+            rootgrp.createDimension('depth',len(self.depths))
         rootgrp.createDimension('lat',len(self.latitudes))
         rootgrp.createDimension('lon',len(self.longitudes))
 
+        # define variables
         rotation = rootgrp.createVariable('rotation','i4',('rotation',))  # i4 = 32-bit integer
         rotation.standard_name = 'rotation'
         rotation.long_name = 'rotation'
         rotation[:] = self.rotations
-        
+
         date_time = rootgrp.createVariable('time','f4',('time',))
         date_time.standard_name = 'time'
         date_time.long_name = 'Days since 1901-01-01'
         date_time.units = 'Days since 1901-01-01' 
         date_time.calendar = 'standard'
 
-        depth = rootgrp.createVariable('depth','f4',('depth',))  # f4 = 32-bit floating point
-        depth.standard_name = 'depth'
-        depth.long_name = 'depth'
-        depth.units = 'meter'
-        depth.positive = 'down'
-        depth[:] = self.depths
-
+        if includeDepthDimension:
+            depth = rootgrp.createVariable('depth','f4',('depth',))  # f4 = 32-bit floating point
+            depth.standard_name = 'depth'
+            depth.long_name = 'depth'
+            depth.units = 'meter'
+            depth.positive = 'down'
+            depth[:] = self.depths
+            
         lat = rootgrp.createVariable('lat','f4',('lat',))
         lat.long_name = 'latitude'
         lat.units = 'degrees_north'
@@ -139,76 +142,56 @@ class PCR2netCDF():
         lon.standard_name = 'longitude'
         lon[:]= self.longitudes
 
-        # Hard code output variables for now
-        # wRZ
-        # zGW
-        wsurf = rootgrp.createVariable('Wsurf','f4',('rotation','time','lat','lon'))
-        wsurf.long_name = 'Storage in surface soil layer'
-        wsurf.units
-        wsurf.standard_name = 'Wsurf'
-        # Irr
-        # Infl
-        # RO
-        # DP
-        # CR
-        # GWin
-        # Es
-        # EsX
-        # Tr
-        # TrX
+        if includeDepthDimension:
+            dims = ('rotation','time','depth','lat','lon')
+        else:
+            dims = ('rotation','time','lat','lon')
 
-        # GDD
-        # TotGDD
-        # Root Depth
-        # CC
-        # RefCC
-        # Bio
-        # RefBio
-        # HI
-        # HIadj
-        # Yield
-        
-        # shortVarName = varName
-        # longVarName  = varName
-        # if longName != None: longVarName = longName
-
-        # var = rootgrp.createVariable(shortVarName,'f4',('time','lat','lon',) ,fill_value=vos.MV,zlib=self.zlib)
-        # var.standard_name = varName
-        # var.long_name = longVarName
-        # var.units = varUnits
-
-        # attributeDictionary = self.attributeDictionary
-        # for k, v in attributeDictionary.items(): setattr(rootgrp,k,v)
-
-        rootgrp.sync()
-        rootgrp.close()
-                
-    def changeAtrribute(self, ncFileName, attributeDictionary):
-
-        rootgrp = nc.Dataset(ncFileName,'a')
-
-        for k, v in attributeDictionary.items(): setattr(rootgrp,k,v)
-
-        rootgrp.sync()
-        rootgrp.close()
-
-    def addNewVariable(self, ncFileName, varName, varUnits, longName = None):
-
-        rootgrp = nc.Dataset(ncFileName,'a')
-
+        # Add variable to NetCDF
         shortVarName = varName
         longVarName  = varName
         if longName != None: longVarName = longName
-
-        var = rootgrp.createVariable(shortVarName,'f4',('time','lat','lon',) ,fill_value=vos.MV,zlib=self.zlib)
+        var = rootgrp.createVariable(shortVarName,
+                                     'f4',
+                                     dims,
+                                     fill_value=vos.MV,
+                                     zlib=self.zlib)
         var.standard_name = varName
         var.long_name = longVarName
         var.units = varUnits
 
+        attributeDictionary = self.attributeDictionary
+        for k, v in attributeDictionary.items(): setattr(rootgrp,k,v)
+
         rootgrp.sync()
         rootgrp.close()
+                
+    # def changeAtrribute(self, ncFileName, attributeDictionary):
 
-    def data2NetCDF(self, ncFileName, shortVarName, varField, timeStamp, posCnt = None):
+    #     rootgrp = nc.Dataset(ncFileName,'a')
+
+    #     for k, v in attributeDictionary.items(): setattr(rootgrp,k,v)
+
+    #     rootgrp.sync()
+    #     rootgrp.close()
+
+    # def addNewVariable(self, ncFileName, varName, varUnits, longName = None):
+
+    #     rootgrp = nc.Dataset(ncFileName,'a')
+
+    #     shortVarName = varName
+    #     longVarName  = varName
+    #     if longName != None: longVarName = longName
+
+    #     var = rootgrp.createVariable(shortVarName,'f4',('time','lat','lon',) ,fill_value=vos.MV,zlib=self.zlib)
+    #     var.standard_name = varName
+    #     var.long_name = longVarName
+    #     var.units = varUnits
+
+    #     rootgrp.sync()
+    #     rootgrp.close()
+
+    def data2NetCDF(self, ncFileName, shortVarName, dims, varField, timeStamp, posCnt = None):
 
         rootgrp = nc.Dataset(ncFileName,'a')
 
@@ -218,31 +201,34 @@ class PCR2netCDF():
 
         # flip variable if necessary (to follow cf_convention)
         if self.netcdf_y_orientation_follow_cf_convention: varField = np.flipud(varField)
-        
-        rootgrp.variables[shortVarName][posCnt,:,:] = varField
+
+        if 'depth' in dims:
+            rootgrp.variables[shortVarName][:,posCnt,:,:,:] = varField
+        else:
+            rootgrp.variables[shortVarName][:,posCnt,:,:] = varField
 
         rootgrp.sync()
         rootgrp.close()
 
-    def dataList2NetCDF(self, ncFileName, shortVarNameList, varFieldList, timeStamp, posCnt = None):
+    # def dataList2NetCDF(self, ncFileName, shortVarNameList, varFieldList, timeStamp, posCnt = None):
 
-        rootgrp = nc.Dataset(ncFileName,'a')
+    #     rootgrp = nc.Dataset(ncFileName,'a')
 
-        date_time = rootgrp.variables['time']
-        if posCnt == None: posCnt = len(date_time)
+    #     date_time = rootgrp.variables['time']
+    #     if posCnt == None: posCnt = len(date_time)
 
-        for shortVarName in shortVarNameList:
+    #     for shortVarName in shortVarNameList:
             
-            date_time[posCnt] = nc.date2num(timeStamp,date_time.units,date_time.calendar)
-            varField = varFieldList[shortVarName]
+    #         date_time[posCnt] = nc.date2num(timeStamp,date_time.units,date_time.calendar)
+    #         varField = varFieldList[shortVarName]
             
-            # flip variable if necessary (to follow cf_convention)
-            if self.netcdf_y_orientation_follow_cf_convention: varField = np.flipud(varField)
+    #         # flip variable if necessary (to follow cf_convention)
+    #         if self.netcdf_y_orientation_follow_cf_convention: varField = np.flipud(varField)
             
-            rootgrp.variables[shortVarName][posCnt,:,:] = varField
+    #         rootgrp.variables[shortVarName][posCnt,:,:] = varField
 
-        rootgrp.sync()
-        rootgrp.close()
+    #     rootgrp.sync()
+    #     rootgrp.close()
 
     def close(self, ncFileName):
 
