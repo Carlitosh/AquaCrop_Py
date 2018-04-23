@@ -432,7 +432,7 @@ class CropParameters(object):
                 # "2 Duration of flowering in calendar days"
                 self.FloweringCD[cond1] = (FloweringEnd - self.HIstartCD)[cond1]
 
-    def update_crop_parameters(self, currTimeStep, Meteo):
+    def update(self, currTimeStep, Meteo):
 
         # Identify crops which are growing in the cell and planted on the
         # current day
