@@ -8,23 +8,23 @@ import shutil
 import sys
 import math
 import gc
+import numpy as np
 
 import pcraster as pcr
 
 import VirtualOS as vos
 import Meteo as meteo
-import C02
+import CO2
 import Groundwater as groundwater
 import CropParameters as cropPars
 import SoilAndTopoParameters as soilPars
-import InitialConditions as initCond
 
 import logging
 logger = logging.getLogger(__name__)
 
 class LandCover(object):
 
-    def __init__(self, configuration, currTimeStep, initialState = None):
+    def __init__(self, configuration, landmask, meteo, currTimeStep, initialState = None):
 
         self._configuration = configuration
         self._modelTime = currTimeStep
@@ -41,36 +41,85 @@ class LandCover(object):
         self.nLat = int(attr['rows'])
         self.nLon = int(attr['cols'])
 
-        # Crop parameters
-        self.crop_pars = cropPars.CropParameters(iniItems, landmask)
+        # Load parameters
+        # ###############
+        self.crop_pars = cropPars.CropParameters(self._configuration, self.landmask)
         self.crop_pars.read()
-        self.crop_pars.compute_variables()
+        self.crop_pars.compute_variables(self._modelTime, meteo)
+
+        self.nRotation = self.crop_pars.nRotation
+        self.nCrop = self.crop_pars.nCrop
         
-        # Irrigation management parameters
-        self.irrigation_mgmt_pars = irriMgmtPars.IrrigationMgmtParameters(self._configuration, landmask)
-        self.irrigation_mgmt_pars.read()
-
-        # Field management parameters
-        self.field_mgmt_pars = fieldMgmtPars.FieldMgmtParameters(self._configuration, landmask)
-        self.field_mgmt_parss.read()
-                
-        # # Define variables
-        # # TODO: take out of function
-        # self.set_initial_conditions()
-
-        # List state variables
-        self.state_vars = ['DelayedGDDs','DelayedCDs','PctLagPhase','tEarlySen',
-                           'DAP','PreAdj','CropMature','CropDead','Germination',
-                           'PrematSenes','HarvestFlag','Stage','Fpre','Fpost',
-                           'fpost_dwn','fpost_upp','Fpol','sCor1','sCor2',
-                           'GrowthStage','CC','CCadj','CC_NS','CCadj_NS','B',
-                           'B_NS','HI','HIadj','CCxAct','CCxAct_NS','CCxW',
-                           'CCxW_NS','CCxEarlySen','rCor','Zroot','CC0adj']
+        # Set initial conditions
+        # ######################
+        arr_zeros = np.zeros((self.nRotation, self.nLat, self.nLon))
+        arr_ones = np.ones((self.nRotation, self.nLat, self.nLon))
+        self.DelayedGDDs = arr_zeros
+        self.DelayedCDs = arr_zeros
+        self.PctLagPhase = arr_zeros
+        self.tEarlySen = arr_zeros
+        self.GDDcum = arr_zeros
+        self.DAP = arr_zeros
         
-    def set_initial_conditions(self):
+        self.PreAdj = arr_zeros.astype(bool)
+        self.CropMature = arr_zeros.astype(bool)
+        self.CropDead = arr_zeros.astype(bool)
+        self.Germination = arr_zeros.astype(bool)
+        self.PrematSenes = arr_zeros.astype(bool)
+        self.HarvestFlag = arr_zeros.astype(bool)
 
-        # TODO: initial conditions
-        # self.init_conditions = initCond.InitialConditions(self._configuration, self._modelTime, self.crop)
+        self.Stage = arr_ones
+        self.Fpre = arr_ones
+        self.Fpost = arr_ones
+        self.fpost_dwn = arr_ones
+        self.fpost_upp = arr_ones
+        self.HIcor_Asum = arr_zeros
+        self.HIcor_Bsum = arr_zeros
+        self.Fpol = arr_zeros
+        self.sCor1 = arr_zeros
+        self.sCor2 = arr_zeros
+        
+        self.GrowthStage = arr_zeros
+
+        self.CC = arr_zeros
+        self.CCadj = arr_zeros
+        self.CC_NS = arr_zeros
+        self.CCadj_NS = arr_zeros
+        self.B = arr_zeros
+        self.B_NS = arr_zeros
+        self.HI = arr_zeros
+        self.HIadj = arr_zeros
+        self.CCxAct = arr_zeros
+        self.CCxAct_NS = arr_zeros
+        self.CCxW = arr_zeros
+        self.CCxW_NS = arr_zeros
+        self.CCxEarlySen = arr_zeros
+        self.CCprev = arr_zeros        
+        self.rCor = arr_ones
+        self.Y = arr_zeros
+        
+        # If the start of the simulation equals the planting date of any crops
+        # then set Zroot and CC0adj to Zmin and CC0 respectively. Otherwise set
+        # to zero
+        # cond1 = (currTimeStep._startTime.timetuple().tm_yday == self.crop_pars.PlantingDate)
+        # Zroot = np.zeros(self.crop_pars.PlantingDate.shape)
+        # Zroot[cond1] = self.crop_pars.Zmin[cond1]
+        # self.Zroot = np.max(Zroot, axis=0)
+
+        # CC0adj = np.zeros(self.crop_pars.PlantingDate.shape)
+        # CC0adj[cond1] = self.crop_pars.CC0[cond1]
+        # self.CC0adj = np.max(CC0adj, axis=0)
+        self.Zroot = arr_zeros
+        self.CC0adj = arr_zeros
+        
+        # Declare other variables
+        # #######################
+        
+        # Indexes
+        self.SeasonCounter = np.zeros((self.nCrop, self.nLat, self.nLon))
+        # self.GrowingSeason = np.zeros((self.nCrop, self.nRotation, self.nLat, self.nLon)).astype(bool)
+        self.CropIndex = np.zeros((self.nRotation, self.nLat, self.nLon))
+        self.GrowingSeasonIndex = np.zeros((self.nRotation, self.nLat, self.nLon))
         
         # Harvest index
         self.YieldForm = arr_zeros
@@ -90,98 +139,212 @@ class LandCover(object):
 
     def getState(self):
         result = {}
-        for var in self.state_vars:
+        state_vars = ['SeasonCounter',
+                      'DelayedGDDs','DelayedCDs','PctLagPhase','tEarlySen',
+                      'DAP','PreAdj','CropMature','CropDead','Germination',
+                      'PrematSenes','HarvestFlag','Stage','Fpre','Fpost',
+                      'fpost_dwn','fpost_upp','Fpol','sCor1','sCor2',
+                      'GrowthStage','CC','CCadj','CC_NS','CCadj_NS','B',
+                      'B_NS','HI','HIadj','CCxAct','CCxAct_NS','CCxW',
+                      'CCxW_NS','CCxEarlySen','rCor','Zroot','CC0adj']
+        for var in state_vars:
             result[var] = vars(self)[var]
-        return result
-
+        
     def getPseudoState(self):
         pass
-
+        
     def update(self, meteo, CO2, currTimeStep):
         """Function to update parameters for current crop grown as well 
         as counters pertaining to crop growth
         """
-
         # Update season counter for crops planted on current day
-        cond1 = (self.CropSequence & (currTimeStep.doy == self.PlantingDate))
-        self.initCond.reset()
-        self.crop_pars.compute_water_productivity_adjustment_factor(C02)
+        cond1 = (currTimeStep.doy == self.crop_pars.PlantingDate)
         self.SeasonCounter[cond1] += 1
 
-        # TODO: this is only necessary if SeasonCounter > 1
-        self.crop_pars.update(self, currTimeStep, meteo)
-
-        # Update growing season
+        # Check if growing season is active on current time step
+        # ######################################################
+        
+        # First, work out if the current date is within the growing season of
+        # each crop as defined by PlantingDate and HarvestDate parameters
         cond2 = (self.SeasonCounter > 0)
         cond3 = ((self.crop_pars.PlantingDate <= currTimeStep.doy) & (currTimeStep.doy <= self.crop_pars.HarvestDate))
         cond4 = (self.crop_pars.PlantingDate > self.crop_pars.HarvestDate)
         cond5 = ((self.crop_pars.PlantingDate <= currTimeStep.doy) | (currTimeStep.doy <= self.crop_pars.HarvestDate))
-        self.GrowingSeason = ((cond2 & cond3) | (cond2 & cond4 & cond5))
+        GrowingSeason = ((cond2 & cond3) | (cond2 & cond4 & cond5))  # crop,lat,lon
 
+        # We now add a rotation dimension to GrowingSeason array and multiply it
+        # by CropSequence, with the resulting array showing which crop (if any)
+        # is currently grown in each rotation considered.
+        GrowingSeason = GrowingSeason[:,None,:,:] * np.ones((self.nRotation))[None,:,None,None]
+        GrowingSeason *= self.crop_pars.CropSequence  # crop,rotation,lat,lon
+
+        # Lastly, check whether the crop has died or reached maturity, then
+        # see which rotations have crops currently growing
+        GrowingSeason *= np.logical_not(self.CropDead | self.CropMature)
+        self.GrowingSeasonIndex = np.any(GrowingSeason, axis=0)  # rotation,lat,lon
+        
         # Get index of crops currently grown
-        I,J,K = np.ogrid[:self.nRotation,:self.nLat,:self.nLon]
-        crop_index = (
-            np.arange(0, self.nCrop)[:,None,None,None]
-            * np.ones((self.nRotation, self.nLon, self.nLat))[None,:,:,:])
-        crop_index *= self.GrowingSeason
-        crop_index = np.max(crop_index, axis=0).astype(int)
-        growing_season_index = np.any(self.GrowingSeason, axis=0)
+        CropIndex = (np.arange(0, self.nCrop)[:,None,None,None] * np.ones((self.nRotation, self.nLon, self.nLat))[None,:,:,:])
+        CropIndex *= GrowingSeason
+        self.CropIndex = np.max(CropIndex, axis=0).astype(int)
+        
+        # A CropIndex value of 0 currently means either that the crop is not
+        # currently grown, or that the first crop (corresponding to index 0)
+        # is grown. This confusion is handled in the next section by multiplying
+        # the parameter value by GrowingSeason, such that it has a value of
+        # zero if no crops are growing.
 
-        # Increment days after planting
-        self.DAP[growing_season_index] += 1
-        self.DAP[np.logical_not(growing_season_index)] = 0
+        # Update crop parameters for currently grown crops
+        # ################################################
 
-        # Increment growing degree days
-        self.growing_degree_day(meteo)
-        self.GDDcum[growing_season_index] += self.GDD[growing_season_index]
-        self.GDDcum[np.logical_not(growing_season_index)] = 0
+        self.crop_pars.compute_water_productivity_adjustment_factor(CO2)
+        # Update crop parameters (TODO: only update if SeasonCounter > 1)
+        self.crop_pars.update(currTimeStep, meteo)
 
         # Select parameters for current day
-        for nm in self.crop_pars.parameter_names:
-            param = getattr(self.crop, nm)
+        I,J,K = np.ogrid[:self.nRotation,:self.nLat,:self.nLon]
+        for nm in self.crop_pars.crop_parameter_names:
+            param = getattr(self.crop_pars, nm)
             param = param[:,None,:,:] * np.ones((self.nRotation))[None,:,None,None]
-            vars(self)[nm] = param[crop_index,I,J,K]
-
-        for nm in self.irrigation_mgmt_pars.parameter_names:
-            vars(self)[nm] = getattr(self.irrigation_mgmt, nm)[crop_index,I,J,K]
-
-        for nm in self.field_mgmt_pars.parameter_names:
-            vars(self)[nm] = getattr(self.field_mgmt, nm)[crop_index,I,J,K]
+            vars(self)[nm] = param[self.CropIndex,I,J,K] * self.GrowingSeasonIndex
         
-    def germination(self):
+        # GrowingSeasonDayOne is a logical array showing rotations for which
+        # today is the start of a growing season
+        self.GrowingSeasonDayOne = ((self.DAP == 0) & (self.GrowingSeasonIndex))
+
+        # cond2 = (currTimeStep.doy == self.PlantingDate)
+        # self.Zroot[cond2] = self.Zmin[cond2]
+        # self.CC0adj[cond2] = self.CC0[cond2]
+        
+        # Update counters
+        # ###############
+
+        # Increment days after planting
+        self.DAP[self.GrowingSeasonIndex] += 1
+        self.DAP[np.logical_not(self.GrowingSeasonIndex)] = 0
+
+        # Increment growing degree days
+        self.growing_degree_day(currTimeStep, meteo)
+        self.GDDcum[self.GrowingSeasonIndex] += self.GDD[self.GrowingSeasonIndex]
+        self.GDDcum[np.logical_not(self.GrowingSeasonIndex)] = 0
+
+        # Adjust growth stage
+        self.growth_stage()
+        
+    def reset_initial_conditions(self, currTimeStep):
+        """Function to reset initial conditions at the start of a new
+        growing season
+        """
+        cond = self.GrowingSeasonDayOne
+        
+        self.GrowthStage[cond] = 0
+        self.DelayedGDDs[cond] = 0
+        self.DelayedCDs[cond] = 0
+        self.PctLagPhase[cond] = 0
+        self.tEarlySen[cond] = 0
+        self.GDDcum[cond] = 0
+        self.DAP[cond] = 0
+        
+        # States
+        self.PreAdj[cond] = False
+        self.CropMature[cond] = False
+        self.CropDead[cond] = False
+        self.Germination[cond] = False
+        self.PrematSenes[cond] = False
+        self.HarvestFlag[cond] = False
+
+        # Harvest index
+        self.Stage[cond] = 1
+        self.Fpre[cond] = 1
+        self.Fpost[cond] = 1
+        self.fpost_dwn[cond] = 1
+        self.fpost_upp[cond] = 1
+        self.HIcor_Asum[cond] = 0
+        self.HIcor_Bsum[cond] = 0
+        self.Fpol[cond] = 0
+        self.sCor1[cond] = 0
+        self.sCor2[cond] = 0
+        
+        # Growth stage
+        self.GrowthStage[cond] = 0
+
+        # Reset crop growth
+        self.CC[cond] = 0
+        self.CCadj[cond] = 0
+        self.CC_NS[cond] = 0
+        self.CCadj_NS[cond] = 0
+        self.B[cond] = 0
+        self.B_NS[cond] = 0
+        self.HI[cond] = 0
+        self.HIadj[cond] = 0
+        self.CCxAct[cond] = 0
+        self.CCxAct_NS[cond] = 0
+        self.CCxW[cond] = 0
+        self.CCxW_NS[cond] = 0
+        self.CCxEarlySen[cond] = 0
+        self.CCprev[cond] = 0
+
+        self.rCor[cond] = 1
+        self.CC0adj[cond] = self.CC0[cond]
+        self.Zroot[cond] = self.Zmin[cond]
+
+    def growing_degree_day(self, currTimeStep, meteo):
+        """Function to calculate number of growing degree days on 
+        current day
+        """
+        tmax = meteo.tmax[None,:,:] * np.ones((self.nCrop))[:,None,None]
+        tmin = meteo.tmin[None,:,:] * np.ones((self.nCrop))[:,None,None]
+        
+        if self.crop_pars.GDDmethod == 1:
+            tmean = ((tmax + tmin) / 2)
+            tmean = np.clip(tmean, self.Tbase, self.Tupp)
+        elif self.crop_pars.GDDmethod == 2:
+            tmax = np.clip(tmax, self.Tbase, self.Tupp)
+            tmin = np.clip(tmin, self.Tbase, self.Tupp)
+            tmean = ((tmax + tmin) / 2)
+        elif self.crop_pars.GDDmethod == 3:
+            tmax = np.clip(tmax, self.Tbase, self.Tupp)
+            tmin = np.clip(tmin, None, self.Tupp)
+            tmean = np.clip(tmean, self.Tbase, None)
+
+        self.GDD = (tmean - self.Tbase)
+        # TODO: why have you commented this out?
+        # self.GDDcum += GDD
+            
+    def germination(self, soilwater):
         """Function to check if crop has germinated"""
 
         # Expand soil properties to compartments
-        th_fc = self.soil.th_fc[self.soil.layerIndex,:]
-        th_wp = self.soil.th_wp[self.soil.layerIndex,:]
+        th_fc = soilwater.soil_pars.th_fc[soilwater.soil_pars.layerIndex,:]
+        th_wp = soilwater.soil_pars.th_wp[soilwater.soil_pars.layerIndex,:]
 
         # Add rotation, lat, lon dimensions to dz and dzsum
         arr_ones = np.ones((self.nRotation, self.nLat, self.nLon))
-        dz = self.soil.dz[:,None,None,None] * arr_ones
-        dzsum = self.soil.dzsum[:,None,None,None] * arr_ones
+        dz = soilwater.soil_pars.dz[:,None,None,None] * arr_ones
+        dzsum = soilwater.soil_pars.dzsum[:,None,None,None] * arr_ones
 
         # Add compartment dimension to zGerm
-        zgerm = self.soil.zGerm[None,:,:,:] * np.ones((self.nComp))[:,None,None,None]
+        zgerm = soilwater.soil_pars.zGerm[None,:,:,:] * np.ones((soilwater.nComp))[:,None,None,None]
 
         # Here we force zGerm to have a maximum value equal to the depth of the
         # deepest soil compartment
-        zgerm[zgerm > np.sum(self.soil.dz)] = np.sum(self.soil.dz)
+        zgerm[zgerm > np.sum(soilwater.soil_pars.dz)] = np.sum(soilwater.soil_pars.dz)
         
         # Find compartments covered by top soil layer affecting germination
         comp_sto = ((dzsum - dz) < zgerm)
 
         # Calculate water content in top soil layer
-        arr_zeros = np.zeros((self.nComp, self.nRotation, self.nLat, self.nLon))
+        arr_zeros = np.zeros((soilwater.nComp, self.nRotation, self.nLat, self.nLon))
         Wr_comp = arr_zeros
         WrFC_comp = arr_zeros
         WrWP_comp = arr_zeros
 
         # Determine fraction of compartment covered by top soil layer
         factor = 1 - ((dzsum - zgerm) / dz) 
-        factor = np.clip(factor, 0, 1) * growing_season_index * comp_sto
+        factor = np.clip(factor, 0, 1) * self.GrowingSeasonIndex * comp_sto
 
         # Increment water storages (mm)
-        Wr_comp = (factor * 1000 * self.th * dz)
+        Wr_comp = (factor * 1000 * soilwater.th * dz)
         Wr_comp = np.clip(Wr_comp, 0, None)
         Wr = np.sum(Wr_comp, axis=0)
         WrFC_comp = (factor * 1000 * th_fc * dz)
@@ -193,103 +356,103 @@ class LandCover(object):
         WcProp = 1 - ((WrFC - Wr) / (WrFC - WrWP))
 
         # Check if water content is above germination threshold
-        cond4 = (growing_season_index
+        cond4 = (self.GrowingSeasonIndex
                  & (WcProp >= self.GermThr)
                  & (np.logical_not(self.Germination)))
         self.Germination[cond4] = True
 
         # Increment delayed growth time counters if germination is yet to occur
-        cond5 = (growing_season_index & (np.logical_not(self.Germination)))
+        cond5 = (self.GrowingSeasonIndex & (np.logical_not(self.Germination)))
         self.DelayedCDs[cond5] += 1
         self.DelayedGDDs[cond5] += self.GDD[cond5]
                  
         # Not in growing season so no germination calculation is performed
-        self.Germination[np.logical_not(growing_season_index)] = False
-        self.DelayedCDs[np.logical_not(growing_season_index)] = 0
-        self.DelayedGDDs[np.logical_not(growing_season_index)] = 0
+        self.Germination[np.logical_not(self.GrowingSeasonIndex)] = False
+        self.DelayedCDs[np.logical_not(self.GrowingSeasonIndex)] = 0
+        self.DelayedGDDs[np.logical_not(self.GrowingSeasonIndex)] = 0
 
     def growth_stage(self):
         """Function to calculate number of growing degree days on 
         current day
         """
-        if self.crop.CalendarType == 1:
+        if self.crop_pars.CalendarType == 1:
             tAdj = self.DAP - self.DelayedCDs
-        elif self.crop.CalendarType == 2:
+        elif self.crop_pars.CalendarType == 2:
             tAdj = self.GDDcum - self.DelayedGDDs
 
         # Update growth stage
-        cond1 = (growing_season_index & (tAdj <= self.Canopy10Pct))
-        cond2 = (growing_season_index & (tAdj <= self.MaxCanopy))
-        cond3 = (growing_season_index & (tAdj <= self.Senescence))
-        cond4 = (growing_season_index & (tAdj > self.Senescence))
+        cond1 = (self.GrowingSeasonIndex & (tAdj <= self.Canopy10Pct))
+        cond2 = (self.GrowingSeasonIndex & (tAdj <= self.MaxCanopy))
+        cond3 = (self.GrowingSeasonIndex & (tAdj <= self.Senescence))
+        cond4 = (self.GrowingSeasonIndex & (tAdj > self.Senescence))
 
         self.GrowthStage[cond1] = 1
         self.GrowthStage[cond2] = 2
         self.GrowthStage[cond3] = 3
         self.GrowthStage[cond4] = 4
-        self.GrowthStage[np.logical_not(growing_season_index)] = 0
+        self.GrowthStage[np.logical_not(self.GrowingSeasonIndex)] = 0
 
-    def root_development(self, groundwater):
+    def root_development(self, groundwater, soilwater):
         """Function to calculate root zone expansion"""
 
-        cond1 = growing_season_index
-        
+        cond1 = self.GrowingSeasonIndex
+
         # If today is the first day of season, root depth is equal to minimum depth
-        cond1 = (growing_season_index & (self.DAP == 1))
+        cond1 = (self.GrowingSeasonIndex & (self.DAP == 1))
         self.Zroot[cond1] = self.Zmin[cond1]
 
         # Adjust time for any delayed development
-        if self.CalendarType == 1:
+        if self.crop_pars.CalendarType == 1:
             tAdj = (self.DAP - self.DelayedCDs)
-        elif self.CalendarType == 2:
+        elif self.crop_pars.CalendarType == 2:
             tAdj = (self.GDDcum - self.DelayedGDDs)
             
         # Calculate root expansion
         Zini = self.Zmin * (self.PctZmin / 100)
         t0 = np.round(self.Emergence / 2)
         tmax = self.MaxRooting
-        if self.CalendarType == 1:
+        if self.crop_pars.CalendarType == 1:
             tOld = (tAdj - 1)
-        elif self.CalendarType == 2:
+        elif self.crop_pars.CalendarType == 2:
             tOld = (tAdj - self.GDD)
 
-        tAdj[np.logical_not(growing_season_index)] = 0
-        tOld[np.logical_not(growing_season_index)] = 0
+        tAdj[np.logical_not(self.GrowingSeasonIndex)] = 0
+        tOld[np.logical_not(self.GrowingSeasonIndex)] = 0
 
         # Potential root depth on previous day
         ZrOld = np.zeros((self.nRotation, self.nLat, self.nLon))
-        cond2 = (growing_season_index & (tOld >= tmax))
+        cond2 = (self.GrowingSeasonIndex & (tOld >= tmax))
         ZrOld[cond2] = self.Zmax[cond2]
-        cond3 = (growing_season_index & (tOld <= t0))
+        cond3 = (self.GrowingSeasonIndex & (tOld <= t0))
         ZrOld[cond3] = Zini[cond3]
-        cond4 = (growing_season_index & (np.logical_not(cond2 | cond3)))
+        cond4 = (self.GrowingSeasonIndex & (np.logical_not(cond2 | cond3)))
         X = (tOld - t0) / (tmax - t0)
         ZrOld[cond4] = ((Zini + (self.Zmax - Zini))
                         * X ** (1 / self.fshape_r))[cond4]
         
-        cond5 = (growing_season_index & (ZrOld < self.Zmin))
+        cond5 = (self.GrowingSeasonIndex & (ZrOld < self.Zmin))
         ZrOld[cond5] = self.Zmin[cond5]
 
         # Potential root depth on current day
         Zr = np.zeros((self.nRotation, self.nLat, self.nLon))
-        cond6 = (growing_season_index & (tAdj >= tmax))
+        cond6 = (self.GrowingSeasonIndex & (tAdj >= tmax))
         Zr[cond6] = self.Zmax[cond6]
-        cond7 = (growing_season_index & (tAdj <= t0))
+        cond7 = (self.GrowingSeasonIndex & (tAdj <= t0))
         Zr[cond7] = Zini[cond7]
-        cond8 = (growing_season_index & (np.logical_not(cond6 | cond7)))
+        cond8 = (self.GrowingSeasonIndex & (np.logical_not(cond6 | cond7)))
         ZrOld[cond8] = ((Zini + (self.Zmax - Zini))
                         * X ** (1 / self.fshape_r))[cond8]
         
-        cond9 = (growing_season_index & (Zr < self.Zmin))
+        cond9 = (self.GrowingSeasonIndex & (Zr < self.Zmin))
         Zr[cond9] = self.Zmin[cond9]
         
         # Determine rate of change, adjust for any stomatal water stress
         dZr = Zr - ZrOld
-        cond10 = (growing_season_index & (self.TrRatio < 0.9999))
+        cond10 = (self.GrowingSeasonIndex & (soilwater.TrRatio < 0.9999))
         cond101 = (cond10 & (self.fshape_ex >= 0))        
-        dZr[cond101] = (dZr * self.TrRatio)[cond101]
+        dZr[cond101] = (dZr * soilwater.TrRatio)[cond101]
         cond102 = (cond10 & np.logical_not(cond101))
-        fAdj = ((np.exp(self.TrRatio * self.fshape_ex) - 1)
+        fAdj = ((np.exp(soilwater.TrRatio * self.fshape_ex) - 1)
                 / (np.exp(self.fshape_ex) - 1))
         dZr[cond102] = (dZr * fAdj)[cond102]
 
@@ -298,30 +461,30 @@ class LandCover(object):
         dZr[np.logical_not(self.Germination)] = 0
 
         # Get new rooting depth
-        self.Zroot[growing_season_index] = (self.Zroot + dZr)[growing_season_index]
+        self.Zroot[self.GrowingSeasonIndex] = (self.Zroot + dZr)[self.GrowingSeasonIndex]
 
-        cond11 = (growing_season_index & (self.soil.zRes > 0))
-        cond111 = (cond11 & (self.Zroot > self.soil.zRes))
+        cond11 = (self.GrowingSeasonIndex & (soilwater.soil_pars.zRes > 0))
+        cond111 = (cond11 & (self.Zroot > soilwater.soil_pars.zRes))
         self.rCor[cond111] = (
-            (2 * (self.Zroot / self.soil.zRes)
+            (2 * (self.Zroot / soilwater.soil_pars.zRes)
              * ((self.SxTop + self.SxBot) / 2)
              - self.SxTop) / self.SxBot)[cond111]
         
-        self.Zroot[cond111] = self.soil.zRes[cond111]
+        self.Zroot[cond111] = soilwater.soil_pars.zRes[cond111]
 
         # Limit rooting depth if groundwater table is present (roots cannot
         # develop below the water table)
-        zGW = groundwater.zGW[None,:,:] * np.ones((nr))[:,None,None]
-        cond12 = (growing_season_index & groundwater.WaterTable & (zGW > 0))
+        zGW = groundwater.zGW[None,:,:] * np.ones((self.nRotation))[:,None,None]
+        cond12 = (self.GrowingSeasonIndex & groundwater.WaterTable & (zGW > 0))
         cond121 = (cond12 & (self.Zroot > zGW))
         self.Zroot[cond121] = zGW[cond121]
         cond1211 = (cond121 & (self.Zroot < self.Zmin))
         self.Zroot[cond1211] = self.Zmin[cond1211]
 
         # No root system outside of growing season
-        self.Zroot[np.logical_not(growing_season_index)] = 0
+        self.Zroot[np.logical_not(self.GrowingSeasonIndex)] = 0
 
-    def water_stress(self, meteo, soil_water, beta):
+    def water_stress(self, meteo, soilwater, beta):
         """Function to calculate water stress coefficients"""        
         p_up = np.concatenate(
             (self.p_up1[None,:],
@@ -369,15 +532,15 @@ class LandCover(object):
         # Calculate relative depletion
         Drel = np.zeros((4, self.nRotation, self.nLat, self.nLon))
         # No water stress
-        cond1 = (self.Dr <= (p_up * self.TAW))
+        cond1 = (soilwater.Dr <= (p_up * soilwater.TAW))
         Drel[cond1] = 0
         
         # Partial water stress
-        cond2 = (soil_water.Dr >  (p_up * soil_water.TAW)) & (soil_water.Dr < (p_lo * soil_water.TAW))
-        Drel[cond2] = (1 - ((p_lo - (soil_water.Dr / soil_water.TAW)) / (p_lo - p_up)))[cond2]
+        cond2 = (soilwater.Dr >  (p_up * soilwater.TAW)) & (soilwater.Dr < (p_lo * soilwater.TAW))
+        Drel[cond2] = (1 - ((p_lo - (soilwater.Dr / soilwater.TAW)) / (p_lo - p_up)))[cond2]
         
         # Full water stress
-        cond3 = (soil_water.Dr >= (p_lo * soil_water.TAW))
+        cond3 = (soilwater.Dr >= (p_lo * soilwater.TAW))
         Drel[cond3] = 1         
 
         # Calculate root zone stress coefficients
@@ -453,7 +616,7 @@ class LandCover(object):
         CDCadj = CDC * (CCxAdj / CCx)
         return CCxAdj,CDCadj
 
-    def canopy_cover(self, meteo, soil_water):
+    def canopy_cover(self, meteo, soilwater):
         """Function to simulate canopy growth/decline"""
 
         # TODO: call root_zone_water() before running canopy_cover()
@@ -469,14 +632,14 @@ class LandCover(object):
         # Calculate root zone water content, and determine if water stress is
         # occurring
         # self.root_zone_water()
-        self.water_stress(meteo, soil_water, beta = True)
+        self.water_stress(meteo, soilwater, beta = True)
 
         # Get canopy cover growth over time
-        if self.crop.CalendarType == 1:
+        if self.crop_pars.CalendarType == 1:
             tCC = self.DAP
             dtCC = np.ones((self.nRotation, self.nLat, self.nLon))
             tCCadj = self.DAP - self.DelayedCDs
-        elif self.crop.CalendarType == 2:
+        elif self.crop_pars.CalendarType == 2:
             tCC = self.GDDcum
             dtCC = self.GDD
             tCCadj = self.GDDcum - self.DelayedGDDs
@@ -485,12 +648,12 @@ class LandCover(object):
         # Canopy development (potential)
 
         # No canopy development before emergence/germination or after maturity
-        cond1 = (growing_season_index
+        cond1 = (self.GrowingSeasonIndex
                  & ((tCC < self.Emergence) | (np.round(self.Emergence) > self.Maturity)))
         self.CC_NS[cond1] = 0
 
         # Canopy growth can occur
-        cond2 = (growing_season_index & (tCC < self.CanopyDevEnd))
+        cond2 = (self.GrowingSeasonIndex & (tCC < self.CanopyDevEnd))
 
         # Very small initial CC as it is first day or due to senescence. In this
         # case assume no leaf expansion stress
@@ -507,7 +670,7 @@ class LandCover(object):
         self.CCxAct_NS[cond2] = self.CC_NS[cond2]
         
         # No more canopy growth is possible or canopy in decline
-        cond3 = (growing_season_index & (tCC > self.CanopyDevEnd))
+        cond3 = (self.GrowingSeasonIndex & (tCC > self.CanopyDevEnd))
         # Set CCx for calculation of withered canopy effects
         self.CCxW_NS[cond3] = self.CCxAct_NS[cond3]
         
@@ -525,12 +688,12 @@ class LandCover(object):
         # Canopy development (actual)
 
         # No canopy development before emergence/germination or after maturity
-        cond4 = (growing_season_index
+        cond4 = (self.GrowingSeasonIndex
                  & ((tCCadj < self.Emergence) | (np.round(tCCadj) > self.Maturity)))
         self.CC[cond4] = 0
 
         # Canopy growth can occur
-        cond5 = (growing_season_index
+        cond5 = (self.GrowingSeasonIndex
                  & (tCCadj < self.CanopyDevEnd)
                  & np.logical_not(cond4))
         cond51 = (cond5 & (self.CCprev <= self.CC0adj))
@@ -602,7 +765,7 @@ class LandCover(object):
         self.CCxAct[cond53] = self.CC[cond53]
         
         # No more canopy growth is possible or canopy is in decline (line 132)
-        cond6 = (growing_season_index & (tCCadj > self.CanopyDevEnd))
+        cond6 = (self.GrowingSeasonIndex & (tCCadj > self.CanopyDevEnd))
 
         # Mid-season stage - no canopy growth: update actual maximum canopy
         # cover size during growing season only (i.e. do not update CC)
@@ -629,7 +792,7 @@ class LandCover(object):
         # ######################################################################
         # Canopy senescence due to water stress (actual)
 
-        cond7 = (growing_season_index & (tCCadj >= self.Emergence))
+        cond7 = (self.GrowingSeasonIndex & (tCCadj >= self.Emergence))
 
         # Check for early canopy senescence starting/continuing due to severe
         # water stress
@@ -646,7 +809,7 @@ class LandCover(object):
         self.tEarlySen[cond711] += dtCC[cond711]
 
         # Adjust canopy decline coefficient for water stress
-        self.water_stress(meteo, soil_water, beta = False)  # not clear why this is included again
+        self.water_stress(meteo, soilwater, beta = False)  # not clear why this is included again
         cond7112 = (cond711 & (self.Ksw_Sen > 0.99999))
         CDCadj[cond7112] = 0.0001
         cond7113 = (cond711 & np.logical_not(cond7112))
@@ -730,59 +893,65 @@ class LandCover(object):
         # Calculate canopy size adjusted for micro-advective effects
         
         # Check to ensure potential CC is not slightly lower than actual
-        cond8 = (growing_season_index & (self.CC_NS < self.CC))
+        cond8 = (self.GrowingSeasonIndex & (self.CC_NS < self.CC))
         self.CC_NS[cond8] = self.CC[cond8]
 
         cond81 = (cond8 & (tCC < self.CanopyDevEnd))
         self.CCxAct_NS[cond81] = self.CC_NS[cond81]
 
         # Actual (with water stress)
-        self.CCadj[growing_season_index] = (
+        self.CCadj[self.GrowingSeasonIndex] = (
             (1.72 * self.CC)
             - (self.CC ** 2)
-            + (0.3 * (self.CC ** 3)))[growing_season_index]
+            + (0.3 * (self.CC ** 3)))[self.GrowingSeasonIndex]
 
         # Potential (without water stress)
-        self.CCadj_NS[growing_season_index] = (
+        self.CCadj_NS[self.GrowingSeasonIndex] = (
             (1.72 * self.CC_NS)
             - (self.CC_NS ** 2)
-            + (0.3 * (self.CC_NS ** 3)))[growing_season_index]
+            + (0.3 * (self.CC_NS ** 3)))[self.GrowingSeasonIndex]
 
         # No canopy outside growing season - set values to zero
-        self.CC[np.logical_not(growing_season_index)] = 0
-        self.CCadj[np.logical_not(growing_season_index)] = 0
-        self.CC_NS[np.logical_not(growing_season_index)] = 0
-        self.CCadj_NS[np.logical_not(growing_season_index)] = 0
-        self.CCxW[np.logical_not(growing_season_index)] = 0
-        self.CCxAct[np.logical_not(growing_season_index)] = 0
-        self.CCxW_NS[np.logical_not(growing_season_index)] = 0
-        self.CCxAct_NS[np.logical_not(growing_season_index)] = 0
-    
+        self.CC[np.logical_not(self.GrowingSeasonIndex)] = 0
+        self.CCadj[np.logical_not(self.GrowingSeasonIndex)] = 0
+        self.CC_NS[np.logical_not(self.GrowingSeasonIndex)] = 0
+        self.CCadj_NS[np.logical_not(self.GrowingSeasonIndex)] = 0
+        self.CCxW[np.logical_not(self.GrowingSeasonIndex)] = 0
+        self.CCxAct[np.logical_not(self.GrowingSeasonIndex)] = 0
+        self.CCxW_NS[np.logical_not(self.GrowingSeasonIndex)] = 0
+        self.CCxAct_NS[np.logical_not(self.GrowingSeasonIndex)] = 0
+
+    def adjust_canopy_cover(self, soilwater):
+        """Function to adjust canopy cover according to 
+        transpiration
+        """
+        cond1 = (self.GrowingSeasonIndex & ((self.CC - self.CCprev) > 0.005) & (soilwater.TrAct > 0))
+        self.CC[cond1] = self.CCprev[cond1]
+        
     def harvest_index_ref_current_day(self):
         """Function to calculate reference (no adjustment for stress 
         effects) harvest index on current day
         """
-
         # Initialize (TODO: check it is OK to do this)
         self.HIref = np.zeros((self.nRotation, self.nLat, self.nLon))
         
         # Check if in yield formation period
-        if self.CalendarType == 1:
+        if self.crop_pars.CalendarType == 1:
             tAdj = self.DAP - self.DelayedCDs
-        elif self.CalendarType == 2:
+        elif self.crop_pars.CalendarType == 2:
             tAdj = self.GDDcum - self.DelayedGDDs
 
-        self.YieldForm = (growing_season_index & (tAdj > self.HIstart))
+        self.YieldForm = (self.GrowingSeasonIndex & (tAdj > self.HIstart))
 
         # Get time for harvest index calculation
         HIt = self.DAP - self.DelayedCDs - self.HIstartCD - 1
 
         # Yet to reach time for HI build-up
-        cond1 = (growing_season_index & (HIt <= 0))
+        cond1 = (self.GrowingSeasonIndex & (HIt <= 0))
         self.HIref[cond1] = 0
         self.PctLagPhase[cond1] = 0
 
-        cond2 = (growing_season_index & np.logical_not(cond1))
+        cond2 = (self.GrowingSeasonIndex & np.logical_not(cond1))
 
         # HI cannot develop further as canopy is too small (no need to do
         # anything here as HIref doesn't change)
@@ -795,8 +964,8 @@ class LandCover(object):
         self.PctLagPhase[cond221] = 100
         self.HIref[cond221] = ((self.HIini * self.HI0) / (self.HIini + (self.HI0 - self.HIini) * np.exp(-self.HIGC * HIt)))[cond221]
         # Harvest index approaching maximum limit
-        cond2211 = (cond221 & (self.HIref >= (0.9799 * HI0)))
-        self.HIref[cond2211] = HI0[cond2211]
+        cond2211 = (cond221 & (self.HIref >= (0.9799 * self.HI0)))
+        self.HIref[cond2211] = self.HI0[cond2211]
 
         cond222 = (cond22 & (self.CropType == 3))
         # Not yet reached linear switch point, therefore proceed with logistic
@@ -812,7 +981,7 @@ class LandCover(object):
         self.HIref[cond2222] += (self.dHILinear * (HIt - self.tLinSwitch))[cond222]
 
         # Limit HIref and round off computed value
-        cond223 = (cond22 & (self.HIref > HI0))
+        cond223 = (cond22 & (self.HIref > self.HI0))
         self.HIref[cond223] = self.HI0[cond223]
         cond224 = (cond22 & (self.HIref <= (self.HIini + 0.004)))
         self.HIref[cond224] = 0
@@ -820,7 +989,7 @@ class LandCover(object):
         self.HIref[cond225] = self.HI0[cond225]
 
         # Reference harvest index is zero outside growing season
-        self.HIref[np.logical_not(growing_season_index)] = 0
+        self.HIref[np.logical_not(self.GrowingSeasonIndex)] = 0
 
     def temperature_stress(self, meteo):
         """Function to calculate temperature stress coefficients"""
@@ -874,10 +1043,10 @@ class LandCover(object):
         Trel = (self.Tmin_up - tmin) / (self.Tmin_up - self.Tmin_lo)
         self.Kst_PolC[cond62] = ((KsPol_up * KsPol_lo) / (KsPol_lo + (KsPol_up - KsPol_lo) * np.exp(-self.fshape_b * (1 - Trel))))[cond62]
         
-    def biomass_accumulation(self, meteo):
+    def biomass_accumulation(self, meteo, soilwater):
         """Function to calculate biomass accumulation"""
 
-        et0 = meteo.referencePotET[None,:,:] * np.ones((nr))[:,None,None]
+        et0 = meteo.referencePotET[None,:,:] * np.ones((self.nRotation))[:,None,None]
         self.temperature_stress(meteo)
 
         # Get time for harvest index build-up
@@ -885,7 +1054,7 @@ class LandCover(object):
 
         fswitch = np.zeros((self.nRotation, self.nLat, self.nLon))
         WPadj = np.zeros((self.nRotation, self.nLat, self.nLon))
-        cond1 = (growing_season_index & (((self.CropType == 2) | (self.CropType == 3)) & (self.HIref > 0)))
+        cond1 = (self.GrowingSeasonIndex & (((self.CropType == 2) | (self.CropType == 3)) & (self.HIref > 0)))
 
         # Adjust WP for reproductive stage
         cond11 = (cond1 & (self.Determinant == 1))
@@ -896,23 +1065,23 @@ class LandCover(object):
         cond122 = (cond12 & np.logical_not(cond121))
         fswitch[cond122] = 1
         WPadj[cond1] = (self.WP * (1 - (1 - self.WPy / 100) * fswitch))[cond1]
-        cond2 = (growing_season_index & np.logical_not(cond1))
+        cond2 = (self.GrowingSeasonIndex & np.logical_not(cond1))
         WPadj[cond2] = self.WP[cond2]
 
         # Adjust WP for CO2 effects **TODO**
         # WPadj *= self.fCO2
 
         # Calculate biomass accumulation on current day
-        dB_NS = WPadj * (self.TrPot0 / et0) * self.Kst_Bio  # TODO: check correct TrPot is being used
-        dB = WPadj * (self.TrAct / et0) * self.Kst_Bio  # TODO: check correct TrAct is being used
+        dB_NS = WPadj * (soilwater.TrPot0 / et0) * self.Kst_Bio  # TODO: check correct TrPot is being used
+        dB = WPadj * (soilwater.TrAct / et0) * self.Kst_Bio  # TODO: check correct TrAct is being used
 
         # Update biomass accumulation
         self.B += dB
         self.B_NS += dB_NS
 
         # No biomass accumulation outside growing season
-        self.B[np.logical_not(growing_season_index)] = 0
-        self.B_NS[np.logical_not(growing_season_index)] = 0
+        self.B[np.logical_not(self.GrowingSeasonIndex)] = 0
+        self.B_NS[np.logical_not(self.GrowingSeasonIndex)] = 0
 
     def harvest_index_adj_pre_anthesis(self):
         """Function to calculate adjustment to harvest index for 
@@ -1030,12 +1199,12 @@ class LandCover(object):
             self.fpost_upp
             * (((tmax2 * self.fpost_dwn) + (tmax1 - tmax2)) / tmax2))[cond43]
 
-    def harvest_index(self, meteo):
+    def harvest_index(self, meteo, soilwater):
         """Function to simulate build up of harvest index"""
         
         # Calculate stresses, after updating root zone water content
-        self.root_zone_water()
-        self.water_stress(meteo, beta = True)
+        # self.root_zone_water()
+        self.water_stress(meteo, soilwater, beta = True)
 
         # Calculate temperature stress
         self.temperature_stress(meteo)
@@ -1048,7 +1217,7 @@ class LandCover(object):
         HIt = self.DAP - self.DelayedCDs - self.HIstartCD - 1
 
         # Calculate harvest index
-        cond1 = (growing_season_index & self.YieldForm & (HIt > 0))
+        cond1 = (self.GrowingSeasonIndex & self.YieldForm & (HIt > 0))
 
         # Root/tuber or fruit/grain crops
         cond11 = (cond1 & ((self.CropType == 2) | (self.CropType == 3)))
@@ -1091,14 +1260,24 @@ class LandCover(object):
 
         # Otherwise no build-up of harvest index if outside yield formation
         # period
-        cond2 = (growing_season_index & np.logical_not(cond1))
+        cond2 = (self.GrowingSeasonIndex & np.logical_not(cond1))
         HIi[cond2] = self.HI[cond2]
         HIadj[cond2] = self.HIadj[cond2]
 
         # Store final values for current time step
-        self.HI[growing_season_index] = HIi[growing_season_index]
-        self.HIadj[growing_season_index] = HIadj[growing_season_index]
+        self.HI[self.GrowingSeasonIndex] = HIi[self.GrowingSeasonIndex]
+        self.HIadj[self.GrowingSeasonIndex] = HIadj[self.GrowingSeasonIndex]
 
         # No harvestable crop outside of a growing season
-        self.HI[np.logical_not(growing_season_index)] = 0
-        self.HIadj[np.logical_not(growing_season_index)] = 0
+        self.HI[np.logical_not(self.GrowingSeasonIndex)] = 0
+        self.HIadj[np.logical_not(self.GrowingSeasonIndex)] = 0
+
+    def crop_yield(self):
+        """Function to calculate crop yield"""
+        cond1 = self.GrowingSeasonIndex
+        self.Y[cond1] = ((self.B / 100) * self.HIadj)[cond1]
+        cond11 = (cond1 & (((self.crop_pars.CalendarType == 1) & ((self.DAP - self.DelayedCDs) >= self.Maturity)) | ((self.crop_pars.CalendarType == 2) & ((self.GDDcum - self.DelayedGDDs) >= self.Maturity))))
+        self.CropMature[cond11] = True
+        self.Y[np.logical_not(self.GrowingSeasonIndex)] = 0
+        
+        

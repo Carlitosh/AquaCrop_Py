@@ -32,7 +32,7 @@ import subprocess
 import netCDF4 as nc
 import numpy as np
 import pcraster as pcr
-import virtualOS as vos
+import VirtualOS as vos
 
 # TODO: defined the dictionary (e.g. filecache = dict()) to avoid open and closing files
 
@@ -47,8 +47,8 @@ class PCR2netCDF():
         # Retrieve latitudes and longitudes from clone map
         self.latitudes  = np.unique(pcr.pcr2numpy(pcr.ycoordinate(cloneMap), vos.MV))[::-1]
         self.longitudes = np.unique(pcr.pcr2numpy(pcr.xcoordinate(cloneMap), vos.MV))
-        self.rotations  = np.arange(1, model.nRotation + 1)
-        self.depths = np.arange(1, model.nComp + 1)
+        self.rotations  = np.arange(1, model.landcover.nRotation + 1)
+        self.depths = np.arange(1, model.soilwater.nComp + 1)
         
         # Let users decide what their preference regarding latitude order
         self.netcdf_y_orientation_follow_cf_convention = False
@@ -97,55 +97,68 @@ class PCR2netCDF():
             self.attributeDictionary['title'      ] = specificAttributeDictionary['title'      ]
             self.attributeDictionary['description'] = specificAttributeDictionary['description']
 
-    def createNetCDF(self, ncFileName, varName, varUnits, includeDepthDimension=False, longName = None):
+    # def createNetCDF(self, ncFileName, varName, varUnits, includeDepthDimension=False, longName = None):
+    def createNetCDF(self, ncFileName, varName, varUnits, varDims, longName = None):
         """Function to create output netCDF"""
         
         rootgrp = nc.Dataset(ncFileName,'w',format= self.format)
 
         # Create dimensions - time is unlimited, others are fixed
-        rootgrp.createDimension('rotation',len(self.rotations))
-        rootgrp.createDimension('time',None)
-        if includeDepthDimension:
-            rootgrp.createDimension('depth',len(self.depths))
-        rootgrp.createDimension('lat',len(self.latitudes))
-        rootgrp.createDimension('lon',len(self.longitudes))
+        if 'rotation' in varDims: rootgrp.createDimension('rotation',len(self.rotations))
+        if 'time' in varDims:     rootgrp.createDimension('time',None)
+        if 'depth' in varDims:    rootgrp.createDimension('depth', len(self.depths))
+        if 'lat' in varDims:      rootgrp.createDimension('lat',len(self.latitudes))
+        if 'lon' in varDims:      rootgrp.createDimension('lon',len(self.longitudes))
+
+        # rootgrp.createDimension('rotation',len(self.rotations))
+        # rootgrp.createDimension('time',None)
+        # if includeDepthDimension:
+        #     rootgrp.createDimension('depth',len(self.depths))
+        # rootgrp.createDimension('lat',len(self.latitudes))
+        # rootgrp.createDimension('lon',len(self.longitudes))
 
         # define variables
-        rotation = rootgrp.createVariable('rotation','i4',('rotation',))  # i4 = 32-bit integer
-        rotation.standard_name = 'rotation'
-        rotation.long_name = 'rotation'
-        rotation[:] = self.rotations
+        if 'rotation' in varDims:
+            rotation = rootgrp.createVariable('rotation','i4',('rotation',))  # i4 = 32-bit integer
+            rotation.standard_name = 'rotation'
+            rotation.long_name = 'rotation'
+            rotation[:] = self.rotations
 
-        date_time = rootgrp.createVariable('time','f4',('time',))
-        date_time.standard_name = 'time'
-        date_time.long_name = 'Days since 1901-01-01'
-        date_time.units = 'Days since 1901-01-01' 
-        date_time.calendar = 'standard'
+        if 'time' in varDims:
+            date_time = rootgrp.createVariable('time','f4',('time',))
+            date_time.standard_name = 'time'
+            date_time.long_name = 'Days since 1901-01-01'
+            date_time.units = 'Days since 1901-01-01' 
+            date_time.calendar = 'standard'
 
-        if includeDepthDimension:
+        # if includeDepthDimension:
+        if 'depth' in varDims:
             depth = rootgrp.createVariable('depth','f4',('depth',))  # f4 = 32-bit floating point
             depth.standard_name = 'depth'
             depth.long_name = 'depth'
             depth.units = 'meter'
             depth.positive = 'down'
             depth[:] = self.depths
-            
-        lat = rootgrp.createVariable('lat','f4',('lat',))
-        lat.long_name = 'latitude'
-        lat.units = 'degrees_north'
-        lat.standard_name = 'latitude'
-        lat[:]= self.latitudes
 
-        lon = rootgrp.createVariable('lon','f4',('lon',))
-        lon.long_name = 'longitude'
-        lon.units = 'degrees_east'
-        lon.standard_name = 'longitude'
-        lon[:]= self.longitudes
+        if 'lat' in varDims:
+            lat = rootgrp.createVariable('lat','f4',('lat',))
+            lat.long_name = 'latitude'
+            lat.units = 'degrees_north'
+            lat.standard_name = 'latitude'
+            lat[:]= self.latitudes
 
-        if includeDepthDimension:
-            dims = ('rotation','time','depth','lat','lon')
-        else:
-            dims = ('rotation','time','lat','lon')
+        if 'lon' in varDims:
+            lon = rootgrp.createVariable('lon','f4',('lon',))
+            lon.long_name = 'longitude'
+            lon.units = 'degrees_east'
+            lon.standard_name = 'longitude'
+            lon[:]= self.longitudes
+
+        # if includeDepthDimension:
+        #     dims = ('rotation','time','depth','lat','lon')
+        # else:
+        #     dims = ('rotation','time','lat','lon')
+        dims = varDims
 
         # Add variable to NetCDF
         shortVarName = varName
@@ -202,11 +215,21 @@ class PCR2netCDF():
         # flip variable if necessary (to follow cf_convention)
         if self.netcdf_y_orientation_follow_cf_convention: varField = np.flipud(varField)
 
+        # if 'depth' in dims:
+        #     rootgrp.variables[shortVarName][:,posCnt,:,:,:] = varField
+        # else:
+        #     rootgrp.variables[shortVarName][:,posCnt,:,:] = varField
+
         if 'depth' in dims:
             rootgrp.variables[shortVarName][:,posCnt,:,:,:] = varField
         else:
-            rootgrp.variables[shortVarName][:,posCnt,:,:] = varField
-
+            if 'rotation' in dims:
+                rootgrp.variables[shortVarName][:,posCnt,:,:] = varField
+            else:
+                print shortVarName
+                rootgrp.variables[shortVarName][posCnt,:,:] = varField
+                
+        
         rootgrp.sync()
         rootgrp.close()
 

@@ -6,7 +6,7 @@
 import os
 import numpy as np
 import pcraster as pcr
-import virtualOS as vos
+import VirtualOS as vos
 import netCDF4 as nc
 import datetime as datetime
 import calendar as calendar
@@ -23,27 +23,54 @@ class CropParameters(object):
         self.nLat = int(attr['rows'])
         self.nLon = int(attr['cols'])
 
-        self.cropParameterFileNC = iniItems.cropOptions['cropParameterNC']
+        self.nCrop = int(iniItems.cropOptions['nCrop'])
+        self.nRotation = int(iniItems.cropOptions['nRotation'])
+        self.cropParameterFileNC = str(iniItems.cropOptions['cropParameterNC'])
         self.CalendarType = int(iniItems.cropOptions['CalendarType'])
         self.SwitchGDD = bool(int(iniItems.cropOptions['SwitchGDD']))
         self.GDDmethod = int(iniItems.cropOptions['GDDmethod'])
+        
+        # Declare variables
+        self.crop_parameters_to_read = [
+            'CropType','PlantingDate','HarvestDate','Emergence','MaxRooting',
+            'Senescence','Maturity','HIstart','Flowering','YldForm',
+            'PolHeatStress','PolColdStress','BioTempStress','PlantPop',
+            'Determinant','ETadj','LagAer','Tbase','Tupp','Tmax_up','Tmax_lo',
+            'Tmin_up','Tmin_lo','GDD_up','GDD_lo','fshape_b','PctZmin','Zmin',
+            'Zmax','fshape_r','fshape_ex','SxTopQ','SxBotQ','a_Tr','SeedSize',
+            'CCmin','CCx','CDC','CGC','Kcb','fage','WP','WPy','fsink','bsted',
+            'bface','HI0','HIini','dHI_pre','a_HI','b_HI','dHI0','exc',
+            'MaxFlowPct','p_up1','p_up2','p_up3','p_up4','p_lo1','p_lo2','p_lo3',
+            'p_lo4','fshape_w1','fshape_w2','fshape_w3','fshape_w4','Aer','beta',
+            'GermThr']
+        
+        self.crop_parameters_to_compute = [
+            'CC0','SxTop','SxBot','fCO2','tLinSwitch','dHILinear','HIGC',
+            'CanopyDevEnd','CanopyDevEndCD','Canopy10Pct','MaxCanopy',
+            'MaxCanopyCD','HIstartCD','HIend','HIendCD','YldFormCD',
+            'FloweringEnd','Flowering','FloweringCD','CGC','CDC']
 
-    def read_crop_parameters(self):
+        self.crop_parameter_names = self.crop_parameters_to_read + self.crop_parameters_to_compute
+        arr_zeros = np.zeros((self.nCrop, self.nLat, self.nLon))
+        for param in self.crop_parameter_names:
+            vars(self)[param] = arr_zeros
+
+        self.CropSequence = np.zeros((self.nCrop, self.nRotation, self.nLat, self.nLon))
+        
+    def read(self):
         """Function to read crop input parameters"""
         
-        self.parameter_names = ['CropType','PlantingDate','HarvestDate','Emergence','MaxRooting','Senescence','Maturity','HIstart','Flowering','YldForm','PolHeatStress','PolColdStress','BioTempStress','PlantPop','Determinant','ETadj','LagAer','Tbase','Tupp','Tmax_up','Tmax_lo','Tmin_up','Tmin_lo','GDD_up','GDD_lo','fshape_b','PctZmin','Zmin','Zmax','fshape_r','fshape_ex','SxTopQ','SxBotQ','a_Tr','SeedSize','CCmin','CCx','CDC','CGC','Kcb','fage','WP','WPy','fsink','bsted','bface','HI0','HIini','dHI_pre','a_HI','b_HI','dHI0','exc','MaxFlowPct','p_up1','p_up2','p_up3','p_up4','p_lo1','p_lo2','p_lo3','p_lo4','fshape_w1','fshape_w2','fshape_w3','fshape_w4','Aer','beta','GermThr']
-
-        for var in self.parameter_names:
-            vars(self)[var] = vos.netcdf2PCRobjCloneWithoutTime(
+        for param in self.crop_parameters_to_read:
+            vars(self)[param] = vos.netcdf2PCRobjCloneWithoutTime(
                 self.cropParameterFileNC,
-                var,
+                param,
                 cloneMapFileName=self.cloneMap)
 
-        self.nCrop = self.CropType.shape[0]
+        # self.nCrop = self.CropType.shape[0]
 
         # Crop sequence - i.e. the order in which crops are grown
         CropSequence = vos.netcdf2PCRobjCloneWithoutTime(
-            cropParameterFileNC,
+            self.cropParameterFileNC,
             'CropSequence',
             cloneMapFileName=self.cloneMap)
 
@@ -52,8 +79,8 @@ class CropParameters(object):
             * np.ones((self.nLat, self.nLon))[None,None,:,:])
         self.CropSequence = CropSequence.astype(bool)
 
-        self.nCrop = self.CropSequence.shape[0]
-        self.nRotation = self.CropSequence.shape[1]
+        # self.nCrop = self.CropSequence.shape[0]
+        # self.nRotation = self.CropSequence.shape[1]
         
     def compute_variables(self, currTimeStep, meteo):
         """Function to compute additional crop variables required to run 
@@ -107,27 +134,27 @@ class CropParameters(object):
         # Days to linear HI switch point
         self.AOS_CalculateHILinear()
 
-        # Update crop parameter names
-        new_parameter_names = ['CC0','SxTop','SxBot']
-        for nm in new_parameter_names:
-            if nm not in self.parameter_names:
-                self.parameter_names.append(nm)
+        # # Update crop parameter names
+        # new_parameter_names = ['CC0','SxTop','SxBot']
+        # for nm in new_parameter_names:
+        #     if nm not in self.parameter_names:
+        #         self.parameter_names.append(nm)
 
     def compute_water_productivity_adjustment_factor(self, CO2):
         """Function to calculate water productivity adjustment factor 
-        for elevation in C02 concentration"""
+        for elevation in CO2 concentration"""
 
         # convenient to add crop dimension to CO2 variables
-        CO2ref = CO2.ref[None,:,:] * np.ones((self.nCrop))[:,None,None]
+        CO2ref = CO2.RefConc
         CO2conc = CO2.conc[None,:,:] * np.ones((self.nCrop))[:,None,None]
         
-        # Get C02 weighting factor
+        # Get CO2 weighting factor
         fw = np.zeros((self.nCrop, self.nLat, self.nLon))
         cond1 = (CO2conc > CO2ref)
         cond11 = (cond1 & (CO2conc >= 550))
         fw[cond11] = 1
         cond12 = (cond1 & np.logical_not(cond11))
-        fw[cond12] = 1 - ((550 - CO2conc) / (550 - CO2ref))
+        fw[cond12] = (1 - ((550 - CO2conc) / (550 - CO2ref)))[cond12]
 
         # Determine adjustment for each crop in first year of simulation
         fCO2 = ((CO2conc / CO2ref) /
@@ -208,93 +235,120 @@ class CropParameters(object):
             
         self.HIGC[HIest >= self.HI0] -= 0.001
 
-    def update_growing_degree_day(self, Meteo, startTime, MASK=None):
+    # def update_growing_degree_day(self, meteo, startTime, MASK=None):
+    def adjust_planting_and_harvesting_date(self, pd, hd, startTime):
+
+        st = startTime
+        sd = startTime.timetuple().tm_yday # (Julian day: 1 Jan = 1)
+        
+        # if start day of simulation is greater than planting day the
+        # first complete growing season will not be until the
+        # following year
+        hd[sd > pd] += 365
+        pd[sd > pd] += 365
+
+        # if start day is less than or equal to planting day, but
+        # harvest day is less than planting day, the harvest day will
+        # occur in the following year
+        hd[((sd <= pd) & (hd < pd))] += 365
+
+        # adjust values for leap year
+        isLeapYear1 = calendar.isleap(st.year)
+        isLeapYear2 = calendar.isleap(st.year + 1)
+        pd[(isLeapYear1 & (pd >= 60))] += 1  # TODO: check these
+        hd[(isLeapYear1 & (hd >= 60))] += 1
+        pd[(isLeapYear2 & (pd >= 425))] += 1
+        hd[(isLeapYear2 & (hd >= 425))] += 1
+        return pd,hd
+    
+    def update_growing_degree_day(self, meteo, startTime):
         """Function to compute growing degree day parameter for upcoming 
         growing season"""
 
-        if MASK is None:
-            MASK = np.full(self.PlantingDate.shape, True)
+        # if MASK is None:
+        #     MASK = np.full(self.PlantingDate.shape, True)
 
-        if not np.any(MASK):
-            GDD = np.full(self.PlantingDate.shape, np.nan)
-        else:
-            st = startTime
-            sd = startTime.timetuple().tm_yday # (Julian day: 1 Jan = 1)
+        # if not np.any(MASK):
+        #     GDD = np.full(self.PlantingDate.shape, np.nan)
+        # else:
+        st = startTime
+        sd = startTime.timetuple().tm_yday # (Julian day: 1 Jan = 1)
 
-            # objective of the following code section is to obtain an
-            # index of the first complete growing season of the given
-            # crop in each grid cell
+        # objective of the following code section is to obtain an
+        # index of the first complete growing season of the given
+        # crop in each grid cell
 
-            # planting/harvesting date of crop
-            pd = self.PlantingDate
-            hd = self.HarvestDate
+        # planting/harvesting date of crop
+        pd,hd = self.adjust_planting_and_harvesting_date(self.PlantingDate, self.HarvestDate, startTime)
+        # pd = self.PlantingDate
+        # hd = self.HarvestDate
 
-            # if start day of simulation is greater than planting day the
-            # first complete growing season will not be until the
-            # following year
-            hd[sd > pd] += 365
-            pd[sd > pd] += 365
+        # # if start day of simulation is greater than planting day the
+        # # first complete growing season will not be until the
+        # # following year
+        # hd[sd > pd] += 365
+        # pd[sd > pd] += 365
 
-            # if start day is less than or equal to planting day, but
-            # harvest day is less than planting day, the harvest day will
-            # occur in the following year
-            hd[((sd <= pd) & (hd < pd))] += 365
+        # # if start day is less than or equal to planting day, but
+        # # harvest day is less than planting day, the harvest day will
+        # # occur in the following year
+        # hd[((sd <= pd) & (hd < pd))] += 365
 
-            # adjust values for leap year
-            isLeapYear1 = calendar.isleap(st.year)
-            isLeapYear2 = calendar.isleap(st.year + 1)
-            pd[(isLeapYear1 & (pd >= 60))] += 1  # TODO: check these
-            hd[(isLeapYear1 & (hd >= 60))] += 1
-            pd[(isLeapYear2 & (pd >= 425))] += 1
-            hd[(isLeapYear2 & (hd >= 425))] += 1
+        # # adjust values for leap year
+        # isLeapYear1 = calendar.isleap(st.year)
+        # isLeapYear2 = calendar.isleap(st.year + 1)
+        # pd[(isLeapYear1 & (pd >= 60))] += 1  # TODO: check these
+        # hd[(isLeapYear1 & (hd >= 60))] += 1
+        # pd[(isLeapYear2 & (pd >= 425))] += 1
+        # hd[(isLeapYear2 & (hd >= 425))] += 1
 
-            pd[np.logical_not(MASK)] = np.nan
-            hd[np.logical_not(MASK)] = np.nan
+        # pd[np.logical_not(MASK)] = np.nan
+        # hd[np.logical_not(MASK)] = np.nan
 
-            ndays = np.nanmax(hd)  # numpy.nanmax calculates the maximum value, ignoring NaN cell values
-            day_idx = np.arange(1, ndays + 1)[:,None,None,None] * np.ones((self.nCrop, self.nLon, self.nLat))[None,:,:,:]
+        ndays = np.nanmax(hd)  # numpy.nanmax calculates the maximum value, ignoring NaN cell values
+        day_idx = np.arange(1, ndays + 1)[:,None,None,None] * np.ones((self.nCrop, self.nLon, self.nLat))[None,:,:,:]
 
-            # Dimensions of pd are crop,lat,lon; day_idx dims are
-            # time,crop,lat,lon - broadcasting should work automatically
-            growing_season_idx = ((pd >= day_idx) & (hd <= day_idx))
+        # Dimensions of pd are crop,lat,lon; day_idx dims are
+        # time,crop,lat,lon - broadcasting should work automatically
+        growing_season_idx = ((pd >= day_idx) & (hd <= day_idx))
+        
+        # Extract weather data for first growing season
+        tmin = vos.netcdf2NumPyTimeSlice(meteo.tmpFileNC, meteo.tmnVarName,
+                                         startTime,
+                                         startTime + datetime.timedelta(int(ndays) - 1),
+                                         cloneMapFileName = self.cloneMap,
+                                         LatitudeLongitude = True)
 
-            # Extract weather data for first growing season
-            tmin = vos.netcdf2NumPyTimeSlice(meteo.tmpFileNC, meteo.tmnVarName,
-                                             startTime,
-                                             startTime + datetime.timedelta(ndays),
-                                             cloneMapFileName = self.cloneMap,
-                                             LatitudeLongitude = True)
+        tmax = vos.netcdf2NumPyTimeSlice(meteo.tmpFileNC, meteo.tmxVarName,
+                                         startTime,
+                                         startTime + datetime.timedelta(int(ndays) - 1),
+                                         cloneMapFileName = self.cloneMap,
+                                         LatitudeLongitude = True)
 
-            tmax = vos.netcdf2NumPyTimeSlice(meteo.tmpFileNC, meteo.tmxVarName,
-                                             startTime,
-                                             startTime + datetime.timedelta(ndays),
-                                             cloneMapFileName = self.cloneMap,
-                                             LatitudeLongitude = True)
+        # broadcast to crop dimension
+        tmax = tmax[:,None,:,:] * np.ones((self.nCrop))[None,:,None,None]
+        tmin = tmin[:,None,:,:] * np.ones((self.nCrop))[None,:,None,None] 
 
-            # broadcast to crop dimension
-            tmax = tmax[:,None,:,:] * np.ones((self.nCrop))[None,:,None,None]
-            tmin = tmin[:,None,:,:] * np.ones((self.nCrop))[None,:,None,None] 
+        # for convenience
+        tupp = self.Tupp[None,:,:,:] * np.ones((ndays))[:,None,None,None]
+        tbase = self.Tbase[None,:,:,:] * np.ones((ndays))[:,None,None,None]
 
-            # for convenience
-            tupp = self.Tupp[None,:,:,:] * np.ones((ndays))[:,None,None,None]
-            tbase = self.Tbase[None,:,:,:] * np.ones((ndays))[:,None,None,None]
+        # calculate GDD according to the various methods
+        if self.GDDmethod == 1:
+            tmean = ((tmax + tmin) / 2)
+            tmean = np.clip(tmean, self.Tbase, self.Tupp)
+        elif self.GDDmethod == 2:
+            tmax = np.clip(tmax, self.Tbase, self.Tupp)
+            tmin = np.clip(tmin, self.Tbase, self.Tupp)
+            tmean = ((tmax + tmin) / 2)
+        elif self.GDDmethod == 3:
+            tmax = np.clip(tmax, self.Tbase, self.Tupp)
+            tmin = np.clip(tmin, None, self.Tupp)
+            tmean = np.clip(tmean, self.Tbase, None)
 
-            # calculate GDD according to the various methods
-            if self.GDDmethod == 1:
-                tmean = ((tmax + tmin) / 2)
-                tmean = np.clip(tmean, self.Tbase, self.Tupp)
-            elif self.GDDmethod == 2:
-                tmax = np.clip(tmax, self.Tbase, self.Tupp)
-                tmin = np.clip(tmin, self.Tbase, self.Tupp)
-                tmean = ((tmax + tmin) / 2)
-            elif self.GDDmethod == 3:
-                tmax = np.clip(tmax, self.Tbase, self.Tupp)
-                tmin = np.clip(tmin, None, self.Tupp)
-                tmean = np.clip(tmean, self.Tbase, None)
-
-            tmean[np.logical_not(growing_season_idx)] = 0
-            tbase[np.logical_not(growing_season_idx)] = 0
-            GDD = (tmean - tbase)
+        tmean[np.logical_not(growing_season_idx)] = 0
+        tbase[np.logical_not(growing_season_idx)] = 0
+        GDD = (tmean - tbase)
 
         return GDD
 
@@ -316,34 +370,43 @@ class CropParameters(object):
         self.HIend = self.HIstart + self.YldForm
 
         cond2 = (self.CropType == 3)
-        self.FloweringEnd = np.zeros((self.nCrop, self.nLat, self.nLon))  # TODO: check not used unless CropType == 3
-        self.FloweringEnd[cond2] = (self.HIstart + self.Flowering)[cond2]
-        
-        Mode = self.CalendarType
-        if Mode == 1:
 
+        # TODO: declare these in __init__
+        self.FloweringEnd = np.zeros((self.nCrop, self.nLat, self.nLon))
+        self.FloweringEndCD = np.zeros((self.nCrop, self.nLat, self.nLon))
+        self.FloweringCD = np.zeros((self.nCrop, self.nLat, self.nLon))
+                
+        self.FloweringEnd[cond2] = (self.HIstart + self.Flowering)[cond2]
+        self.FloweringEndCD[cond2] = self.FloweringEndCD[cond2]
+        self.FloweringCD[cond2] = self.Flowering[cond2]
+        
+        # Mode = self.CalendarType
+        # if Mode == 1:
+        if self.CalendarType == 1:
             # "Duplicate calendar values (needed to minimise if-statements when
             # switching between GDD and CD runs)
-            self.EmergenceCD = self.Emergence
-            self.Canopy10PctCD = self.Canopy10Pct
-            self.MaxRootingCD = self.MaxRooting
-            self.SenescenceCD = self.Senescence
-            self.MaturityCD = self.Maturity
+            self.EmergenceCD = self.Emergence      # only used in this function
+            self.Canopy10PctCD = self.Canopy10Pct  # only used in this function
+            self.MaxRootingCD = self.MaxRooting    # only used in this function
+            self.SenescenceCD = self.Senescence    # only used in this function
+            self.MaturityCD = self.Maturity        # only used in this function
             self.MaxCanopyCD = self.MaxCanopy
             self.CanopyDevEndCD = self.CanopyDevEnd
             self.HIstartCD = self.HIstart
-            self.HIendCD = self.Hiend
+            self.HIendCD = self.HIend
             self.YldFormCD = self.YldForm            
-            self.FloweringEndCD = self.FloweringEnd
+            self.FloweringEndCD = self.FloweringEnd  # only used in this function
             self.FloweringCD = self.Flowering
 
         # Pre-compute cumulative GDD during growing season
-        if (Mode == 1 & self.SwitchGDD) | (Mode == 2):
-            GDD = update_growing_degree_day(self, Meteo, currTimeStep.startTime)
+        # if (Mode == 1 & self.SwitchGDD) | (Mode == 2):
+        if (self.CalendarType == 1 & self.SwitchGDD) | (self.CalendarType == 2):
+            GDD = self.update_growing_degree_day(meteo, currTimeStep.startTime)
             GDDcum = np.cumsum(GDD, axis=0)
 
             # "Check if converting crop calendar to GDD mode"
-            if Mode == 1 & self.SwitchGDD:
+            # if Mode == 1 & self.SwitchGDD:
+            if self.CalendarType == 1 & self.SwitchGDD:
 
                 # Find GDD equivalent for each crop calendar variable
                 m,n,p = pd.shape  # crop,lat,lon
@@ -351,8 +414,8 @@ class CropParameters(object):
 
                 emergence_idx = pd + self.EmergenceCD  # crop,lat,lon
                 self.Emergence = GDDcum[emergence_idx,I,J,K]
-                canopy10pct_idx = pd + self.Canopy10pctCD
-                self.Canopy10pct = GDDcum[canopy10pct_idx,I,J,K]
+                canopy10pct_idx = pd + self.Canopy10PctCD
+                self.Canopy10Pct = GDDcum[canopy10pct_idx,I,J,K]
                 maxrooting_idx = pd + self.MaxRootingCD
                 self.MaxRooting = GDDcum[maxrooting_idx,I,J,K]
                 maxcanopy_idx = pd + self.MaxCanopyCD
@@ -376,11 +439,11 @@ class CropParameters(object):
                 self.Flowering[cond2] = (self.FloweringEnd - self.HIstart)[cond2]
 
                 # "Convert CGC to GDD mode"
-                self.CGC_CD = self.CGC
+                # self.CGC_CD = self.CGC
                 self.CGC = (np.log((((0.98 * self.CCx) - self.CCx) * self.CC0) / (-0.25 * (self.CCx ** 2)))) / (-(self.MaxCanopy - self.Emergence))
 
                 # "Convert CDC to GDD mode"
-                self.CDC_CD = self.CDC
+                # self.CDC_CD = self.CDC
                 tCD = self.MaturityCD - self.SenescenceCD
                 tCD[tCD <= 0] = 1
                 tGDD = self.Maturity - self.Senescence
@@ -390,11 +453,17 @@ class CropParameters(object):
                 # "Set calendar type to GDD mode"
                 iniItems.cropOptions['CalendarType'] = "2"
             
-            elif Mode == 2:
+            # elif Mode == 2:
+            elif self.CalendarType == 2:
 
                 # "Find calendar days [equivalent] for some variables"
 
                 # "1 Calendar days from sowing to maximum canopy cover"
+
+                # TODO: check this indexing
+                day_idx = np.arange(0, GDD.shape[0])[:,None,None,None] * np.ones((self.nCrop, self.nLon, self.nLat))[None,:,:,:]
+                pd,hd = self.adjust_planting_and_harvesting_date(self.PlantingDate, self.HarvestDate, currTimeStep.startTime)
+                
                 maxcanopy_idx = day_idx
                 maxcanopy_idx[np.logical_not(GDDcum > self.MaxCanopy)] = np.nan
                 maxcanopy_idx = np.nanmin(maxcanopy_idx, axis=0)
@@ -432,24 +501,30 @@ class CropParameters(object):
                 # "2 Duration of flowering in calendar days"
                 self.FloweringCD[cond1] = (FloweringEnd - self.HIstartCD)[cond1]
 
-    def update(self, currTimeStep, Meteo):
+    def update(self, currTimeStep, meteo):
+        """Function to update certain crop parameters for current 
+        time step
+        """
+        # Identify crops which are planted on the current day
+        cond1 = (currTimeStep.doy == self.PlantingDate)
 
-        # Identify crops which are growing in the cell and planted on the
-        # current day
-        cond1 = (self.CropSequence & (currTimeStep.doy == self.PlantingDate))
-
-        GDD = update_growing_degree_day(self, Meteo, currTimeStep.fulldate, MASK=cond1)
+        GDD = self.update_growing_degree_day(meteo, currTimeStep.currTime)
         GDDcum = np.cumsum(GDD, axis=0)
-
-        day_idx = np.arange(1, GDD.shape[0])[:,None,None,None] * np.ones((self.nCrop, self.nLon, self.nLat))[None,:,:,:]
+        
+        # TODO: check this index is correct
+        day_idx = np.arange(1, GDD.shape[0] + 1)[:,None,None,None] * np.ones((self.nCrop, self.nLon, self.nLat))[None,:,:,:]
         
         # Find calendar days [equivalent] for some variables
 
+        # TODO: check this is OK here
+        pd,hd = self.adjust_planting_and_harvesting_date(self.PlantingDate, self.HarvestDate, currTimeStep.currTime)
+        
         # 1 - Calendar days from sowing to maximum canopy cover
         maxcanopy_idx = day_idx
         maxcanopy_idx[np.logical_not(GDDcum > self.MaxCanopy)] = np.nan
         maxcanopy_idx = np.nanmin(maxcanopy_idx, axis=0)
         MaxCanopyCD = (maxcanopy_idx - pd + 1)
+        
         self.MaxCanopyCD[cond1] = MaxCanopyCD[cond1]
 
         # 2 - Calendar days from sowing to end of vegetative growth

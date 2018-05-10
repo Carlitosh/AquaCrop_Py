@@ -9,12 +9,12 @@ import sys
 from pcraster.framework import DynamicModel
 from pcraster.framework import DynamicFramework
 
-from configuration import Configuration
-from currTimeStep import ModelTime
-# from reporting import Reporting
+from Configuration import Configuration
+from CurrTimeStep import ModelTime
+from Reporting import Reporting
 # from spinUp import SpinUp
 
-from aquacrop import AquaCrop
+from AquaCrop import AquaCrop
 
 import logging
 logger = logging.getLogger(__name__)
@@ -25,7 +25,7 @@ class DeterministicRunner(DynamicModel):
         DynamicModel.__init__(self)
         self.modelTime = modelTime
         self.model = AquaCrop(configuration, modelTime, initialState)
-        # self.reporting = Reporting(configuration, self.model, modelTime)
+        self.reporting = Reporting(configuration, self.model, modelTime)
 
     def initial(self):
         pass
@@ -36,11 +36,11 @@ class DeterministicRunner(DynamicModel):
         self.modelTime.update(self.currentTimeStep())
 
         # update model
-        self.model.read_forcings()
+        # self.model.read_forcings()
         self.model.update()
 
         # # do any reporting
-        # self.reporting.report()
+        self.reporting.report()
 
 def main():
 
@@ -67,6 +67,7 @@ def main():
     initial_state = None
 
     currTimeStep.getStartEndTimeSteps(configuration.globalOptions['startTime'], configuration.globalOptions['endTime'])
+    currTimeStep.update(1)      # this essentially allows us to call read_forcings in AquaCrop.__init__() method
     
     logger.info('Transient simulation run has started')
     deterministic_runner = DeterministicRunner(configuration, currTimeStep, initial_state)

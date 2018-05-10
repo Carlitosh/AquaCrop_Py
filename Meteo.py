@@ -11,7 +11,7 @@ import numpy as np
 import logging
 logger = logging.getLogger(__name__)
 
-import virtualOS as vos
+import VirtualOS as vos
 # from ncConverter import *
 # import ETPFunctions as refPotET
 

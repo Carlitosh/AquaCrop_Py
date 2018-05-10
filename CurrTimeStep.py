@@ -108,7 +108,7 @@ class ModelTime(object):
     @property
     def fulldate(self):
         return self._fulldate
-
+    
     @property
     def isLeapYear(self):
         return self.year % 4 == 0 and (self.year % 100 != 0 or self.year % 400 == 0)

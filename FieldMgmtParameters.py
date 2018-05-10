@@ -6,7 +6,7 @@
 import os
 import numpy as np
 import pcraster as pcr
-import virtualOS as vos
+import VirtualOS as vos
 import netCDF4 as nc
 import datetime as datetime
 import calendar as calendar
@@ -25,7 +25,7 @@ class FieldMgmtParameters(object):
 
         self.fieldMgmtParameterFileNC = iniItems.fieldMgmtOptions['fieldMgmtParameterNC']
 
-    def read_field_mgmt_parameters(self):
+    def read(self):
         """Function to read field management input parameters"""
         
         self.parameter_names = ['Mulches','MulchPctGS','MulchPctOS','fMulch','Bunds','zBund','BundWater']

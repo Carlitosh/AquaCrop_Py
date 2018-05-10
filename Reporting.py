@@ -51,15 +51,17 @@ class Reporting(object):
                 if long_name == None: long_name = short_name  
 
                 dims       = varDicts.netcdf_dimensions[var]
-                includeDepthDimension = False
-                if 'depth' in dims:
-                    includeDepthDimension = True
-                
+                # includeDepthDimension = False
+                # if 'depth' in dims:
+                #     includeDepthDimension = True
+
                 # creating netCDF files:
                 self.netcdfObj.createNetCDF(self.outNCDir+"/"+str(var)+"_dailyTot_output.nc",
                                             short_name,
                                             unit,
-                                            includeDepthDimension,
+                                            dims,
+                                            # includeDepthDimension,
+                                            # includeRotationDimension,
                                             long_name)
         
         # list of variables that will be reported:
@@ -69,12 +71,38 @@ class Reporting(object):
         """Function to process model variables to output variables. In 
         most cases this simply involves copying model attributes
         """
-        pass
+        self.precipitation = self._model.meteo.precipitation
+        self.th = self._model.soilwater.th
+        self.Wr = self._model.soilwater.Wr
+        # self.zGW = self._model.groundwater.zGW
+        self.SurfaceStorage = self._model.soilwater.SurfaceStorage
+        self.Irr = self._model.soilwater.Irr
+        self.Infl = self._model.soilwater.Infl
+        self.Runoff = self._model.soilwater.Runoff
+        self.DeepPerc = self._model.soilwater.DeepPerc
+        self.CrTot = self._model.soilwater.CrTot
+        self.GwIn = self._model.soilwater.GwIn
+        self.EsAct = self._model.soilwater.EsAct
+        self.Epot = self._model.soilwater.Epot
+        self.TrAct = self._model.soilwater.TrAct
+        self.Tpot = self._model.soilwater.Tpot
+        self.GDD = self._model.landcover.GDD
+        self.GDDcum = self._model.landcover.GDDcum
+        self.Zroot = self._model.landcover.Zroot
+        self.CC = self._model.landcover.CC
+        self.CC_NS = self._model.landcover.CC_NS
+        self.B = self._model.landcover.B
+        self.B_NS = self._model.landcover.B_NS
+        self.HI = self._model.landcover.HI
+        self.HIadj = self._model.landcover.HIadj
+        self.Y = self._model.landcover.Y
 
     def report(self):
 
         # recap all variables
         self.post_processing()
+
+        # print np.max(self.th)
         
         # time stamp for reporting
         timeStamp = datetime.datetime(self._modelTime.year,\
@@ -87,13 +115,12 @@ class Reporting(object):
         # writing daily output to netcdf files
         if self.outDailyTotNC[0] != "None":
             for var in self.outDailyTotNC:
-                
                 short_name = varDicts.netcdf_short_name[var]
                 dims       = varDicts.netcdf_dimensions[var]
                 self.netcdfObj.data2NetCDF(self.outNCDir+"/"+str(var)+"_dailyTot_output.nc",
                                            short_name,
                                            dims,
-                                           self._model.__getattribute(var),
+                                           self.__getattribute__(var),
                                            # pcr.pcr2numpy(self.__getattribute__(var),vos.MV),
                                            timeStamp)
 

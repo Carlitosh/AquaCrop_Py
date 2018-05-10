@@ -6,7 +6,7 @@
 import os
 import numpy as np
 import pcraster as pcr
-import virtualOS as vos
+import VirtualOS as vos
 import netCDF4 as nc
 import datetime as datetime
 import calendar as calendar
@@ -25,7 +25,7 @@ class IrrigationMgmtParameters(object):
 
         self.irrMgmtParameterFileNC = iniItems.irrMgmtOptions['irrMgmtParameterNC']
 
-    def read_irrigation_mgmt_parameters(self):
+    def read(self):
         """Function to read irrigation management input parameters"""
         
         self.parameter_names = ['IrrMethod','IrrInterval','SMT1','SMT2','SMT3','SMT4','MaxIrr','AppEff','NetIrrSMT','WetSurf']

@@ -11,7 +11,7 @@ import numpy as np
 import logging
 logger = logging.getLogger(__name__)
 
-import virtualOS as vos
+import VirtualOS as vos
 # from ncConverter import *
 # import ETPFunctions as refPotET
 
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 class CO2(object):
 
-    def __init__(self, iniItems, landmask):
+    def __init__(self, iniItems, landmask, initialState = None):
         object.__init__(self)
 
         self.cloneMap = iniItems.cloneMap
@@ -33,6 +33,9 @@ class CO2(object):
            self.landmask = vos.readPCRmapClone(iniItems.globalOptions['landmask'],\
                                                self.cloneMap,self.tmpDir,self.inputDir)
 
+        # reference concentration
+        self.RefConc = 369.41
+        
         self.co2FileNC = iniItems.carbonDioxideOptions['carbonDioxideNC']
 
         # variable names      
@@ -53,7 +56,7 @@ class CO2(object):
 
         # TODO: only read data if the year has changed
         
-        date = '%04i-%02i-%02i' %(self._currTimeStep.year, 1, 1)
+        date = '%04i-%02i-%02i' %(currTimeStep.year, 1, 1)
         self.conc = vos.netcdf2PCRobjClone(self.co2FileNC,
                                            self.co2VarName,
                                            date,

@@ -80,6 +80,22 @@ def checkVariableInNC(ncFile,varName):
     
     return varName in f.variables.keys()
 
+def get_dimension_variable(ncFile,dimName):
+
+    if not checkVariableInNC(ncFile, dimName):            
+        dimvar = None
+    else:
+        if ncFile in filecache.keys():
+            f = filecache[ncFile]
+        else:
+            f = nc.Dataset(ncFile)
+            filecache[ncFile] = f
+    
+        dimName = str(dimName)
+        dimvar = f.variables[dimName][:]
+    
+    return dimvar
+
 def get_time_index(ncFile, date, useDoy):
 
     # Get netCDF file and variable name:
@@ -1194,7 +1210,7 @@ def getMapAttributesALL(cloneMap,arcDegree=True):
     cOut,err = subprocess.Popen(str('mapattr -p %s ' %(cloneMap)), stdout=subprocess.PIPE,stderr=open(os.devnull),shell=True).communicate()
 
     if err !=None or cOut == []:
-        print "Something wrong with mattattr in virtualOS, maybe clone Map does not exist ? "
+        print "Something wrong with mattattr in VirtualOS, maybe clone Map does not exist ? "
         sys.exit()
     cellsize = float(cOut.split()[7])
     if arcDegree == True: cellsize = round(cellsize * 360000.)/360000.
@@ -1212,7 +1228,7 @@ def getMapAttributes(cloneMap,attribute,arcDegree=True):
     cOut,err = subprocess.Popen(str('mapattr -p %s ' %(cloneMap)), stdout=subprocess.PIPE,stderr=open(os.devnull),shell=True).communicate()
     #print cOut
     if err !=None or cOut == []:
-        print "Something wrong with mattattr in virtualOS, maybe clone Map does not exist ? "
+        print "Something wrong with mattattr in VirtualOS, maybe clone Map does not exist ? "
         sys.exit()
     #print cOut.split()
     co = None; err = None

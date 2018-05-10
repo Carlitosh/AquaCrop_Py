@@ -13,11 +13,12 @@ import pcraster as pcr
 
 import VirtualOS as vos
 import Meteo as meteo
-import C02
+import CO2 as CO2
 import Groundwater as groundwater
+import SoilWaterBalance as soilwater
+import LandCover as landcover
 import CropParameters as cropParams
 import SoilAndTopoParameters as soilParams
-import InitialConditions as initCond
 
 import logging
 logger = logging.getLogger(__name__)
@@ -37,9 +38,9 @@ class AquaCrop(object):
                                             configuration.tmpDir,
                                             configuration.globalOptions['inputDir'],
                                             True)
-        attr = vos.getMapAttributesALL(self.cloneMap)
-        self.nLat = int(attr['rows'])
-        self.nLon = int(attr['cols'])
+        # attr = vos.getMapAttributesALL(self.cloneMap)
+        # self.nLat = int(attr['rows'])
+        # self.nLon = int(attr['cols'])
         
         # Prepare sub-models
         self.meteo = meteo.Meteo(
@@ -47,7 +48,7 @@ class AquaCrop(object):
             self.landmask,
             initialState)
 
-        self.C02 = CO2.C02(
+        self.CO2 = CO2.CO2(
             self._configuration,
             self.landmask,
             initialState)
@@ -57,14 +58,20 @@ class AquaCrop(object):
             self.landmask,
             initialState)
 
-        self.soilwater = soilwater.SoilWater(
-            self._configuration,
-            self.landmask,
-            initialState)
-
+        self.read_forcings()
+        
         self.landcover = landcover.LandCover(
             self._configuration,
             self.landmask,
+            self.meteo,
+            currTimeStep,
+            initialState)
+
+        self.soilwater = soilwater.SoilWaterBalance(
+            self._configuration,
+            self.landmask,
+            self.groundwater,
+            self.landcover,
             initialState)
         
     @property
@@ -117,19 +124,44 @@ class AquaCrop(object):
         logger.info("Reading forcings for time %s", self._modelTime)
         self.meteo.read_forcings(self._modelTime)
         self.groundwater.read_forcings(self._modelTime)
-        self.C02.read_forcings(self._modelTime)
+        self.CO2.read_forcings(self._modelTime)
 
-    def update(self, meteo, currTimeStep):
+    def update(self):
         """Function to update model state for current time step"""
 
         # Update forcing data
         self.read_forcings()
 
-        # Update crop parameters for currently grown crops
-        self.crop.update()
-
+        # Update parameters for current time step
+        self.landcover.update(self.meteo, self.CO2, self._modelTime)
+        self.soilwater.update(self.landcover.CropIndex, self._modelTime)
         
+        self.soilwater.check_groundwater_table(self.groundwater)
+        self.soilwater.pre_irrigation(self.landcover)
+        self.soilwater.drainage()
+        self.soilwater.rainfall_partition(self.meteo)
+        self.soilwater.irrigation(self.landcover, self.meteo)
+        self.soilwater.infiltration()
+        self.soilwater.capillary_rise(self.groundwater)
 
+        self.landcover.germination(self.soilwater)
+        self.landcover.growth_stage()
+        self.landcover.root_development(self.groundwater, self.soilwater)
+        self.landcover.canopy_cover(self.meteo, self.soilwater)
 
+        self.soilwater.soil_evaporation(self.meteo, self.landcover, self._modelTime)
+        self.soilwater.root_zone_water(self.landcover)
+        self.landcover.water_stress(self.meteo, self.soilwater, beta=True)
+        self.soilwater.aeration_stress(self.landcover)        
+        self.soilwater.transpiration(self.meteo, self.landcover)
+        self.soilwater.groundwater_inflow(self.groundwater)
 
+        self.landcover.harvest_index_ref_current_day()
+        self.landcover.biomass_accumulation(self.meteo, self.soilwater)
 
+        self.soilwater.root_zone_water(self.landcover)
+        self.landcover.harvest_index(self.meteo, self.soilwater)
+        self.landcover.crop_yield()
+
+        self.soilwater.root_zone_water(self.landcover)
+        self.soilwater.add_pre_irrigation()
