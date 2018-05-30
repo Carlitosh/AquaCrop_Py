@@ -1184,7 +1184,7 @@ class SoilWaterBalance(object):
                 # drainage/infiltration has already occurred on current day
                 cond3 = ((np.round(MaxCR * 1000) > 0)
                          & (np.round(self.FluxOut[compi,:] * 1000) == 0))
-                Df = np.zeros((nr, nlat, nlon))
+                Df = np.zeros((self.nRotation, self.nLat, self.nLon))
                 cond31 = (cond3 & ((self.th[compi,:] >= th_wp[compi,:]) & (self.soil_pars.fshape_cr > 0)))
                 Df[cond31] = (
                     1 - (((self.th[compi,:] - th_wp[compi,:])
@@ -1602,12 +1602,12 @@ class SoilWaterBalance(object):
                     # Water available in compartment for extraction (mm)
                     Wdry = 1000 * th_dry[comp,:] * dz[comp,:]  
                     W = 1000 * self.th[comp,:] * dz[comp,:]
-                    AvW = np.zeros((nr, nlat, nlon))
+                    AvW = np.zeros((self.nRotation, self.nLat, self.nLon))
                     AvW[cond111] = ((W - Wdry) * factor[comp,:])[cond111]
                     AvW = np.clip(AvW, 0, None)
 
                     # Determine amount by which to adjust variables
-                    chng = np.zeros((nr, nlat, nlon))
+                    chng = np.zeros((self.nRotation, self.nLat, self.nLon))
                     cond1111 = (cond111 & (AvW >= ExtractPotStg1))
                     chng[cond1111] = ExtractPotStg1[cond1111]
                     cond1112 = (cond111 & np.logical_not(cond1111))
@@ -1813,7 +1813,7 @@ class SoilWaterBalance(object):
                 
                 cond132 = (cond13 & np.logical_not(cond131))
                 SxCompBot[cond132] = (landcover.SxBot * landcover.rCor)[cond132]
-                SxComp[cond13] = ((SxCompTop + SxCompBot) / 2)[cond13]
+                SxComp[comp,:][cond13] = ((SxCompTop + SxCompBot) / 2)[cond13]
                 comp += 1
                 
         SxComp *= comp_sto

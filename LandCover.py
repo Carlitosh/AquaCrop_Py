@@ -157,31 +157,23 @@ class LandCover(object):
         """Function to update parameters for current crop grown as well 
         as counters pertaining to crop growth
         """
-        # Update season counter for crops planted on current day
-        cond1 = (currTimeStep.doy == self.crop_pars.PlantingDate)
-        self.SeasonCounter[cond1] += 1
 
-        # Check if growing season is active on current time step
-        # ######################################################
+        # Update crop parameters for currently grown crops
+        # ################################################
+
+        self.crop_pars.compute_water_productivity_adjustment_factor(CO2)
+        self.crop_pars.update(currTimeStep, meteo)
         
-        # First, work out if the current date is within the growing season of
-        # each crop as defined by PlantingDate and HarvestDate parameters
-        cond2 = (self.SeasonCounter > 0)
-        cond3 = ((self.crop_pars.PlantingDate <= currTimeStep.doy) & (currTimeStep.doy <= self.crop_pars.HarvestDate))
-        cond4 = (self.crop_pars.PlantingDate > self.crop_pars.HarvestDate)
-        cond5 = ((self.crop_pars.PlantingDate <= currTimeStep.doy) | (currTimeStep.doy <= self.crop_pars.HarvestDate))
-        GrowingSeason = ((cond2 & cond3) | (cond2 & cond4 & cond5))  # crop,lat,lon
-
-        # We now add a rotation dimension to GrowingSeason array and multiply it
+        # Add a rotation dimension to GrowingSeason array and multiply it
         # by CropSequence, with the resulting array showing which crop (if any)
         # is currently grown in each rotation considered.
-        GrowingSeason = GrowingSeason[:,None,:,:] * np.ones((self.nRotation))[None,:,None,None]
+        GrowingSeason = self.crop_pars.GrowingSeason[:,None,:,:] * np.ones((self.nRotation))[None,:,None,None]
         GrowingSeason *= self.crop_pars.CropSequence  # crop,rotation,lat,lon
 
         # Lastly, check whether the crop has died or reached maturity, then
         # see which rotations have crops currently growing
         GrowingSeason *= np.logical_not(self.CropDead | self.CropMature)
-        self.GrowingSeasonIndex = np.any(GrowingSeason, axis=0)  # rotation,lat,lon
+        self.GrowingSeasonIndex = np.any(GrowingSeason, axis=0) # rotation,lat,lon
         
         # Get index of crops currently grown
         CropIndex = (np.arange(0, self.nCrop)[:,None,None,None] * np.ones((self.nRotation, self.nLon, self.nLat))[None,:,:,:])
@@ -194,14 +186,7 @@ class LandCover(object):
         # the parameter value by GrowingSeason, such that it has a value of
         # zero if no crops are growing.
 
-        # Update crop parameters for currently grown crops
-        # ################################################
-
-        self.crop_pars.compute_water_productivity_adjustment_factor(CO2)
-        # Update crop parameters (TODO: only update if SeasonCounter > 1)
-        self.crop_pars.update(currTimeStep, meteo)
-
-        # Select parameters for current day
+        # Select crop parameters for current day
         I,J,K = np.ogrid[:self.nRotation,:self.nLat,:self.nLon]
         for nm in self.crop_pars.crop_parameter_names:
             param = getattr(self.crop_pars, nm)
@@ -212,10 +197,6 @@ class LandCover(object):
         # today is the start of a growing season
         self.GrowingSeasonDayOne = ((self.DAP == 0) & (self.GrowingSeasonIndex))
 
-        # cond2 = (currTimeStep.doy == self.PlantingDate)
-        # self.Zroot[cond2] = self.Zmin[cond2]
-        # self.CC0adj[cond2] = self.CC0[cond2]
-        
         # Update counters
         # ###############
 

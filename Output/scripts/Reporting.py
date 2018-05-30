@@ -74,7 +74,7 @@ class Reporting(object):
         self.precipitation = self._model.meteo.precipitation
         self.th = self._model.soilwater.th
         self.Wr = self._model.soilwater.Wr
-        # self.zGW = self._model.groundwater.zGW
+        self.zGW = self._model.groundwater.zGW
         self.SurfaceStorage = self._model.soilwater.SurfaceStorage
         self.Irr = self._model.soilwater.Irr
         self.Infl = self._model.soilwater.Infl

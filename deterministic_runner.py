@@ -39,8 +39,8 @@ class DeterministicRunner(DynamicModel):
         # self.model.read_forcings()
         self.model.update()
 
-        # # do any reporting
-        self.reporting.report()
+        # # # do any reporting
+        # self.reporting.report()
 
 def main():
 
