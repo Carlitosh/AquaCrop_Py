@@ -71,14 +71,14 @@ class SoilWaterBalance(object):
         # ######################
         arr_zeros = np.zeros((self.nRotation, self.nLat, self.nLon))
         arr_ones = np.ones((self.nRotation, self.nLat, self.nLon))
-        self.AgeDays = arr_zeros
-        self.AgeDays_NS = arr_zeros
-        self.AerDays = arr_zeros
-        self.IrrCum = arr_zeros
-        self.IrrNetCum = arr_zeros
-        self.DaySubmerged = arr_zeros
-        self.Epot = arr_zeros
-        self.Tpot = arr_zeros
+        self.AgeDays      = np.copy(arr_zeros)
+        self.AgeDays_NS   = np.copy(arr_zeros)
+        self.AerDays      = np.copy(arr_zeros)
+        self.IrrCum       = np.copy(arr_zeros)
+        self.IrrNetCum    = np.copy(arr_zeros)
+        self.DaySubmerged = np.copy(arr_zeros)
+        self.Epot         = np.copy(arr_zeros)
+        self.Tpot         = np.copy(arr_zeros)
         
         self.WTinSoil = arr_zeros.astype(bool)
 
@@ -86,7 +86,7 @@ class SoilWaterBalance(object):
         self.AerDaysComp = np.zeros((self.nComp, self.nRotation, self.nLat, self.nLon))
 
         # Transpiration
-        self.TrRatio = arr_ones
+        self.TrRatio = np.copy(arr_ones)
         
         # Surface storage between bunds
         cond1 = (self.field_mgmt_pars.Bunds == 0) & (self.field_mgmt_pars.zBund > 0.001)
@@ -150,54 +150,54 @@ class SoilWaterBalance(object):
         self.th_fc_adj = self.soil_pars.th_fc[self.soil_pars.layerIndex,:]
         
         # Groundwater
-        self.GwIn = arr_zeros
-        self.zGW = arr_zeros
+        self.GwIn = np.copy(arr_zeros)
+        self.zGW = np.copy(arr_zeros)
 
         # Drainage
         self.FluxOut = np.zeros((self.nComp, self.nRotation, self.nLat, self.nLon))
-        self.DeepPerc = arr_zeros
+        self.DeepPerc = np.copy(arr_zeros)
 
         # Infiltration
-        self.Runoff = arr_zeros
-        self.Infl = arr_zeros
+        self.Runoff = np.copy(arr_zeros)
+        self.Infl   = np.copy(arr_zeros)
 
         # Soil evaporation
-        self.Wevap_Act = arr_zeros
-        self.Wevap_Sat = arr_zeros
-        self.Wevap_Fc = arr_zeros
-        self.Wevap_Wp = arr_zeros
-        self.Wevap_Dry = arr_zeros
-        self.Stage2 = arr_zeros.astype(bool)
-        self.EvapZ = arr_zeros
-        self.Wstage2 = arr_zeros
-        self.Wsurf = arr_zeros
+        self.Wevap_Act = np.copy(arr_zeros)
+        self.Wevap_Sat = np.copy(arr_zeros)
+        self.Wevap_Fc  = np.copy(arr_zeros)
+        self.Wevap_Wp  = np.copy(arr_zeros)
+        self.Wevap_Dry = np.copy(arr_zeros)
+        self.Stage2    = np.copy(arr_zeros.astype(bool))
+        self.EvapZ     = np.copy(arr_zeros)
+        self.Wstage2   = np.copy(arr_zeros)
+        self.Wsurf     = np.copy(arr_zeros)
         
         # Irrigation
-        self.Irr = arr_zeros
-        self.PreIrr = arr_zeros
-        self.IrrNet = arr_zeros
+        self.Irr       = np.copy(arr_zeros)
+        self.PreIrr    = np.copy(arr_zeros)
+        self.IrrNet    = np.copy(arr_zeros)
         
         # Root zone
-        self.thRZ_Act = arr_zeros
-        self.thRZ_Sat = arr_zeros
-        self.thRZ_Fc = arr_zeros
-        self.thRZ_Wp = arr_zeros
-        self.thRZ_Dry = arr_zeros
-        self.thRZ_Aer = arr_zeros
-        self.TAW = arr_zeros
-        self.Dr = arr_zeros
-        self.Wr = arr_zeros
+        self.thRZ_Act  = np.copy(arr_zeros)
+        self.thRZ_Sat  = np.copy(arr_zeros)
+        self.thRZ_Fc   = np.copy(arr_zeros)
+        self.thRZ_Wp   = np.copy(arr_zeros)
+        self.thRZ_Dry  = np.copy(arr_zeros)
+        self.thRZ_Aer  = np.copy(arr_zeros)
+        self.TAW       = np.copy(arr_zeros)
+        self.Dr        = np.copy(arr_zeros)
+        self.Wr        = np.copy(arr_zeros)
 
         # Aeration stress
         self.AerDaysComp = np.zeros((self.nComp, self.nRotation, self.nLat, self.nLon))
                 
         # Transpiration
-        self.Ksa_Aer = arr_zeros
-        self.TrPot0 = arr_zeros
-        self.TrPot_NS = arr_zeros
-        self.TrAct = arr_zeros
-        self.TrAct0 = arr_zeros
-        self.Tpot = arr_zeros
+        self.Ksa_Aer  = np.copy(arr_zeros)
+        self.TrPot0   = np.copy(arr_zeros)
+        self.TrPot_NS = np.copy(arr_zeros)
+        self.TrAct    = np.copy(arr_zeros)
+        self.TrAct0   = np.copy(arr_zeros)
+        self.Tpot     = np.copy(arr_zeros)
         
     def getState(self):
         result = {}
@@ -256,7 +256,7 @@ class SoilWaterBalance(object):
         
         # These are options which apply to the entire study area (not just a
         # selection of cells), so we can use an if statement.
-        if groundwater.WaterTable:
+        if groundwater.WaterTable and groundwater.VariableWaterTable:
         
             # get the mid point of each compartment
             zBot = np.cumsum(self.soil_pars.dz)
@@ -328,7 +328,7 @@ class SoilWaterBalance(object):
             self.zGW = np.ones((self.nRotation, self.nLat, self.nLon)) * -999
             self.WTinSoil = np.full((self.nRotation, self.nLat, self.nLon), False)
             self.th_fc_adj = th_fc
-    
+
     def pre_irrigation(self, landcover):
         """Function to calculate pre-irrigation when in net irrigation 
         mode.
@@ -353,7 +353,6 @@ class SoilWaterBalance(object):
         # Update pre-irrigation and root zone water content (mm)
         PreIrr_req = ((thCrit - self.th) * 1000 * dz)
         PreIrr_req[np.logical_not(cond1)] = 0
-        # self.PreIrr_req = PreIrr_req
         self.PreIrr = np.sum(PreIrr_req, axis=0)
 
     def drainage(self):
@@ -371,36 +370,31 @@ class SoilWaterBalance(object):
 
         for comp in range(self.soil_pars.nComp):
 
-            # Calculate drainage ability of compartment ii
+            # Calculate drainage ability of compartment ii (Lines 22-38 in AOS_Drainage.m)
             dthdt = np.zeros((self.nRotation, self.nLat, self.nLon))
             cond1 = (self.th[comp,:] <= self.th_fc_adj[comp,:])
             dthdt[cond1] = 0
-
             cond2 = (np.logical_not(cond1) & (self.th[comp,:] >= th_s[comp,:]))
-            dthdt[cond2] = ((tau[comp,:] * th_s[comp,:]) - th_fc[comp,:])[cond2]
-
+            dthdt[cond2] = (tau[comp,:] * (th_s[comp,:] - th_fc[comp,:]))[cond2]
             cond3 = np.logical_not(cond1 | cond2)
             dthdt[cond3] = (
-                tau[comp,:]
-                * (th_s[comp,:] - th_fc[comp,:])
+                tau[comp,:] * (th_s[comp,:] - th_fc[comp,:])
                 * ((np.exp(self.th[comp,:] - th_fc[comp,:]) - 1)
                    / (np.exp(th_s[comp,:] - th_fc[comp,:]) - 1)))[cond3]
 
-            cond4 = (
-                (cond2 | cond3)
-                & ((self.th[comp,:] - dthdt) < self.th_fc_adj[comp,:]))
+            cond4 = ((cond2 | cond3) & ((self.th[comp,:] - dthdt) < self.th_fc_adj[comp,:]))
             dthdt[cond4] = (self.th[comp,:] - self.th_fc_adj[comp,:])[cond4]
 
-            # Drainage from compartment ii (mm)
+            # Drainage from compartment ii (mm) (Line 41 in AOS_Drainage.m)
             draincomp = dthdt * self.soil_pars.dz[comp]
 
             # Check drainage ability of compartment ii against cumulative
-            # drainage from compartments above
+            # drainage from compartments above (Lines 45-52 in AOS_Drainage.m)
             excess = np.zeros((self.nRotation, self.nLat, self.nLon))
             prethick = self.soil_pars.dzsum[comp] - self.soil_pars.dz[comp]
             drainmax = dthdt * 1000 * prethick
             drainability = (drainsum <= drainmax)
-
+            
             # Drain compartment
             cond5 = drainability
             thnew[comp,:][cond5] = (self.th[comp,:] - dthdt)[cond5]
@@ -414,10 +408,13 @@ class SoilWaterBalance(object):
 
             # ##################################################################
             # Calculate value of theta (thX) needed to provide a drainage
-            # ability equal to cumulative drainage
+            # ability equal to cumulative drainage (Lines 70-85 in AOS_Drainage.m)
 
             cond6 = np.logical_not(drainability)
-            dthdt[cond6] = (drainsum / (1000 * prethick))[cond6]
+            dthdt[cond6] = np.divide(drainsum,
+                                     1000 * prethick,
+                                     out=np.zeros_like(drainsum),
+                                     where=prethick!=0)[cond6]
 
             thX = np.zeros((self.nRotation, self.nLat, self.nLon))
 
@@ -425,12 +422,9 @@ class SoilWaterBalance(object):
             thX[cond61] = self.th_fc_adj[comp,:][cond61]
             
             cond62 = (cond6 & np.logical_not(cond61) & (tau[comp,:] > 0))
-            A = (1 + ((dthdt * (np.exp(th_s[comp,:] - th_fc[comp,:]) - 1))
-                      / (tau[comp,:] * (th_s[comp,:] - th_fc[comp,:]))))
+            A = (1 + ((dthdt * (np.exp(th_s[comp,:] - th_fc[comp,:]) - 1)) / (tau[comp,:] * (th_s[comp,:] - th_fc[comp,:]))))
             thX[cond62] = (self.th_fc_adj[comp,:] + np.log(A))[cond62]
-
-            cond621 = (cond62 & (thX < self.th_fc_adj[comp,:]))
-            thX[cond621] = self.th_fc_adj[comp,:][cond621]
+            thX[cond62] = np.clip(thX, self.th_fc_adj[comp,:], None)[cond62]
 
             cond63 = (cond6 & np.logical_not(cond61 | cond62))
             thX[cond63] = (th_s[comp,:] + 0.01)[cond63]
@@ -439,43 +433,25 @@ class SoilWaterBalance(object):
             # Check thX against hydraulic properties of current soil layer
 
             # Increase compartment ii water content with cumulative drainage
-            cond64 = (np.logical_not(drainability) & (thX <= th_s[comp,:]))
-            thnew[comp,:][cond64] = (
-                self.th[comp,:]
-                + (drainsum / (1000 * self.soil_pars.dz[comp])))[cond64]
+            cond64 = (cond6 & (thX <= th_s[comp,:]))
+            thnew[comp,:][cond64] = (self.th[comp,:] + (drainsum / (1000 * self.soil_pars.dz[comp])))[cond64]
 
             # Check updated water content against thX
             cond641 = (cond64 & (thnew[comp,:] > thX))
 
             # Cumulative drainage is the drainage difference between theta_x and
             # new theta plus drainage ability at theta_x
-            drainsum[cond641] = (
-                (thnew[comp,:] - thX)
-                * 1000 * self.soil_pars.dz[comp])[cond641]
+            drainsum[cond641] = ((thnew[comp,:] - thX) * 1000 * self.soil_pars.dz[comp])[cond641]
             
             # Calculate drainage ability for thX
             cond6411 = (cond641 & (thX <= self.th_fc_adj[comp,:]))
             dthdt[cond6411] = 0
-            cond6412 = (
-                cond641
-                & np.logical_not(cond6411)
-                & (thX >= th_s[comp,:]))
-            dthdt[cond6412] = (
-                tau[comp,:]
-                * (th_s[comp,:] - th_fc[comp,:]))[cond6412]
+            cond6412 = (cond641 & np.logical_not(cond6411) & (thX >= th_s[comp,:]))
+            dthdt[cond6412] = (tau[comp,:] * (th_s[comp,:] - th_fc[comp,:]))[cond6412]
             cond6413 = (cond641 & np.logical_not(cond6411 | cond6412))
-            dthdt[cond6413] = (
-                tau[comp,:]
-                * (th_s[comp,:] - th_fc[comp,:])
-                * ((np.exp(thX - th_fc[comp,:]) - 1)
-                   / (np.exp(th_s[comp,:] - th_fc[comp,:]) - 1)))[cond6413]
-            cond6414 = (
-                (cond6412 | cond6413)
-                & ((thX - dthdt) < self.th_fc_adj[comp,:]))
+            dthdt[cond6413] = (tau[comp,:] * (th_s[comp,:] - th_fc[comp,:]) * ((np.exp(thX - th_fc[comp,:]) - 1) / (np.exp(th_s[comp,:] - th_fc[comp,:]) - 1)))[cond6413]
+            cond6414 = ((cond6412 | cond6413) & ((thX - dthdt) < self.th_fc_adj[comp,:]))
             dthdt[cond6414] = (thX - self.th_fc_adj[comp,:])[cond6414]
-
-            # Update water content
-            thnew[comp,:][cond641] = (thX - dthdt)[cond641]
 
             # Update cumulative drainage (mm), restrict to saturated hydraulic
             # conductivity and adjust excess drainage flow
@@ -483,35 +459,23 @@ class SoilWaterBalance(object):
             cond6415 = (cond641 & (drainsum > ksat[comp,:]))
             excess[cond6415] += (drainsum - ksat[comp,:])[cond6415]
             drainsum[cond6415] = ksat[comp,:][cond6415]
+            
+            # Update water content
+            thnew[comp,:][cond641] = (thX - dthdt)[cond641]
 
             # ##################################################################
-            cond642 = (
-                cond64
-                & np.logical_not(cond641)
-                & (thnew[comp,:] > self.th_fc_adj[comp,:]))
+            # Lines 125-153
+            cond642 = (cond64 & np.logical_not(cond641) & (thnew[comp,:] > self.th_fc_adj[comp,:]))
             
             # Calculate drainage ability for updated water content
-            cond6421 = (cond642
-                        & (thnew[comp,:] <= self.th_fc_adj[comp,:]))
+            cond6421 = (cond642 & (thnew[comp,:] <= self.th_fc_adj[comp,:]))
             dthdt[cond6421] = 0
-            cond6422 = (
-                cond642
-                & np.logical_not(cond6421)
-                & (thnew[comp,:] >= th_s[comp,:]))
-            dthdt[cond6422] = (
-                tau[comp,:]
-                * (th_s[comp,:] - th_fc[comp,:]))[cond6422]
+            cond6422 = (cond642 & np.logical_not(cond6421) & (thnew[comp,:] >= th_s[comp,:]))
+            dthdt[cond6422] = (tau[comp,:] * (th_s[comp,:] - th_fc[comp,:]))[cond6422]
             cond6423 = (cond642 & np.logical_not(cond6421 | cond6422))
-            dthdt[cond6423] = (
-                tau[comp,:]
-                * (th_s[comp,:] - th_fc[comp,:])
-                * ((np.exp(thnew[comp,:] - th_fc[comp,:]) - 1)
-                   / (np.exp(th_s[comp,:] - th_fc[comp,:]) - 1)))[cond6423]
-            cond6424 = (
-                (cond6422 | cond6423)
-                & ((thnew[comp,:] - dthdt) < self.th_fc_adj[comp,:]))
-            dthdt[cond6424] = (thnew[comp,:]
-                               - self.th_fc_adj[comp,:])[cond6424]
+            dthdt[cond6423] = (tau[comp,:] * (th_s[comp,:] - th_fc[comp,:]) * ((np.exp(thnew[comp,:] - th_fc[comp,:]) - 1) / (np.exp(th_s[comp,:] - th_fc[comp,:]) - 1)))[cond6423]
+            cond6424 = ((cond6422 | cond6423) & ((thnew[comp,:] - dthdt) < self.th_fc_adj[comp,:]))
+            dthdt[cond6424] = (thnew[comp,:] - self.th_fc_adj[comp,:])[cond6424]
             
             # Update water content
             thnew[comp,:][cond642] = (thnew[comp,:] - dthdt)[cond642]
@@ -524,51 +488,32 @@ class SoilWaterBalance(object):
             drainsum[cond6425] = ksat[comp,:][cond6425]
 
             # ##################################################################
-            cond643 = (
-                cond64
-                & np.logical_not(cond641 | cond642))
-
             # Drainage and cumulative drainage are zero as water content has not
-            # risen above field capacity in the present compartment
+            # risen above field capacity in the present compartment (Lines 155-158)
+            cond643 = (cond64 & np.logical_not(cond641 | cond642))
             drainsum[cond643] = 0
                 
             # ##################################################################
             # Increase water content in compartment ii with cumulative drainage
             # from above
-            cond65 = (np.logical_not(drainability) & (thX > th_s[comp,:]))
-            thnew[comp,:][cond65] = (
-                self.th[comp,:]
-                + (drainsum / (1000 * self.soil_pars.dz[comp])))[cond65]
+
+            cond65 = (cond6 & np.logical_not(cond64) & (thX > th_s[comp,:]))
+            thnew[comp,:][cond65] = (self.th[comp,:] + (drainsum / (1000 * self.soil_pars.dz[comp])))[cond65]
 
             # Check new water content against hydraulic properties of soil layer
+            # Lines 166-198
             cond651 = (cond65 & (thnew[comp,:] <= th_s[comp,:]))
 
             # Calculate new drainage ability
             cond6511 = (cond651 & (thnew[comp,:] > self.th_fc_adj[comp,:]))
-
-            cond65111 = (cond6511 & (thnew[comp,:] <= th_fc[comp,:]))
+            cond65111 = (cond6511 & (thnew[comp,:] <= self.th_fc_adj[comp,:]))
             dthdt[cond65111] = 0
-
-            cond65112 = (
-                cond6511
-                & np.logical_not(cond65111)
-                & (thnew[comp,:] >= th_s[comp,:]))
-            dthdt[cond65112] = (
-                tau[comp,:]
-                * (th_s[comp,:] - th_fc[comp,:]))[cond65112]
-
+            cond65112 = (cond6511 & np.logical_not(cond65111) & (thnew[comp,:] >= th_s[comp,:]))
+            dthdt[cond65112] = (tau[comp,:] * (th_s[comp,:] - th_fc[comp,:]))[cond65112]
             cond65113 = (cond6511 & np.logical_not(cond65111 | cond65112))
-            dthdt[cond65113] = (
-                tau[comp,:]
-                * (th_s[comp,:] - th_fc[comp,:])
-                * ((np.exp(thnew[comp,:] - th_fc[comp,:]) - 1)
-                   / (np.exp(th_s[comp,:] - th_fc[comp,:]) - 1)))[cond65113]
-
-            cond65114 = (
-                (cond65112 | cond65113)
-                & ((thnew[comp,:] - dthdt) < self.th_fc_adj[comp,:]))
-            dthdt[cond65114] = (thnew[comp,:] -
-                                self.th_fc_adj[comp,:])[cond65114]
+            dthdt[cond65113] = (tau[comp,:] * (th_s[comp,:] - th_fc[comp,:]) * ((np.exp(thnew[comp,:] - th_fc[comp,:]) - 1) / (np.exp(th_s[comp,:] - th_fc[comp,:]) - 1)))[cond65113]
+            cond65114 = ((cond65112 | cond65113) & ((thnew[comp,:] - dthdt) < self.th_fc_adj[comp,:]))
+            dthdt[cond65114] = (thnew[comp,:] - self.th_fc_adj[comp,:])[cond65114]
 
             # Update water content
             thnew[comp,:][cond6511] -= (dthdt)[cond6511]
@@ -584,37 +529,22 @@ class SoilWaterBalance(object):
             drainsum[cond6512] = 0
             
             # ##################################################################
-
-            cond652 = (cond65 & (thnew[comp,:] > th_s[comp,:]))
+            # Lines 200-239
+            
+            cond652 = (cond65 & np.logical_not(cond651) & (thnew[comp,:] > th_s[comp,:]))
 
             # Calculate excess drainage above saturation
-            excess[cond652] = (
-                (thnew[comp,:] - th_s[comp,:])
-                * 1000 * self.soil_pars.dz[comp])[cond652]
+            excess[cond652] = ((thnew[comp,:] - th_s[comp,:]) * 1000 * self.soil_pars.dz[comp])[cond652]
 
-            # "Calculate drainage ability for updated water content"
-            cond6521 = (cond652
-                        & (thnew[comp,:] <= self.th_fc_adj[comp,:]))
+            # Calculate drainage ability for updated water content
+            cond6521 = (cond652 & (thnew[comp,:] <= self.th_fc_adj[comp,:]))
             dthdt[cond6521] = 0
-
-            cond6522 = (
-                cond652
-                & (np.logical_not(cond6521) & (thnew[comp,:] >= th_s[comp,:])))
-            dthdt[cond6522] = (
-                tau[comp,:]
-                * (th_s[comp,:] - th_fc[comp,:]))[cond6522]
+            cond6522 = (cond652 & (np.logical_not(cond6521) & (thnew[comp,:] >= th_s[comp,:])))
+            dthdt[cond6522] = (tau[comp,:] * (th_s[comp,:] - th_fc[comp,:]))[cond6522]
             cond6523 = (cond652 & np.logical_not(cond6521 | cond6522))
-            dthdt[cond6523] = (
-                tau[comp,:]
-                * (th_s[comp,:] - th_fc[comp,:])
-                * ((np.exp(thnew[comp,:] - th_fc[comp,:]) - 1)
-                   / (np.exp(th_s[comp,:] - th_fc[comp,:]) - 1)))[cond6523]
-
-            cond6524 = (
-                (cond6522 | cond6523)
-                & ((thnew[comp,:] - dthdt) < self.th_fc_adj[comp,:]))
-            dthdt[cond6524] = (thnew[comp,:]
-                             - self.th_fc_adj[comp,:])[cond6524]
+            dthdt[cond6523] = (tau[comp,:] * (th_s[comp,:] - th_fc[comp,:]) * ((np.exp(thnew[comp,:] - th_fc[comp,:]) - 1) / (np.exp(th_s[comp,:] - th_fc[comp,:]) - 1)))[cond6523]
+            cond6524 = ((cond6522 | cond6523) & ((thnew[comp,:] - dthdt) < self.th_fc_adj[comp,:]))
+            dthdt[cond6524] = (thnew[comp,:] - self.th_fc_adj[comp,:])[cond6524]
 
             # Update water content
             thnew[comp,:][cond652] = (th_s[comp,:] - dthdt)[cond652]
@@ -652,21 +582,18 @@ class SoilWaterBalance(object):
                     self.FluxOut[precomp,:][cond7] -= excess[cond7]
 
                 # Increase water content to store excess
-                thnew[precomp,:][cond7] += (
-                    excess / (1000 * self.soil_pars.dz[precomp]))[cond7]
+                thnew[precomp,:][cond7] += (excess / (1000 * self.soil_pars.dz[precomp]))[cond7]
 
                 # Limit water content to saturation and adjust excess counter
                 cond71 = (cond7 & (thnew[precomp,:] > th_s[precomp,:]))
-                excess[cond71] = (
-                    (thnew[precomp,:] - th_s[precomp,:])
-                    * 1000 * self.soil_pars.dz[precomp])[cond71]                
+                excess[cond71] = ((thnew[precomp,:] - th_s[precomp,:]) * 1000 * self.soil_pars.dz[precomp])[cond71]
                 thnew[precomp,:][cond71] = th_s[precomp,:][cond71]
                 
                 cond72 = (cond7 & np.logical_not(cond71))
                 excess[cond72] = 0
 
 
-        # Update state variables
+        # Update state variables        
         self.DeepPerc = drainsum
         self.th = thnew
 
@@ -689,11 +616,12 @@ class SoilWaterBalance(object):
         # Calculate runoff
         cond1 = ((self.Bunds == 0) | (self.zBund < 0.001))
         self.DaySubmerged[cond1] = 0
+
         cond11 = (cond1 & (self.soil_pars.AdjCN == 1))
 
         # Check which compartment cover depth of top soil used to adjust
         # curve number
-        comp_sto = ((dzsum - dz) < zcn)
+        comp_sto = (dzsum <= zcn)
         cond111 = np.all((comp_sto == False), axis=0)
         cond111 = np.broadcast_to(cond111, comp_sto.shape)
         comp_sto[cond111] = True
@@ -704,8 +632,8 @@ class SoilWaterBalance(object):
 
         # xx is wx for the overlying layer, with the top layer equal to zero
         xx = np.concatenate((np.zeros((1, self.nRotation, self.nLat, self.nLon)), wx[:-1,:]), axis=0)
-        wrel = np.clip((wx - xx), 0, 1)
-
+        wrel = np.clip((wx - xx), 0, 1)  # CHECKED 31/05/2018
+        
         # Calculate relative wetness of topsoil
         th = np.maximum(th_wp, self.th)
 
@@ -716,7 +644,7 @@ class SoilWaterBalance(object):
         wet_top = np.clip(wet_top, 0, 1)
 
         # Make adjustment to curve number
-        CN = self.soil_pars.CN
+        CN = np.copy(self.soil_pars.CN)
         CN[cond11] = np.round(self.soil_pars.CNbot + (self.soil_pars.CNtop - self.soil_pars.CNbot) * wet_top)[cond11]
 
         # Partition rainfall into runoff and infiltration
@@ -747,9 +675,12 @@ class SoilWaterBalance(object):
         th_dry = self.soil_pars.th_dry[self.soil_pars.layerIndex,:]
 
         # Add rotation, lat, lon dimensions to dz and dzsum
-        arr_ones = np.ones((self.nRotation, self.nLat, self.nLon))[None,:,:,:]
+        arr_ones = np.ones((self.nRotation, self.nLat, self.nLon), dtype=np.int32)[None,:,:,:]
         dz = self.soil_pars.dz[:,None,None,None] * arr_ones
         dzsum = self.soil_pars.dzsum[:,None,None,None] * arr_ones
+
+        dz = np.round(dz * 100) / 100
+        dzsum = np.round(dzsum * 100) / 100
 
         # Calculate root zone water content and available water
         rootdepth = np.maximum(landcover.Zmin, landcover.Zroot)
@@ -781,12 +712,12 @@ class SoilWaterBalance(object):
         WrAer = np.sum(WrAer_comp, axis=0)
 
         # Convert depths to m3/m3
-        self.thRZ_Act = Wr / (rootdepth * 1000)
-        self.thRZ_Sat = WrS / (rootdepth * 1000)
-        self.thRZ_Fc = WrFC / (rootdepth * 1000)
-        self.thRZ_Wp = WrWP / (rootdepth * 1000)
-        self.thRZ_Dry = WrDry / (rootdepth * 1000)
-        self.thRZ_Aer = WrAer / (rootdepth * 1000)
+        self.thRZ_Act = np.divide(Wr, rootdepth * 1000, out=np.zeros_like(Wr), where=rootdepth!=0)
+        self.thRZ_Sat = np.divide(WrS, rootdepth * 1000, out=np.zeros_like(WrS), where=rootdepth!=0)
+        self.thRZ_Fc  = np.divide(WrFC, rootdepth * 1000, out=np.zeros_like(WrFC), where=rootdepth!=0)
+        self.thRZ_Wp  = np.divide(WrWP, rootdepth * 1000, out=np.zeros_like(WrWP), where=rootdepth!=0)
+        self.thRZ_Dry = np.divide(WrDry, rootdepth * 1000, out=np.zeros_like(WrDry), where=rootdepth!=0)
+        self.thRZ_Aer = np.divide(WrAer, rootdepth * 1000, out=np.zeros_like(WrAer), where=rootdepth!=0)
 
         # Calculate total available water and root zone depletion
         self.TAW = np.clip((WrFC - WrWP), 0, None)
@@ -820,16 +751,11 @@ class SoilWaterBalance(object):
 
         # Determine irrigation depth (mm/day) to be applied
 
-        # # TODO: this should be placed elsewhere, GrowthStage should be a crop parameter
-        # # Update growth stage if it is first day of a growing season
-        # cond2 = (self.GrowingSeasonIndex & (landcover.DAP == 1))
-        # self.GrowthStage[cond2] = 1
-
         # Run irrigation depth calculation
 
         # No irrigation if rainfed (i.e. IrrMethod == 0)
-        condX = (landcover.GrowingSeasonIndex & (self.IrrMethod == 0))
-        self.Irr[condX] = 0
+        cond2 = (landcover.GrowingSeasonIndex & (self.IrrMethod == 0))
+        self.Irr[cond2] = 0
         
         # If irrigation is based on soil moisture, get the soil moisture
         # target for the current growth stage and determine threshold to
@@ -840,7 +766,7 @@ class SoilWaterBalance(object):
         growth_stage_index = growth_stage_index.astype(int)
         SMT = SMT[growth_stage_index,I,J,K]
         IrrThr = (1 - SMT / 100) * self.TAW
-                
+        
         # If irrigation is based on a fixed interval, get number of days in
         # growing season so far (subtract 1 so that we always irrigate first
         # on day 1 of each growing season)
@@ -852,7 +778,7 @@ class SoilWaterBalance(object):
         
         # Working on a copy, adjust depletion for inflows and outflows - same
         # for both soil moisture and interval based irrigation
-        Dr = self.Dr
+        Dr = np.copy(self.Dr)
         Dr[cond5] += WCadj[cond5]
         Dr[cond5] = np.clip(Dr, 0, None)[cond5]
 

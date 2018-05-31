@@ -54,49 +54,49 @@ class LandCover(object):
         # ######################
         arr_zeros = np.zeros((self.nRotation, self.nLat, self.nLon))
         arr_ones = np.ones((self.nRotation, self.nLat, self.nLon))
-        self.DelayedGDDs = arr_zeros
-        self.DelayedCDs = arr_zeros
-        self.PctLagPhase = arr_zeros
-        self.tEarlySen = arr_zeros
-        self.GDDcum = arr_zeros
-        self.DAP = arr_zeros
+        self.DelayedGDDs = np.copy(arr_zeros)
+        self.DelayedCDs  = np.copy(arr_zeros)
+        self.PctLagPhase = np.copy(arr_zeros)
+        self.tEarlySen   = np.copy(arr_zeros)
+        self.GDDcum      = np.copy(arr_zeros)
+        self.DAP         = np.copy(arr_zeros)
         
-        self.PreAdj = arr_zeros.astype(bool)
-        self.CropMature = arr_zeros.astype(bool)
-        self.CropDead = arr_zeros.astype(bool)
-        self.Germination = arr_zeros.astype(bool)
-        self.PrematSenes = arr_zeros.astype(bool)
-        self.HarvestFlag = arr_zeros.astype(bool)
+        self.PreAdj      = np.copy(arr_zeros.astype(bool))
+        self.CropMature  = np.copy(arr_zeros.astype(bool))
+        self.CropDead    = np.copy(arr_zeros.astype(bool))
+        self.Germination = np.copy(arr_zeros.astype(bool))
+        self.PrematSenes = np.copy(arr_zeros.astype(bool))
+        self.HarvestFlag = np.copy(arr_zeros.astype(bool))
 
-        self.Stage = arr_ones
-        self.Fpre = arr_ones
-        self.Fpost = arr_ones
-        self.fpost_dwn = arr_ones
-        self.fpost_upp = arr_ones
-        self.HIcor_Asum = arr_zeros
-        self.HIcor_Bsum = arr_zeros
-        self.Fpol = arr_zeros
-        self.sCor1 = arr_zeros
-        self.sCor2 = arr_zeros
+        self.Stage = np.copy(arr_ones)
+        self.Fpre = np.copy(arr_ones)
+        self.Fpost = np.copy(arr_ones)
+        self.fpost_dwn = np.copy(arr_ones)
+        self.fpost_upp = np.copy(arr_ones)
+        self.HIcor_Asum = np.copy(np.copy(arr_zeros))
+        self.HIcor_Bsum = np.copy(np.copy(arr_zeros))
+        self.Fpol = np.copy(np.copy(arr_zeros))
+        self.sCor1 = np.copy(np.copy(arr_zeros))
+        self.sCor2 = np.copy(np.copy(arr_zeros))
         
-        self.GrowthStage = arr_zeros
+        self.GrowthStage = np.copy(np.copy(arr_zeros))
 
-        self.CC = arr_zeros
-        self.CCadj = arr_zeros
-        self.CC_NS = arr_zeros
-        self.CCadj_NS = arr_zeros
-        self.B = arr_zeros
-        self.B_NS = arr_zeros
-        self.HI = arr_zeros
-        self.HIadj = arr_zeros
-        self.CCxAct = arr_zeros
-        self.CCxAct_NS = arr_zeros
-        self.CCxW = arr_zeros
-        self.CCxW_NS = arr_zeros
-        self.CCxEarlySen = arr_zeros
-        self.CCprev = arr_zeros        
-        self.rCor = arr_ones
-        self.Y = arr_zeros
+        self.CC = np.copy(np.copy(arr_zeros))
+        self.CCadj = np.copy(np.copy(arr_zeros))
+        self.CC_NS = np.copy(np.copy(arr_zeros))
+        self.CCadj_NS = np.copy(np.copy(arr_zeros))
+        self.B = np.copy(np.copy(arr_zeros))
+        self.B_NS = np.copy(np.copy(arr_zeros))
+        self.HI = np.copy(np.copy(arr_zeros))
+        self.HIadj = np.copy(np.copy(arr_zeros))
+        self.CCxAct = np.copy(np.copy(arr_zeros))
+        self.CCxAct_NS = np.copy(np.copy(arr_zeros))
+        self.CCxW = np.copy(np.copy(arr_zeros))
+        self.CCxW_NS = np.copy(np.copy(arr_zeros))
+        self.CCxEarlySen = np.copy(np.copy(arr_zeros))
+        self.CCprev = np.copy(np.copy(arr_zeros))        
+        self.rCor = np.copy(arr_ones)
+        self.Y = np.copy(np.copy(arr_zeros))
         
         # If the start of the simulation equals the planting date of any crops
         # then set Zroot and CC0adj to Zmin and CC0 respectively. Otherwise set
@@ -109,8 +109,8 @@ class LandCover(object):
         # CC0adj = np.zeros(self.crop_pars.PlantingDate.shape)
         # CC0adj[cond1] = self.crop_pars.CC0[cond1]
         # self.CC0adj = np.max(CC0adj, axis=0)
-        self.Zroot = arr_zeros
-        self.CC0adj = arr_zeros
+        self.Zroot = np.copy(np.copy(arr_zeros))
+        self.CC0adj = np.copy(np.copy(arr_zeros))
         
         # Declare other variables
         # #######################
@@ -122,20 +122,20 @@ class LandCover(object):
         self.GrowingSeasonIndex = np.zeros((self.nRotation, self.nLat, self.nLon))
         
         # Harvest index
-        self.YieldForm = arr_zeros
-        self.HIref = arr_zeros
-        self.PctLagPhase = arr_zeros
+        self.YieldForm = np.copy(arr_zeros)
+        self.HIref = np.copy(arr_zeros)
+        self.PctLagPhase = np.copy(arr_zeros)
 
         # Crop growth
-        self.GDD = arr_zeros
-        self.Ksw_Exp = arr_zeros
-        self.Ksw_Sto = arr_zeros
-        self.Ksw_Sen = arr_zeros
-        self.Ksw_Pol = arr_zeros
-        self.Ksw_StoLin = arr_zeros
-        self.Kst_Bio = arr_zeros
-        self.Kst_PolH = arr_zeros
-        self.Kst_PolC = arr_zeros
+        self.GDD = np.copy(arr_zeros)
+        self.Ksw_Exp = np.copy(arr_zeros)
+        self.Ksw_Sto = np.copy(arr_zeros)
+        self.Ksw_Sen = np.copy(arr_zeros)
+        self.Ksw_Pol = np.copy(arr_zeros)
+        self.Ksw_StoLin = np.copy(arr_zeros)
+        self.Kst_Bio = np.copy(arr_zeros)
+        self.Kst_PolH = np.copy(arr_zeros)
+        self.Kst_PolC = np.copy(arr_zeros)
 
     def getState(self):
         result = {}
@@ -163,7 +163,7 @@ class LandCover(object):
 
         self.crop_pars.compute_water_productivity_adjustment_factor(CO2)
         self.crop_pars.update(currTimeStep, meteo)
-        
+
         # Add a rotation dimension to GrowingSeason array and multiply it
         # by CropSequence, with the resulting array showing which crop (if any)
         # is currently grown in each rotation considered.
@@ -192,10 +192,11 @@ class LandCover(object):
             param = getattr(self.crop_pars, nm)
             param = param[:,None,:,:] * np.ones((self.nRotation))[None,:,None,None]
             vars(self)[nm] = param[self.CropIndex,I,J,K] * self.GrowingSeasonIndex
-        
+
         # GrowingSeasonDayOne is a logical array showing rotations for which
         # today is the start of a growing season
         self.GrowingSeasonDayOne = ((self.DAP == 0) & (self.GrowingSeasonIndex))
+        self.reset_initial_conditions(currTimeStep)
 
         # Update counters
         # ###############
@@ -203,7 +204,7 @@ class LandCover(object):
         # Increment days after planting
         self.DAP[self.GrowingSeasonIndex] += 1
         self.DAP[np.logical_not(self.GrowingSeasonIndex)] = 0
-
+                        
         # Increment growing degree days
         self.growing_degree_day(currTimeStep, meteo)
         self.GDDcum[self.GrowingSeasonIndex] += self.GDD[self.GrowingSeasonIndex]
@@ -211,7 +212,7 @@ class LandCover(object):
 
         # Adjust growth stage
         self.growth_stage()
-        
+
     def reset_initial_conditions(self, currTimeStep):
         """Function to reset initial conditions at the start of a new
         growing season
@@ -268,6 +269,8 @@ class LandCover(object):
         self.rCor[cond] = 1
         self.CC0adj[cond] = self.CC0[cond]
         self.Zroot[cond] = self.Zmin[cond]
+        # print self.Zmin[cond]
+        # print self.Zroot[cond]
 
     def growing_degree_day(self, currTimeStep, meteo):
         """Function to calculate number of growing degree days on 

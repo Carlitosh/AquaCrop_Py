@@ -33,6 +33,8 @@ class SoilAndTopoParameters(object):
         self.nComp = int(iniItems.soilOptions['nComp'])
         self.dz = iniItems.soilOptions['dz'].split(',')
         self.dz = np.array(map(np.float32, self.dz))
+
+        self.dz = np.round(100 * self.dz) / 100
         self.dzsum = np.round(100 * np.cumsum(self.dz)) / 100
 
         # soil parameter input file

@@ -56,8 +56,6 @@ class Groundwater(object):
         # make the iniItems available for the other modules:
         self.iniItems = iniItems
         
-        # SM: ignore reporting for now (see meteo.py for example of how to do reporting)
-        
     def update(self,currTimeStep):
         pass
 
@@ -80,24 +78,24 @@ class Groundwater(object):
                 if self.groundwater_set_per_year:
                     nc_file_per_year = self.gwFileNC %(float(currTimeStep.year), float(currTimeStep.year))
                     self.zGW = vos.netcdf2PCRobjClone(nc_file_per_year,\
-                                                                     self.gwVarName,\
-                                                                     str(currTimeStep.fulldate),\
-                                                                     useDoy = method_for_time_index,\
-                                                                     cloneMapFileName = self.cloneMap,\
-                                                                     LatitudeLongitude = True)
+                                                      self.gwVarName,\
+                                                      str(currTimeStep.fulldate),\
+                                                      useDoy = method_for_time_index,\
+                                                      cloneMapFileName = self.cloneMap,\
+                                                      LatitudeLongitude = True)
                 else:
                     self.zGW = vos.netcdf2PCRobjClone(self.gwFileNC,\
-                                                                     self.gwVarName,\
-                                                                     str(currTimeStep.fulldate),\
-                                                                     useDoy = method_for_time_index,\
-                                                                     cloneMapFileName = self.cloneMap,\
-                                                                     LatitudeLongitude = True)
+                                                      self.gwVarName,\
+                                                      str(currTimeStep.fulldate),\
+                                                      useDoy = method_for_time_index,\
+                                                      cloneMapFileName = self.cloneMap,\
+                                                      LatitudeLongitude = True)
                     
             else:
                 self.zGW = vos.netcdf2PCRobjCloneWithoutTime(self.gwFileNC,\
-                                                                            self.gwVarName,\
-                                                                            cloneMapFileName = self.cloneMap,\
-                                                                            LatitudeLongitude = True)
+                                                             self.gwVarName,\
+                                                             cloneMapFileName = self.cloneMap,\
+                                                             LatitudeLongitude = True)
                 
         else:
             self.zGW = None  # TODO: check that this is OK in other parts of the program

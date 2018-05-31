@@ -39,7 +39,7 @@ class CO2(object):
         self.co2FileNC = iniItems.carbonDioxideOptions['carbonDioxideNC']
 
         # variable names      
-        self.co2VarName      = 'co2' 
+        self.co2VarName = 'co2' 
         if 'co2VariableName' in iniItems.carbonDioxideOptions:
             self.co2VarName = carbonDioxideOptions['co2VariableName']
 
