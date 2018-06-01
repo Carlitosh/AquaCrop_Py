@@ -430,7 +430,6 @@ class CropParameters(object):
         """Function to update certain crop parameters for current 
         time step
         """
-
         pd = np.copy(self.PlantingDate)
         hd = np.copy(self.HarvestDate)
         st = currTimeStep.currTime
@@ -449,8 +448,10 @@ class CropParameters(object):
         # if harvest day is less than planting day, harvest will take place
         # in following year (leap year already accounted for, so add 365)
         hd[hd < pd] += 365
-        td = np.array(hd - pd, dtype='timedelta64[D]')
-        cond3 = ((np.datetime64(str(currTimeStep.currTime)) + td) <= np.datetime64(str(currTimeStep.endTime)))
+        hd_arr = (np.datetime64(str(datetime.datetime(currTimeStep.year, 1, 1))) + np.array(hd - 1, dtype='timedelta64[D]'))
+        cond3 = hd_arr <= np.datetime64(str(currTimeStep.endTime))        
+        # td = np.array(hd - pd, dtype='timedelta64[D]')
+        # cond3 = ((np.datetime64(str(currTimeStep.currTime)) + td) <= np.datetime64(str(currTimeStep.endTime)))
         self.GrowingSeason = ((cond1 & cond3) | (cond2 & cond3))
         
         # Update certain crop parameters if using GDD mode

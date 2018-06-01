@@ -135,17 +135,17 @@ class AquaCrop(object):
         # Update parameters for current time step
         self.landcover.update(self.meteo, self.CO2, self._modelTime)
         self.soilwater.update(self.landcover.CropIndex, self._modelTime)
-        
-        self.soilwater.check_groundwater_table(self.groundwater)
+
+        self.soilwater.check_groundwater_table(self.groundwater)            
         self.soilwater.pre_irrigation(self.landcover)
         self.soilwater.drainage()
         self.soilwater.rainfall_partition(self.meteo)
         self.soilwater.irrigation(self.landcover, self.meteo)
-        # self.soilwater.infiltration()
-        # self.soilwater.capillary_rise(self.groundwater)
+        self.soilwater.infiltration()
+        self.soilwater.capillary_rise(self.groundwater)
 
-        # self.landcover.germination(self.soilwater)
-        # self.landcover.growth_stage()
+        self.landcover.germination(self.soilwater)
+        self.landcover.growth_stage()
         # self.landcover.root_development(self.groundwater, self.soilwater)
         # self.landcover.canopy_cover(self.meteo, self.soilwater)
 

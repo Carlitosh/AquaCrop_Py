@@ -10,6 +10,8 @@ import math
 import gc
 import numpy as np
 
+from decimal import Decimal
+
 import pcraster as pcr
 
 import VirtualOS as vos
@@ -306,43 +308,42 @@ class LandCover(object):
         arr_ones = np.ones((self.nRotation, self.nLat, self.nLon))
         dz = soilwater.soil_pars.dz[:,None,None,None] * arr_ones
         dzsum = soilwater.soil_pars.dzsum[:,None,None,None] * arr_ones
-
-        # Add compartment dimension to zGerm
-        zgerm = soilwater.soil_pars.zGerm[None,:,:,:] * np.ones((soilwater.nComp))[:,None,None,None]
-
+        zgerm = np.copy(soilwater.soil_pars.zGerm)
+        
         # Here we force zGerm to have a maximum value equal to the depth of the
         # deepest soil compartment
         zgerm[zgerm > np.sum(soilwater.soil_pars.dz)] = np.sum(soilwater.soil_pars.dz)
         
         # Find compartments covered by top soil layer affecting germination
-        comp_sto = ((dzsum - dz) < zgerm)
+        comp_sto = (np.round(dzsum * 1000) <= np.round(zgerm * 1000))  # round to nearest mm
 
         # Calculate water content in top soil layer
         arr_zeros = np.zeros((soilwater.nComp, self.nRotation, self.nLat, self.nLon))
-        Wr_comp = arr_zeros
-        WrFC_comp = arr_zeros
-        WrWP_comp = arr_zeros
+        Wr_comp   = np.copy(arr_zeros)
+        WrFC_comp = np.copy(arr_zeros)
+        WrWP_comp = np.copy(arr_zeros)
 
         # Determine fraction of compartment covered by top soil layer
-        factor = 1 - ((dzsum - zgerm) / dz) 
+        factor = 1. - np.round(((dzsum - zgerm) / dz), 3)
         factor = np.clip(factor, 0, 1) * self.GrowingSeasonIndex * comp_sto
 
         # Increment water storages (mm)
-        Wr_comp = (factor * 1000 * soilwater.th * dz)
+        Wr_comp = np.round((factor * 1000 * soilwater.th * dz))
         Wr_comp = np.clip(Wr_comp, 0, None)
         Wr = np.sum(Wr_comp, axis=0)
-        WrFC_comp = (factor * 1000 * th_fc * dz)
+
+        WrFC_comp = np.round((factor * 1000 * th_fc * dz))
         WrFC = np.sum(WrFC_comp, axis=0)
-        WrWP_comp = (factor * 1000 * th_wp * dz)
+
+        WrWP_comp = np.round((factor * 1000 * th_wp * dz))
         WrWP = np.sum(WrWP_comp, axis=0)
 
         # Calculate proportional water content
-        WcProp = 1 - ((WrFC - Wr) / (WrFC - WrWP))
+        WrTAW = WrFC - WrWP
+        WcProp = 1 - np.divide((WrFC - Wr), WrTAW, out=np.zeros_like(WrTAW), where=WrTAW!=0)
 
         # Check if water content is above germination threshold
-        cond4 = (self.GrowingSeasonIndex
-                 & (WcProp >= self.GermThr)
-                 & (np.logical_not(self.Germination)))
+        cond4 = (self.GrowingSeasonIndex & (WcProp >= self.GermThr) & (np.logical_not(self.Germination)))
         self.Germination[cond4] = True
 
         # Increment delayed growth time counters if germination is yet to occur
@@ -354,7 +355,10 @@ class LandCover(object):
         self.Germination[np.logical_not(self.GrowingSeasonIndex)] = False
         self.DelayedCDs[np.logical_not(self.GrowingSeasonIndex)] = 0
         self.DelayedGDDs[np.logical_not(self.GrowingSeasonIndex)] = 0
-
+        # print self.Germination[0,0,0]
+        # print self.DelayedCDs[0,0,0]
+        # print self.DelayedGDDs[0,0,0]
+        
     def growth_stage(self):
         """Function to calculate number of growing degree days on 
         current day
@@ -458,7 +462,8 @@ class LandCover(object):
 
         # Limit rooting depth if groundwater table is present (roots cannot
         # develop below the water table)
-        zGW = groundwater.zGW[None,:,:] * np.ones((self.nRotation))[:,None,None]
+        # zGW = soilwater.zGW[None,:,:] * np.ones((self.nRotation))[:,None,None]
+        zGW = np.copy(soilwater.zGW)
         cond12 = (self.GrowingSeasonIndex & groundwater.WaterTable & (zGW > 0))
         cond121 = (cond12 & (self.Zroot > zGW))
         self.Zroot[cond121] = zGW[cond121]

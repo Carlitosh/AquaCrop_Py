@@ -63,12 +63,9 @@ class SoilWaterBalance(object):
         if groundwater.WaterTable:
             self.soil_pars.compute_capillary_rise_parameters()
 
-        # THIS DOES NOT WORK BECAUSE GROUNDWATER FORCING HAS NOT BEEN READ AT INITIALIZATION
-        # # If groundwater is present, this function calculates adjusted FC
-        # self.soil.check_groundwater_table(groundwater)
-        
         # Set initial conditions
         # ######################
+        
         arr_zeros = np.zeros((self.nRotation, self.nLat, self.nLon))
         arr_ones = np.ones((self.nRotation, self.nLat, self.nLon))
         self.AgeDays      = np.copy(arr_zeros)
@@ -80,13 +77,13 @@ class SoilWaterBalance(object):
         self.Epot         = np.copy(arr_zeros)
         self.Tpot         = np.copy(arr_zeros)
         
-        self.WTinSoil = arr_zeros.astype(bool)
+        self.WTinSoil     = np.copy(arr_zeros.astype(bool))
 
         # Aeration stress
-        self.AerDaysComp = np.zeros((self.nComp, self.nRotation, self.nLat, self.nLon))
+        self.AerDaysComp  = np.zeros((self.nComp, self.nRotation, self.nLat, self.nLon))
 
         # Transpiration
-        self.TrRatio = np.copy(arr_ones)
+        self.TrRatio      = np.copy(arr_ones)
         
         # Surface storage between bunds
         cond1 = (self.field_mgmt_pars.Bunds == 0) & (self.field_mgmt_pars.zBund > 0.001)
@@ -95,7 +92,7 @@ class SoilWaterBalance(object):
         SurfaceStorage = np.clip(SurfaceStorage, None, self.field_mgmt_pars.zBund)
         self.SurfaceStorage = SurfaceStorage
         self.SurfaceStorageIni = SurfaceStorage
-        
+
         # Define initial water contents
         self.initialConditionFileNC = self._configuration.globalOptions['initialConditionNC']
         th = vos.netcdf2PCRobjCloneWithoutTime(
@@ -127,7 +124,7 @@ class SoilWaterBalance(object):
 
         # TODO: see above
         self.th = th            # TEMPORARY HACK
-        
+
         # If groundwater table is present in soil profile then set all water
         # contents below the water table to saturation
         # Add dimensions to dz,dzsum
@@ -147,20 +144,26 @@ class SoilWaterBalance(object):
 
         # Declare other variables
         # #######################
-        self.th_fc_adj = self.soil_pars.th_fc[self.soil_pars.layerIndex,:]
-        
-        # Groundwater
-        self.GwIn = np.copy(arr_zeros)
-        self.zGW = np.copy(arr_zeros)
 
+        # Groundwater
+        self.zGW  = np.copy(arr_zeros)
+        self.GwIn = np.copy(arr_zeros)
+        self.th_fc_adj = self.soil_pars.th_fc[self.soil_pars.layerIndex,:]
+
+        # Check for the presence of groundwater
+        self.check_groundwater_table(groundwater)
+        
         # Drainage
         self.FluxOut = np.zeros((self.nComp, self.nRotation, self.nLat, self.nLon))
         self.DeepPerc = np.copy(arr_zeros)
 
         # Infiltration
         self.Runoff = np.copy(arr_zeros)
-        self.Infl   = np.copy(arr_zeros)
+        self.Infl = np.copy(arr_zeros)
 
+        # Capillary rise
+        self.CrTot  = np.copy(arr_zeros)
+        
         # Soil evaporation
         self.Wevap_Act = np.copy(arr_zeros)
         self.Wevap_Sat = np.copy(arr_zeros)
@@ -256,16 +259,15 @@ class SoilWaterBalance(object):
         
         # These are options which apply to the entire study area (not just a
         # selection of cells), so we can use an if statement.
-        if groundwater.WaterTable and groundwater.VariableWaterTable:
-        
+        if groundwater.WaterTable:
+
+            # Copy depth to groundwater, and add rotation dimension for convenience
+            self.zGW = groundwater.zGW[None,:,:] * np.ones((self.nRotation))[:,None,None]
+
             # get the mid point of each compartment
             zBot = np.cumsum(self.soil_pars.dz)
             zTop = zBot - self.soil_pars.dz
             zMid = (zTop + zBot) / 2
-        
-            # Convenient to add compartment + rotation dimensions to groundwater
-            # and rotation, latitude and longitude dimensions to zMid
-            self.zGW = groundwater.zGW[None,:,:] * np.ones((self.nRotation))[:,None,None]
             zMid = zMid[:,None,None,None] * np.ones((self.nRotation,self.nLat,self.nLon))[None,:,:,:]
 
             # Check if water table is within modelled soil profile
@@ -291,18 +293,14 @@ class SoilWaterBalance(object):
 
             # Index of the compartment to which each element belongs (shallow ->
             # deep, i.e. 1 is the shallowest)
-            compartment = (
-                np.arange(1, self.nComp + 1)[:,None,None,None]
-                * np.ones((self.nRotation, self.nLat, self.nLon))[None,:,:,:])
+            compartment = (np.arange(1, self.nComp + 1)[:,None,None,None] * np.ones((self.nRotation, self.nLat, self.nLon))[None,:,:,:])
 
             # Index of the lowest compartment (i.e. the maximum value) for which
             # cond4 is met, cast to all compartments (achieved by multiplying
             # compartments by cond4 to set elements that do not equal the
             # condition to zero, but retain the compartment number of elements
             # that do meet the condition
-            cond4_max_compartment = (
-                np.amax(compartment * cond4, axis=0)[None,:,:,:]
-                * np.ones((self.nComp))[:,None,None,None])
+            cond4_max_compartment = (np.amax(compartment * cond4, axis=0)[None,:,:,:] * np.ones((self.nComp))[:,None,None,None])
 
             # Now, identify compartments that are shallower than the deepest
             # compartment for which cond4 is met
@@ -365,7 +363,7 @@ class SoilWaterBalance(object):
         tau = self.soil_pars.tau[self.soil_pars.layerIndex,:]
         
         # Preallocate arrays        
-        thnew = self.th
+        thnew = np.copy(self.th)
         drainsum = np.zeros((self.nRotation, self.nLat, self.nLon))
 
         for comp in range(self.soil_pars.nComp):
@@ -621,7 +619,7 @@ class SoilWaterBalance(object):
 
         # Check which compartment cover depth of top soil used to adjust
         # curve number
-        comp_sto = (dzsum <= zcn)
+        comp_sto = (np.round(dzsum * 1000) <= np.round(zcn * 1000))
         cond111 = np.all((comp_sto == False), axis=0)
         cond111 = np.broadcast_to(cond111, comp_sto.shape)
         comp_sto[cond111] = True
@@ -679,13 +677,10 @@ class SoilWaterBalance(object):
         dz = self.soil_pars.dz[:,None,None,None] * arr_ones
         dzsum = self.soil_pars.dzsum[:,None,None,None] * arr_ones
 
-        dz = np.round(dz * 100) / 100
-        dzsum = np.round(dzsum * 100) / 100
-
         # Calculate root zone water content and available water
         rootdepth = np.maximum(landcover.Zmin, landcover.Zroot)
         rootdepth = np.round(rootdepth * 100) / 100
-        comp_sto = ((dzsum - dz) < rootdepth)
+        comp_sto = (np.round((dzsum - dz) * 1000) < np.round(rootdepth * 1000))
         
         # Fraction of compartment covered by root zone (zero in compartments
         # NOT covered by the root zone)
@@ -835,50 +830,51 @@ class SoilWaterBalance(object):
         # initialise variables
         ToStore = np.zeros((self.nRotation, self.nLat, self.nLon))
         RunoffIni = np.zeros((self.nRotation, self.nLat, self.nLon))
-
-        # Work on a copy of current water content
-        thnew = self.th
+        thnew = np.copy(self.th)
         
         # Update infiltration rate for irrigation
-        # Note: irrigation amount adjusted for specified application efficiency
         self.Infl += self.Irr * (self.AppEff / 100)  # TODO: has efficiency not already been accounted for?
 
+        # #######################################################################
         # Determine surface storage if bunds are present
-        cond1 = (self.Bunds == 1)
-        cond11 = (cond1 & (self.zBund > 0.001))
+        # #######################################################################
+        
+        cond1 = (self.Bunds == 1) & (self.zBund > 0.001)
         InflTot = self.Infl + self.SurfaceStorage
 
         # Update surface storage and infiltration storage
-        cond111 = (cond11 & (InflTot > 0))
+        cond11 = (cond1 & (InflTot > 0))
 
         # Infiltration limited by saturated hydraulic conductivity of surface
         # soil layer; additional water ponds on surface
-        cond1111 = (cond111 & (InflTot > ksat[0,:]))
-        ToStore[cond1111] = ksat[0,:][cond1111]
-        self.SurfaceStorage[cond1111] = (InflTot - ksat[0,:])[cond1111]
+        cond111 = (cond11 & (InflTot > ksat[0,:]))
+        ToStore[cond111] = ksat[0,:][cond111]
+        self.SurfaceStorage[cond111] = (InflTot - ksat[0,:])[cond111]
 
         # Otherwise all water infiltrates and surface storage becomes zero
-        cond1112 = (cond111 & np.logical_not(cond1111))
-        ToStore[cond1112] = InflTot[cond1112]
-        self.SurfaceStorage[cond1112] = 0
+        cond112 = (cond11 & np.logical_not(cond111))
+        ToStore[cond112] = InflTot[cond112]
+        self.SurfaceStorage[cond112] = 0
         
         # Calculate additional runoff if water overtops bunds
-        cond1113 = (cond111 & (self.SurfaceStorage > (self.zBund * 1000)))
-        RunoffIni[cond1113] = (self.SurfaceStorage
-                               - (self.zBund * 1000))[cond1113]
-        self.SurfaceStorage[cond1113] = (self.zBund * 1000)[cond1113]
+        cond113 = (cond11 & (self.SurfaceStorage > (self.zBund * 1000)))
+        RunoffIni[cond113] = (self.SurfaceStorage - (self.zBund * 1000))[cond113]
+        self.SurfaceStorage[cond113] = (self.zBund * 1000)[cond113]
 
         # Otherwise excess water does not overtop bunds and there is no runoff
-        cond1114 = (cond111 & np.logical_not(cond1113))
-        RunoffIni[cond1114] = 0
+        cond114 = (cond11 & np.logical_not(cond113))
+        RunoffIni[cond114] = 0
 
         # If total infiltration is zero then there is no storage or runoff
-        cond112 = (cond11 & np.logical_not(cond111))
-        ToStore[cond112] = 0
-        RunoffIni[cond112] = 0
-        
+        cond12 = (cond1 & np.logical_not(cond11))
+        ToStore[cond12] = 0
+        RunoffIni[cond12] = 0
+
+        # #######################################################################
         # If bunds are not on field then infiltration is limited by saturated
-        # hydraulic conductivity of top soil layer
+        # hydraulic conductivity of top soil layer (Lines 49-62)
+        # #######################################################################
+        
         cond2 = (self.Bunds == 0)
         cond21 = (cond2 & (self.Infl > ksat[0,:]))
         ToStore[cond21] = ksat[0,:][cond21]
@@ -889,11 +885,14 @@ class SoilWaterBalance(object):
         ToStore[cond22] = self.Infl[cond22]
         RunoffIni[cond22] = 0
 
+        # #######################################################################
+        # Infiltrate incoming water
+        # #######################################################################
+        
         # Initialize counters
         comp = 0
         DeepPerc = np.zeros((self.nRotation, self.nLat, self.nLon))
         Runoff = np.zeros((self.nRotation, self.nLat, self.nLon))
-
         cond3_ini = (ToStore > 0)
 
         while (np.any(ToStore > 0) & (comp < self.soil_pars.nComp)):
@@ -910,21 +909,21 @@ class SoilWaterBalance(object):
             # Initialize water content for current layer
             theta0 = np.zeros((self.nRotation, self.nLat, self.nLon))  # initialise
 
-            # "Check drainage ability
+            # Check drainage ability
             cond31 = (cond3 & (dthdt0 < dthdtS))
 
-            # Calculate water content, thX, needed to meet drainage dthdt0
-            cond311 = (cond31 & (dthdt0 < dthdtS))
+            # Calculate water content needed to meet drainage dthdt0
+            cond311 = (cond31 & (dthdt0 <= 0))
             theta0[cond311] = self.th_fc_adj[comp,:][cond311]
             cond312 = (cond31 & np.logical_not(cond311))
             A = (1 + ((dthdt0 * (np.exp(th_s[comp,:] - th_fc[comp,:]) - 1))
                       / (tau[comp,:] * (th_s[comp,:] - th_fc[comp,:]))))
-            theta0[cond312] = (self.soil_pars.th_fc[comp,:] + np.log(A))[cond312]
+            theta0[cond312] = (th_fc[comp,:] + np.log(A))[cond312]
 
             # Limit thX to between saturation and field capacity
             cond313 = (cond31 & (theta0 > th_s[comp,:]))
             theta0[cond313] = th_s[comp,:][cond313]
-            cond314 = (cond31 & (theta0 < self.th_fc_adj[comp,:]))
+            cond314 = (cond31 & np.logical_not(cond313) & (theta0 < self.th_fc_adj[comp,:]))
             theta0[cond314] = self.th_fc_adj[comp,:][cond314]
             dthdt0[cond314] = 0
 
@@ -942,6 +941,7 @@ class SoilWaterBalance(object):
             cond33 = (cond3 & (drainage > ksat[comp,:]))
             drainmax[cond33] = (ksat[comp,:] - self.FluxOut[comp,:])[cond33]
 
+            # Line 117 of AOS_Infiltration.m
             # Calculate difference between threshold and current water contents
             diff = theta0 - self.th[comp,:]
 
@@ -950,10 +950,7 @@ class SoilWaterBalance(object):
 
             # Remaining water that can infiltrate to compartments below
             cond341 = (cond34 & (thnew[comp,:] > theta0))
-            ToStore[cond341] = (
-                (thnew[comp,:] - theta0)
-                * 1000
-                * self.soil_pars.dz[comp])[cond341]
+            ToStore[cond341] = ((thnew[comp,:] - theta0) * 1000 * self.soil_pars.dz[comp])[cond341]
             thnew[comp,:][cond341] = theta0[cond341]
 
             # Otherwise all infiltrating water has been stored
@@ -981,12 +978,10 @@ class SoilWaterBalance(object):
                 precomp -= 1
 
                 # Update outflow from compartment
-                self.FluxOut[precomp,:][cond35] = (
-                    self.FluxOut[precomp,:] - excess)[cond35]
+                self.FluxOut[precomp,:][cond35] = (self.FluxOut[precomp,:] - excess)[cond35]
 
                 # Update water content and limit to saturation
-                thnew[precomp,:][cond35] += (
-                    excess / (1000 * self.soil_pars.dz[precomp]))[cond35]
+                thnew[precomp,:][cond35] += (excess / (1000 * self.soil_pars.dz[precomp]))[cond35]
                 cond351 = (cond35 & (thnew[precomp,:] > th_s[precomp,:]))
                 excess[cond351] = ((thnew[precomp,:] - th_s[precomp,:]) * 1000 * self.soil_pars.dz[precomp])[cond351]
                 thnew[precomp,:][cond351] = th_s[precomp,:][cond351]
@@ -996,6 +991,9 @@ class SoilWaterBalance(object):
             # Any leftover water not stored becomes runoff
             cond36 = (cond3 & (excess > 0))
             Runoff[cond36] += excess[cond36]
+
+            # update comp
+            comp += 1
         
         # Infiltration left to store after bottom compartment becomes deep
         # percolation (mm)
@@ -1003,24 +1001,20 @@ class SoilWaterBalance(object):
 
         # Otherwise if ToStore equals zero there is no infiltration
         cond4 = np.logical_not(cond3_ini)
-        Runoff[cond4] = 0
         DeepPerc[cond4] = 0
+        Runoff[cond4] = 0
         
         # Update total runoff
         Runoff += RunoffIni
 
         # Update surface storage (if bunds are present)
-        cond5 = ((Runoff > RunoffIni)
-                 & (self.Bunds == 1)
-                 & self.zBund > 0.001)
-        self.SurfaceStorage += (Runoff - RunoffIni)
+        cond5 = ((Runoff > RunoffIni) & (self.Bunds == 1) & self.zBund > 0.001)
+        self.SurfaceStorage[cond5] += (Runoff - RunoffIni)[cond5]
 
         # Limit surface storage to bund height: additional water above top of
         # bunds becomes runoff, and surface storage equals bund height
         cond51 = (cond5 & (self.SurfaceStorage > (self.zBund * 1000)))
-        Runoff[cond51] = (
-            RunoffIni
-            + (self.SurfaceStorage - (self.zBund * 1000)))[cond51]
+        Runoff[cond51] = (RunoffIni + (self.SurfaceStorage - (self.zBund * 1000)))[cond51]
         self.SurfaceStorage[cond51] = (self.zBund * 1000)[cond51]
         cond52 = (cond5 & np.logical_not(cond51))
         Runoff[cond52] = RunoffIni[cond52]
@@ -1033,38 +1027,42 @@ class SoilWaterBalance(object):
         self.Infl -= Runoff
         self.Runoff += Runoff
 
+        # print self.DeepPerc[0,0,0]
+        # print self.Infl[0,0,0]
+        # print self.Runoff[0,0,0]
+        
     def capillary_rise(self, groundwater):
         """Function to calculate capillary rise from a shallow 
         groundwater table
         """
-        # Expand soil properties to compartments
-        ksat  = self.soil_pars.ksat[self.soil_pars.layerIndex,:]
-        th_fc = self.soil_pars.th_fc[self.soil_pars.layerIndex,:]
-        th_wp = self.soil_pars.th_wp[self.soil_pars.layerIndex,:]
-        aCR   = self.soil_pars.aCR[self.soil_pars.layerIndex,:]
-        bCR   = self.soil_pars.bCR[self.soil_pars.layerIndex,:]
-
-        # Add rotation, lat, lon dimensions to dz and dzsum
-        arr_ones = np.ones((self.nRotation, self.nLat, self.nLon))[None,:,:,:]
-        dz = self.soil_pars.dz[:,None,None,None] * arr_ones
-        dzsum = self.soil_pars.dzsum[:,None,None,None] * arr_ones
 
         if groundwater.WaterTable:
 
-            # Get maximum capillary rise for bottom compartment
-            zBot = np.sum(self.soil_pars.dz)
-            zBotMid = zBot - (self.soil_pars.dz[-1] / 2)
+            # Expand soil properties to compartments
+            ksat  = self.soil_pars.ksat[self.soil_pars.layerIndex,:]
+            th_fc = self.soil_pars.th_fc[self.soil_pars.layerIndex,:]
+            th_wp = self.soil_pars.th_wp[self.soil_pars.layerIndex,:]
+            aCR   = self.soil_pars.aCR[self.soil_pars.layerIndex,:]
+            bCR   = self.soil_pars.bCR[self.soil_pars.layerIndex,:]
 
+            # Add rotation, lat, lon dimensions to dz and dzsum
+            arr_ones = np.ones((self.nRotation, self.nLat, self.nLon))[None,:,:,:]
+            dz = self.soil_pars.dz[:,None,None,None] * arr_ones
+            dzsum = self.soil_pars.dzsum[:,None,None,None] * arr_ones
+
+            # Get maximum capillary rise for bottom compartment
+            zBot = np.sum(self.soil_pars.dz)  # depth to bottom of soil column
+            zBotMid = zBot - (self.soil_pars.dz[-1] / 2)  # depth to midpoint of bottom layer
             MaxCR = np.zeros((self.nRotation, self.nLat, self.nLon))
             cond1 = ((ksat[-1,:] > 0) & (self.zGW > 0) & ((self.zGW - zBotMid) < 4))
             cond11 = (cond1 & (zBotMid >= self.zGW))
             MaxCR[cond11] = 99            
             cond12 = (cond1 & np.logical_not(cond11))
-            MaxCR[cond12] = (np.exp((np.log(self.zGW - zBotMid) - bCR[-1,:]) / aCR[-1,:]))[cond12]
+            MaxCR_log = np.log(self.zGW - zBotMid, out=np.zeros((MaxCR.shape)), where=cond12)
+            MaxCR[cond12] = (np.exp((MaxCR_log - bCR[-1,:]) / aCR[-1,:]))[cond12]
             MaxCR = np.clip(MaxCR, None, 99)
 
-            # Find top of next soil layer that is not within modelled soil
-            # profile
+            # Find top of next soil layer that is not within modelled soil profile
             # Note: self.soil_pars.layerIndex contains the index of the layer
             # corresponding to each compartment; hence the last value is the
             # layer corresponding to the bottom compartment.
@@ -1080,18 +1078,11 @@ class SoilWaterBalance(object):
             while np.any(zTopLayer < self.zGW) & (layeri < (self.soil_pars.nLayer - 1)):
                 layeri += 1     # layer fully below bottom compartment
                 cond2 = (zTopLayer < self.zGW)
-                cond21 = (
-                    cond2
-                    & (self.soil_pars.ksat[layeri,:] > 0)
-                    & (self.zGW > 0)
-                    & ((self.zGW - zTopLayer) < 4))
+                cond21 = (cond2 & (self.soil_pars.ksat[layeri,:] > 0) & (self.zGW > 0) & ((self.zGW - zTopLayer) < 4))
                 cond211 = (cond21 & (zTopLayer >= self.zGW))
                 LimCR[cond211] = 99
                 cond212 = (cond21 & np.logical_not(cond211))
-                LimCR[cond212] = (
-                    np.exp((np.log(self.zGW - zTopLayer)
-                            - self.soil_pars.bCR[layeri,:])
-                           / self.soil_pars.aCR[layeri,:]))[cond7]
+                LimCR[cond212] = (np.exp((np.log(self.zGW - zTopLayer) - self.soil_pars.bCR[layeri,:]) / self.soil_pars.aCR[layeri,:]))[cond7]
                 LimCR = np.clip(LimCR, None, 99)
                 MaxCR = np.clip(MaxCR, None, LimCR)
                 zTopLayer += self.soil_pars.zLayer[layeri]
@@ -1104,61 +1095,48 @@ class SoilWaterBalance(object):
             while ((np.any(np.round(MaxCR * 1000) > 0))
                    & (np.any(np.round(self.FluxOut[compi,:] * 1000) == 0))
                    & (compi >= 0)):
-                
+
                 # Proceed upwards until maximum capillary rise occurs, soil
                 # surface is reached, or encounter a compartment where downward
                 # drainage/infiltration has already occurred on current day
                 cond3 = ((np.round(MaxCR * 1000) > 0)
                          & (np.round(self.FluxOut[compi,:] * 1000) == 0))
-                Df = np.zeros((self.nRotation, self.nLat, self.nLon))
+
+                Df = np.ones((self.nRotation, self.nLat, self.nLon))
                 cond31 = (cond3 & ((self.th[compi,:] >= th_wp[compi,:]) & (self.soil_pars.fshape_cr > 0)))
-                Df[cond31] = (
-                    1 - (((self.th[compi,:] - th_wp[compi,:])
-                          / (self.th_fc_adj[compi,:] - th_wp[compi,:]))
-                         ** self.soil_pars.fshape_cr))[cond31]
+                Df[cond31] = (1 - (((self.th[compi,:] - th_wp[compi,:]) / (self.th_fc_adj[compi,:] - th_wp[compi,:])) ** self.soil_pars.fshape_cr))[cond31]
                 Df = np.clip(Df, 0, 1)
-                cond32 = (cond3 & np.logical_not(cond31))
-                Df[cond32] = 1
                 
                 # Calculate relative hydraulic conductivity
                 thThr = (th_wp[compi,:] + th_fc[compi,:]) / 2
-                Krel = np.zeros((self.nRotation, self.nLat, self.nLon))
+                Krel = np.ones((self.nRotation, self.nLat, self.nLon))
                 cond33 = (cond3 & (self.th[compi,:] < thThr))                
                 cond331 = (cond33 & ((self.th[compi,:] <= th_wp[compi,:]) | (thThr <= th_wp[compi,:])))
                 Krel[cond331] = 0
                 cond332 = (cond33 & np.logical_not(cond331))
-                Krel[cond332] = (
-                    (self.th[compi,:] - th_wp[compi,:])
-                    / (thThr - th_wp[compi,:]))[cond332]
-                
-                cond34 = (cond3 & np.logical_not(cond33))
-                Krel[cond34] = 1
+                Krel[cond332] = ((self.th[compi,:] - th_wp[compi,:]) / (thThr - th_wp[compi,:]))[cond332]
 
                 # Check if room is available to store water from capillary rise
                 dth = np.zeros((self.nRotation, self.nLat, self.nLon))
-                dth[cond3] = (
-                    self.th_fc_adj[compi,:]
-                    - self.th[compi,:])[cond3]
-                
+                dth[cond3] = (self.th_fc_adj[compi,:] - self.th[compi,:])[cond3]                
                 dth = np.round((dth * 1000) / 1000)
 
                 # Store water if room is available
                 dthMax = np.zeros((self.nRotation, self.nLat, self.nLon))
                 CRcomp = np.zeros((self.nRotation, self.nLat, self.nLon))
-                cond35 = (
-                    cond3
-                    & ((dth > 0) & ((zBot - (self.soil_pars.dz[-1] / 2)) < self.zGW)))
+                cond35 = (cond3 & (dth > 0) & ((zBot - self.soil_pars.dz[-1] / 2) < self.zGW))
                 
-                dthMax[cond35] = (Krel * Df * MaxCR
-                                  / (1000 * self.soil_pars.dz[compi]))[cond35]
+                dthMax[cond35] = (Krel * Df * MaxCR / (1000 * self.soil_pars.dz[compi]))[cond35]
                 cond351 = (cond35 & (dth >= dthMax))
                 self.th[compi,:][cond351] += dthMax[cond351]
                 CRcomp[cond351] = (dthMax * 1000 * self.soil_pars.dz[compi])[cond351]
                 MaxCR[cond351] = 0
+                
                 cond352 = (cond35 & np.logical_not(cond351))
                 self.th[compi,:][cond352] = self.th_fc_adj[compi,:][cond352]
                 CRcomp[cond352] = (dth * 1000 * self.soil_pars.dz[compi])[cond352]
                 MaxCR[cond352] = ((Krel * MaxCR) - CRcomp)[cond352]
+                
                 WCr[cond35] += CRcomp[cond35]
 
                 # Update bottom elevation of compartment and compartment counter
@@ -1168,18 +1146,12 @@ class SoilWaterBalance(object):
                 # Update restriction on maximum capillary rise
                 if compi >= 0:
                     zBotMid = zBot - (self.soil_pars.dz[compi] / 2)
-                    cond36 = (
-                        cond3 & ((ksat[compi,:] > 0)
-                                 & (self.zGW > 0)
-                                 & ((self.zGW - zBotMid) < 4)))
-                    
+                    cond36 = (cond3 & ((ksat[compi,:] > 0) & (self.zGW > 0) & ((self.zGW - zBotMid) < 4)))
                     cond361 = (cond36 & (zBotMid >= self.zGW))
                     LimCR[cond361] = 99
                     cond362 = (cond36 & np.logical_not(cond361))
-                    LimCR[cond362] = (
-                        np.exp((np.log(self.zGW - zBotMid) - bCR[compi,:])
-                               / aCR[compi,:]))[cond362]
-
+                    LimCR_log = np.log(self.zGW - zBotMid, out=np.zeros((LimCR.shape)), where=cond362)
+                    LimCR[cond362] = (np.exp((LimCR_log - bCR[compi,:]) / aCR[compi,:]))[cond362]
                     LimCR = np.clip(LimCR, None, 99)
                     cond37 = (cond3 & np.logical_not(cond36))
                     LimCR[cond37] = 0
@@ -1204,7 +1176,7 @@ class SoilWaterBalance(object):
         dzsum = self.soil_pars.dzsum[:,None,None,None] * arr_ones
         
         # Find compartments covered by evaporation layer
-        comp_sto = ((dzsum - dz) < self.EvapZ)
+        comp_sto = (np.round((dzsum - dz) * 1000) < np.round(self.EvapZ * 1000))
         factor = 1 - ((dzsum - self.EvapZ) / dz)
         factor = np.clip(factor, 0, 1) * landcover.GrowingSeasonIndex * comp_sto
             
@@ -1395,7 +1367,7 @@ class SoilWaterBalance(object):
         cond10 = (ExtractPotStg1 > 0)
         
         # Determine fraction of compartments covered by evaporation layer
-        comp_sto = ((dzsum - dz) < self.soil_pars.EvapZmin)
+        comp_sto = (np.round((dzsum - dz) * 1000) < np.round(self.soil_pars.EvapZmin * 1000))
         factor = 1 - ((dzsum - self.soil_pars.EvapZmin) / dz)
         factor = np.clip(factor, 0, 1) * comp_sto
         
@@ -1513,7 +1485,7 @@ class SoilWaterBalance(object):
                 ToExtractStg2 = (Kr * Edt)
 
                 # Determine fraction of compartments covered by evaporation layer
-                comp_sto = ((dzsum - dz) < self.EvapZ)
+                comp_sto = (np.round((dzsum - dz) * 1000) < np.round(self.EvapZ * 1000))
                 factor = 1 - ((dzsum - self.EvapZ) / dz)
 
                 # multiply by comp_sto to ensure factor is zero in compartments entirely below EvapZ
@@ -1705,7 +1677,7 @@ class SoilWaterBalance(object):
 
         rootdepth = np.maximum(landcover.Zmin, landcover.Zroot)
         rootdepth = np.round(rootdepth * 100) / 100
-        comp_sto = ((dzsum - dz) < rootdepth)
+        comp_sto = (np.round((dzsum - dz) * 1000) < np.round(rootdepth * 1000))
         
         # Fraction of compartment covered by root zone (zero in compartments
         # NOT covered by the root zone)

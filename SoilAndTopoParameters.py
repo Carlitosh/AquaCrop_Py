@@ -32,10 +32,8 @@ class SoilAndTopoParameters(object):
 
         self.nComp = int(iniItems.soilOptions['nComp'])
         self.dz = iniItems.soilOptions['dz'].split(',')
-        self.dz = np.array(map(np.float32, self.dz))
-
-        self.dz = np.round(100 * self.dz) / 100
-        self.dzsum = np.round(100 * np.cumsum(self.dz)) / 100
+        self.dz = np.array(map(np.float64, self.dz))
+        self.dzsum = np.cumsum(self.dz)
 
         # soil parameter input file
         self.soilAndTopoFileNC = iniItems.soilOptions['soilAndTopoNC']
@@ -52,9 +50,10 @@ class SoilAndTopoParameters(object):
 
         soilParams = ['ksat','th_s','th_fc','th_wp','CalcSHP','EvapZsurf','EvapZmin','EvapZmax','Kex','fevap','fWrelExp','fwcc','AdjREW','REW','AdjCN','CN','zCN','zGerm','zRes','fshape_cr']
         for var in soilParams:
-            vars(self)[var] = vos.netcdf2PCRobjCloneWithoutTime(self.soilAndTopoFileNC,\
-                                                                var,\
-                                                                cloneMapFileName=self.cloneMap)
+            d = vos.netcdf2PCRobjCloneWithoutTime(self.soilAndTopoFileNC,
+                                                  var,
+                                                  cloneMapFileName=self.cloneMap)
+            vars(self)[var] = d
 
         self.nRotation = self.ksat.shape[1]
         
