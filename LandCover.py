@@ -383,10 +383,8 @@ class LandCover(object):
     def root_development(self, groundwater, soilwater):
         """Function to calculate root zone expansion"""
 
-        cond1 = self.GrowingSeasonIndex
-
         # If today is the first day of season, root depth is equal to minimum depth
-        cond1 = (self.GrowingSeasonIndex & (self.DAP == 1))
+        cond1 = self.GrowingSeasonDayOne
         self.Zroot[cond1] = self.Zmin[cond1]
 
         # Adjust time for any delayed development
@@ -408,28 +406,37 @@ class LandCover(object):
         tOld[np.logical_not(self.GrowingSeasonIndex)] = 0
 
         # Potential root depth on previous day
+        # ####################################
+        
         ZrOld = np.zeros((self.nRotation, self.nLat, self.nLon))
         cond2 = (self.GrowingSeasonIndex & (tOld >= tmax))
         ZrOld[cond2] = self.Zmax[cond2]
         cond3 = (self.GrowingSeasonIndex & (tOld <= t0))
         ZrOld[cond3] = Zini[cond3]
         cond4 = (self.GrowingSeasonIndex & (np.logical_not(cond2 | cond3)))
-        X = (tOld - t0) / (tmax - t0)
-        ZrOld[cond4] = ((Zini + (self.Zmax - Zini))
-                        * X ** (1 / self.fshape_r))[cond4]
+        X_divd = tOld - t0
+        X_divs = tmax - t0
+        X = np.divide(X_divd, X_divs, out=np.zeros_like(t0), where=X_divs!=0)
+        ZrOld_exp = np.divide(1, self.fshape_r, out=np.zeros_like(self.fshape_r), where=cond4)
+        ZrOld[cond4] = ((Zini + (self.Zmax - Zini)) * np.power(X, ZrOld_exp, out=np.zeros_like(ZrOld), where=cond4))[cond4]
         
         cond5 = (self.GrowingSeasonIndex & (ZrOld < self.Zmin))
         ZrOld[cond5] = self.Zmin[cond5]
 
         # Potential root depth on current day
+        # ###################################
+        
         Zr = np.zeros((self.nRotation, self.nLat, self.nLon))
         cond6 = (self.GrowingSeasonIndex & (tAdj >= tmax))
         Zr[cond6] = self.Zmax[cond6]
         cond7 = (self.GrowingSeasonIndex & (tAdj <= t0))
         Zr[cond7] = Zini[cond7]
         cond8 = (self.GrowingSeasonIndex & (np.logical_not(cond6 | cond7)))
-        ZrOld[cond8] = ((Zini + (self.Zmax - Zini))
-                        * X ** (1 / self.fshape_r))[cond8]
+        X_divd = tAdj - t0
+        X_divs = tmax - t0
+        X = np.divide(X_divd, X_divs, out=np.zeros_like(t0), where=X_divs!=0)
+        Zr_exp = np.divide(1, self.fshape_r, out=np.zeros_like(self.fshape_r), where=cond8)
+        Zr[cond8] = ((Zini + (self.Zmax - Zini)) * np.power(X, Zr_exp, out=np.zeros_like(Zr), where=cond8))[cond8]
         
         cond9 = (self.GrowingSeasonIndex & (Zr < self.Zmin))
         Zr[cond9] = self.Zmin[cond9]
@@ -440,8 +447,9 @@ class LandCover(object):
         cond101 = (cond10 & (self.fshape_ex >= 0))        
         dZr[cond101] = (dZr * soilwater.TrRatio)[cond101]
         cond102 = (cond10 & np.logical_not(cond101))
-        fAdj = ((np.exp(soilwater.TrRatio * self.fshape_ex) - 1)
-                / (np.exp(self.fshape_ex) - 1))
+        fAdj_divd = (np.exp(soilwater.TrRatio * self.fshape_ex) - 1)
+        fAdj_divs = (np.exp(self.fshape_ex) - 1)
+        fAdj = np.divide(fAdj_divd, fAdj_divs, out=np.zeros_like(Zr), where=fAdj_divs!=0)
         dZr[cond102] = (dZr * fAdj)[cond102]
 
         # Adjust root expansion for failure to germinate (roots cannot expand
@@ -453,22 +461,18 @@ class LandCover(object):
 
         cond11 = (self.GrowingSeasonIndex & (soilwater.soil_pars.zRes > 0))
         cond111 = (cond11 & (self.Zroot > soilwater.soil_pars.zRes))
-        self.rCor[cond111] = (
-            (2 * (self.Zroot / soilwater.soil_pars.zRes)
-             * ((self.SxTop + self.SxBot) / 2)
-             - self.SxTop) / self.SxBot)[cond111]
+        self.rCor[cond111] = np.divide(
+            (2 * (self.Zroot / soilwater.soil_pars.zRes) * ((self.SxTop + self.SxBot) / 2) - self.SxTop),
+            self.SxBot, out=np.zeros_like(Zr), where=cond111)[cond111]
         
         self.Zroot[cond111] = soilwater.soil_pars.zRes[cond111]
 
         # Limit rooting depth if groundwater table is present (roots cannot
         # develop below the water table)
-        # zGW = soilwater.zGW[None,:,:] * np.ones((self.nRotation))[:,None,None]
-        zGW = np.copy(soilwater.zGW)
-        cond12 = (self.GrowingSeasonIndex & groundwater.WaterTable & (zGW > 0))
-        cond121 = (cond12 & (self.Zroot > zGW))
-        self.Zroot[cond121] = zGW[cond121]
-        cond1211 = (cond121 & (self.Zroot < self.Zmin))
-        self.Zroot[cond1211] = self.Zmin[cond1211]
+        if groundwater.WaterTable:
+            zGW = np.copy(soilwater.zGW)
+            cond12 = ((zGW > 0) & (self.Zroot > zGW))
+            self.Zroot[cond12] = np.clip(zGW, self.Zmin, None)[cond12]
 
         # No root system outside of growing season
         self.Zroot[np.logical_not(self.GrowingSeasonIndex)] = 0
@@ -495,19 +499,11 @@ class LandCover(object):
         
         # Adjust stress thresholds for Et0 on current day (don't do this for
         # pollination water stress coefficient)
-
         et0 = (meteo.referencePotET[None,:,:] * np.ones((self.nRotation))[:,None,None])
         cond1 = (self.ETadj == 1)
         for stress in range(3):
-            p_up[stress,:][cond1] = (
-                p_up[stress,:]
-                + (0.04 * (5 - et0))
-                * (np.log10(10 - 9 * p_up[stress,:])))[cond1]
-            
-            p_lo[stress,:][cond1] = (
-                p_lo[stress,:]
-                + (0.04 * (5 - et0))
-                * (np.log10(10 - 9 * p_lo[stress,:])))[cond1]
+            p_up[stress,:][cond1] = (p_up[stress,:] + (0.04 * (5 - et0)) * (np.log10(10 - 9 * p_up[stress,:])))[cond1]
+            p_lo[stress,:][cond1] = (p_lo[stress,:] + (0.04 * (5 - et0)) * (np.log10(10 - 9 * p_lo[stress,:])))[cond1]
 
         # Adjust senescence threshold if early senescence triggered
         if beta:
@@ -526,7 +522,9 @@ class LandCover(object):
         
         # Partial water stress
         cond2 = (soilwater.Dr >  (p_up * soilwater.TAW)) & (soilwater.Dr < (p_lo * soilwater.TAW))
-        Drel[cond2] = (1 - ((p_lo - (soilwater.Dr / soilwater.TAW)) / (p_lo - p_up)))[cond2]
+        x1 = p_lo - np.divide(soilwater.Dr, soilwater.TAW, out=np.zeros_like(Drel), where=soilwater.TAW!=0)
+        x2 = p_lo - p_up
+        Drel[cond2] = (1 - np.divide(x1, x2, out=np.zeros_like(Drel), where=x2!=0))[cond2]
         
         # Full water stress
         cond3 = (soilwater.Dr >= (p_lo * soilwater.TAW))
@@ -534,8 +532,9 @@ class LandCover(object):
 
         # Calculate root zone stress coefficients
         idx = np.arange(0,3)
-        Ks = (1 - ((np.exp(Drel[idx,:] * fshape_w[idx,:]) - 1)
-                   / (np.exp(fshape_w[idx,:]) - 1)))
+        x1 = np.exp(Drel[idx,:] * fshape_w[idx,:]) - 1
+        x2 = np.exp(fshape_w[idx,:]) - 1
+        Ks = (1 - np.divide(x1, x2, out=np.zeros_like(x2), where=x2!=0))
 
         # Water stress coefficients (leaf expansion, stomatal closure,
         # senescence, pollination failure)
@@ -551,15 +550,16 @@ class LandCover(object):
         """Function to calculate canopy cover development by end of the 
         current simulation day
         """
+        arr_zeros = np.zeros((self.nRotation, self.nLat, self.nLon))
         if Mode == 'Growth':
             CC = (CC0 * np.exp(CGC * dt))
             cond1 = (CC > (CCx / 2))
-            CC[cond1] = (CCx - 0.25 * (CCx / CC0) * CCx * np.exp(-CGC * dt))[cond1]
+            CC[cond1] = (CCx - 0.25 * np.divide(CCx, CC0, out=np.copy(arr_zeros), where=CC0!=0) * CCx * np.exp(-CGC * dt))[cond1]
             CC = np.clip(CC, None, CCx)
         elif Mode == 'Decline':
             CC = np.zeros((CC0.shape))
             cond2 = (CCx >= 0.001)
-            CC[cond2] = (CCx * (1 - 0.05 * (np.exp(dt * (CDC / CCx)) - 1)))[cond2]
+            CC[cond2] = (CCx * (1 - 0.05 * (np.exp(dt * np.divide(CDC, CCx, out=np.copy(arr_zeros), where=CCx!=0)) - 1)))[cond2]
 
         CC = np.clip(CC, 0, 1)
         return CC
@@ -568,17 +568,29 @@ class LandCover(object):
         """Function to find required time to reach CC at end of previous 
         day, given current CGC or CDC
         """
+        arr_zeros = np.zeros((self.nRotation, self.nLat, self.nLon))
         if Mode == 'CGC':
-            CGCx = np.zeros((self.nRotation, self.nLat, self.nLon))
+            CGCx = np.copy(arr_zeros)
             cond1 = (CCprev <= (CCx / 2))
-            CGCx[cond1] = ((np.log(CCprev / CC0)) / (tSum - dt))[cond1]
+            x = np.divide(CCprev, CC0, out=np.copy(arr_zeros), where=CC0!=0)
+            CGCx_divd = np.log(x, out=np.copy(arr_zeros), where=x>0)
+            CGCx_divs = tSum - dt
+            CGCx[cond1] = np.divide(CGCx_divd, CGCx_divs, out=np.copy(arr_zeros), where=CGCx_divs!=0)[cond1]
             cond2 = np.logical_not(cond1)
-            CGCx[cond2] = (
-                (np.log((0.25 * CCx * CCx / CC0) / (CCx - CCprev)))
-                / (tSum - dt))[cond2]
-            tReq = (tSum - dt) * (CGCx / CGC)
+
+            x1 = np.divide(0.25 * CCx * CCx, CC0, out=np.copy(arr_zeros), where=CC0!=0)
+            x2 = CCx - CCprev
+            x3 = np.divide(x1, x2, out=np.copy(arr_zeros), where=x2!=0)
+            CGCx_divd = np.log(x3, out=np.copy(arr_zeros), where=x3>0)
+            CGCx_divs = tSum - dt
+            CGCx[cond2] = np.divide(CGCx_divd, CGCx_divs, out=np.copy(arr_zeros), where=CGCx_divs!=0)[cond2]
+            tReq = (tSum - dt) * np.divide(CGCx, CGC, out=np.copy(arr_zeros), where=CGC!=0)
         elif Mode == 'CDC':
-            tReq = ((np.log(1 + (1 - CCprev / CCx) / 0.05)) / (CDC / CCx))
+            x1 = np.divide(CCprev, CCx, out=np.copy(arr_zeros), where=CCx!=0)
+            x2 = 1 + (1 - np.divide(CCprev, CCx, out=np.copy(arr_zeros), where=CCx!=0)) / 0.05
+            tReq_divd = np.log(x2, out=np.copy(arr_zeros), where=x2!=0)
+            tReq_divs = np.divide(CDC, CCx, out=np.copy(arr_zeros), where=CCx!=0)
+            tReq = np.divide(tReq_divd, tReq_divs, out=np.copy(arr_zeros), where=tReq_divs!=0)
 
         return tReq
                     
@@ -601,8 +613,8 @@ class LandCover(object):
         """Function to update CCx and CDC parameter values for 
         rewatering in late season of an early declining canopy
         """
-        CCxAdj = CCprev / (1 - 0.05 * (np.exp(dt * (CDC / CCx)) - 1))
-        CDCadj = CDC * (CCxAdj / CCx)
+        CCxAdj = CCprev / (1 - 0.05 * (np.exp(dt * (np.divide(CDC, CCx, out=np.zeros_like(CCx), where=CCx!=0))) - 1))
+        CDCadj = CDC * np.divide(CCxAdj, CCx, out=np.zeros_like(CCx), where=CCx!=0)
         return CCxAdj,CDCadj
 
     def canopy_cover(self, meteo, soilwater):
@@ -616,7 +628,7 @@ class LandCover(object):
         CCsen = np.zeros((self.nRotation, self.nLat, self.nLon))
 
         # Store initial condition
-        self.CCprev = self.CC
+        self.CCprev = np.copy(self.CC)
         
         # Calculate root zone water content, and determine if water stress is
         # occurring
@@ -634,15 +646,14 @@ class LandCover(object):
             tCCadj = self.GDDcum - self.DelayedGDDs
 
         # ######################################################################
-        # Canopy development (potential)
+        # Canopy development (potential) (Lines 28-62)
 
         # No canopy development before emergence/germination or after maturity
-        cond1 = (self.GrowingSeasonIndex
-                 & ((tCC < self.Emergence) | (np.round(self.Emergence) > self.Maturity)))
+        cond1 = (self.GrowingSeasonIndex & ((tCC < self.Emergence) | (np.round(self.Emergence) > self.Maturity)))
         self.CC_NS[cond1] = 0
 
         # Canopy growth can occur
-        cond2 = (self.GrowingSeasonIndex & (tCC < self.CanopyDevEnd))
+        cond2 = (self.GrowingSeasonIndex & np.logical_not(cond1) & (tCC < self.CanopyDevEnd))
 
         # Very small initial CC as it is first day or due to senescence. In this
         # case assume no leaf expansion stress
@@ -652,14 +663,14 @@ class LandCover(object):
         # Canopy growing
         cond22 = (cond2 & np.logical_not(cond21))
         tmp_tCC = tCC - self.Emergence
-        tmp_CC = self.canopy_cover_development(self.CC0, self.CCx, self.CGC, self.CDC, tmp_tCC, 'Growth')
-        self.CC[cond22] = tmp_CC[cond22]
+        tmp_CC_NS = self.canopy_cover_development(self.CC0, self.CCx, self.CGC, self.CDC, tmp_tCC, 'Growth')
+        self.CC_NS[cond22] = tmp_CC_NS[cond22]
 
         # Update maximum canopy cover size in growing season
         self.CCxAct_NS[cond2] = self.CC_NS[cond2]
         
         # No more canopy growth is possible or canopy in decline
-        cond3 = (self.GrowingSeasonIndex & (tCC > self.CanopyDevEnd))
+        cond3 = (self.GrowingSeasonIndex & np.logical_not(cond1 | cond2) & (tCC > self.CanopyDevEnd))
         # Set CCx for calculation of withered canopy effects
         self.CCxW_NS[cond3] = self.CCxAct_NS[cond3]
         
@@ -670,21 +681,18 @@ class LandCover(object):
         # Late-season stage - canopy decline
         cond32 = (cond3 & np.logical_not(cond31))
         tmp_tCC = tCC - self.Emergence
-        tmp_CC = self.canopy_cover_development(self.CC0, self.CCx, self.CGC, self.CDC, tmp_tCC, 'Decline')
-        self.CC[cond32] = tmp_CC[cond32]
+        tmp_CC_NS = self.canopy_cover_development(self.CC0, self.CCx, self.CGC, self.CDC, tmp_tCC, 'Decline')
+        self.CC_NS[cond32] = tmp_CC_NS[cond32]
 
         # ######################################################################
-        # Canopy development (actual)
+        # Canopy development (actual) (Lines 64-158)
 
         # No canopy development before emergence/germination or after maturity
-        cond4 = (self.GrowingSeasonIndex
-                 & ((tCCadj < self.Emergence) | (np.round(tCCadj) > self.Maturity)))
+        cond4 = (self.GrowingSeasonIndex & ((tCCadj < self.Emergence) | (np.round(tCCadj) > self.Maturity)))
         self.CC[cond4] = 0
 
-        # Canopy growth can occur
-        cond5 = (self.GrowingSeasonIndex
-                 & (tCCadj < self.CanopyDevEnd)
-                 & np.logical_not(cond4))
+        # Otherwise, canopy growth can occur
+        cond5 = (self.GrowingSeasonIndex & np.logical_not(cond4) & (tCCadj < self.CanopyDevEnd))
         cond51 = (cond5 & (self.CCprev <= self.CC0adj))
 
         # Very small initial CC as it is first day or due to senescence. In
@@ -708,8 +716,7 @@ class LandCover(object):
 
         # Adjust CCx for change in CGC
         cond5221 = (cond522 & (CGCadj > 0))
-        tmp_CCxAdj = self.adjust_CCx(self.CCprev, self.CC0adj, self.CCx,
-                                        CGCadj, self.CDC, dtCC, tCCadj)
+        tmp_CCxAdj = self.adjust_CCx(self.CCprev, self.CC0adj, self.CCx, CGCadj, self.CDC, dtCC, tCCadj)
         CCxAdj[cond5221] = tmp_CCxAdj[cond5221]
 
         cond52211 = (cond5221 & (CCxAdj > 0))
@@ -723,14 +730,12 @@ class LandCover(object):
         # Determine time required to reach CC on previous day, given CGCadj
         # value
         cond522112 = (cond52211 & np.logical_not(cond522111))
-        tReq = self.canopy_cover_required_time(self.CCprev, self.CC0adj, CCxAdj,
-                                       CGCadj, self.CDC, dtCC, tCCadj, 'CGC')
+        tReq = self.canopy_cover_required_time(self.CCprev, self.CC0adj, CCxAdj, CGCadj, self.CDC, dtCC, tCCadj, 'CGC')
         tmp_tCC = tReq + dtCC
 
         # Determine new canopy size
         cond5221121 = (cond522112 & (tmp_tCC > 0))
-        tmp_CC = self.canopy_cover_development(self.CC0adj, CCxAdj, CGCadj,
-                                        self.CDC, tmp_tCC, 'Growth')
+        tmp_CC = self.canopy_cover_development(self.CC0adj, CCxAdj, CGCadj, self.CDC, tmp_tCC, 'Growth')
         self.CC[cond5221121] = tmp_CC[cond5221121]
 
         # No canopy growth (line 110)
@@ -743,9 +748,9 @@ class LandCover(object):
         
         # No canopy growth (line 119)
         cond5222 = (cond522 & np.logical_not(cond5221))
+        self.CC[cond5222] = self.CCprev[cond5222]
 
-        # Update CC0 if current canopy cover if less than initial canopy cover
-        # size at planting
+        # Update CC0 if current canopy cover if less than initial canopy cover size at planting
         cond52221 = (cond5222 & (self.CC < self.CC0adj))
         self.CC0adj[cond52221] = self.CC[cond52221]
 
@@ -754,11 +759,12 @@ class LandCover(object):
         self.CCxAct[cond53] = self.CC[cond53]
         
         # No more canopy growth is possible or canopy is in decline (line 132)
-        cond6 = (self.GrowingSeasonIndex & (tCCadj > self.CanopyDevEnd))
-
+        cond6 = (self.GrowingSeasonIndex & np.logical_not(cond4 | cond5) & (tCCadj > self.CanopyDevEnd))
+        
         # Mid-season stage - no canopy growth: update actual maximum canopy
         # cover size during growing season only (i.e. do not update CC)
         cond61 = (cond6 & (tCCadj < self.Senescence))
+        self.CC[cond61] = self.CCprev[cond61]
         cond611 = (cond61 & (self.CC > self.CCxAct))
         self.CCxAct[cond611] = self.CC[cond611]
 
@@ -766,10 +772,9 @@ class LandCover(object):
         # for difference between actual and potential CCx, and determine new
         # canopy size
         cond62 = (cond6 & np.logical_not(cond61))
-        CDCadj[cond62] = (self.CDC * (self.CCxAct / self.CCx))[cond62]
+        CDCadj[cond62] = (self.CDC * np.divide(self.CCxAct, self.CCx, out=np.zeros_like(self.CCx), where=self.CCx!=0))[cond62]
         tmp_tCC = tCCadj - self.Senescence
-        tmp_CC = self.canopy_cover_development(self.CC0adj, self.CCxAct, self.CGC,
-                                        CDCadj, tmp_tCC, 'Decline')
+        tmp_CC = self.canopy_cover_development(self.CC0adj, self.CCxAct, self.CGC, CDCadj, tmp_tCC, 'Decline')
         self.CC[cond62] = tmp_CC[cond62]
 
         # Check for crop growth termination: if the following conditions are
@@ -779,7 +784,7 @@ class LandCover(object):
         self.CropDead[cond63] = True
 
         # ######################################################################
-        # Canopy senescence due to water stress (actual)
+        # Canopy senescence due to water stress (actual) (Lines 160-259)
 
         cond7 = (self.GrowingSeasonIndex & (tCCadj >= self.Emergence))
 
@@ -810,15 +815,11 @@ class LandCover(object):
 
         # Get time required to reach CC at end of previous day, given CDCadj
         cond7115 = (cond711 & np.logical_not(cond7114))
-        tReq = self.canopy_cover_required_time(self.CCprev, self.CC0adj,
-                                               self.CCxEarlySen, self.CGC,
-                                               CDCadj, dtCC,
-                                               tCCadj, 'CDC')
+        tReq = self.canopy_cover_required_time(self.CCprev, self.CC0adj, self.CCxEarlySen, self.CGC, CDCadj, dtCC, tCCadj, 'CDC')
 
         # Calculate GDD's for canopy decline and determine new canopy size
         tmp_tCC = tReq + dtCC
-        tmp_CCsen = self.canopy_cover_development(self.CC0adj, self.CCxEarlySen, self.CGC,
-                                           CDCadj, tmp_tCC, 'Decline')
+        tmp_CCsen = self.canopy_cover_development(self.CC0adj, self.CCxEarlySen, self.CGC, CDCadj, tmp_tCC, 'Decline')
         CCsen[cond7115] = tmp_CCsen[cond7115]
 
         # Update canopy cover size
@@ -828,6 +829,7 @@ class LandCover(object):
         CCsen[cond7116] = np.clip(CCsen, None, self.CCx)[cond7116]
 
         # CC cannot be greater than value on previous day
+        self.CC[cond7116] = CCsen[cond7116]
         self.CC[cond7116] = np.clip(self.CC, None, self.CCprev)[cond7116]
 
         # Update maximum canopy cover size during growing season
@@ -845,8 +847,7 @@ class LandCover(object):
         self.CC[cond7117] = np.clip(self.CC, None, CCsen)[cond7117]
 
         # Check for crop growth termination
-        cond7118 = (cond711
-                    & ((self.CC < 0.001) & np.logical_not(self.CropDead)))
+        cond7118 = (cond711 & ((self.CC < 0.001) & np.logical_not(self.CropDead)))
         self.CC[cond7118] = 0
         self.CropDead[cond7118] = True
 
@@ -862,13 +863,11 @@ class LandCover(object):
         CCxAdj[cond7121] = tmp_CCxAdj[cond7121]
         CDCadj[cond7121] = tmp_CDCadj[cond7121]
         tmp_tCC = tCCadj - self.Senescence
-        tmp_CC = self.canopy_cover_development(self.CC0adj, CCxAdj, self.CGC,
-                                        CDCadj, tmp_tCC, 'Decline')
+        tmp_CC = self.canopy_cover_development(self.CC0adj, CCxAdj, self.CGC, CDCadj, tmp_tCC, 'Decline')
         self.CC[cond7121] = tmp_CC[cond7121]
 
         # Check for crop growth termination
-        cond71211 = (cond7121
-                     & ((self.CC < 0.001) & np.logical_not(self.CropDead)))
+        cond71211 = (cond7121 & ((self.CC < 0.001) & np.logical_not(self.CropDead)))
         self.CC[cond71211] = 0
         self.CropDead[cond71211] = True
 
@@ -879,7 +878,7 @@ class LandCover(object):
         self.CCxW[cond71] = np.clip(self.CCxW, self.CC, None)[cond71]
 
         # ######################################################################
-        # Calculate canopy size adjusted for micro-advective effects
+        # Calculate canopy size adjusted for micro-advective effects (Lines 261-273)
         
         # Check to ensure potential CC is not slightly lower than actual
         cond8 = (self.GrowingSeasonIndex & (self.CC_NS < self.CC))
@@ -889,16 +888,9 @@ class LandCover(object):
         self.CCxAct_NS[cond81] = self.CC_NS[cond81]
 
         # Actual (with water stress)
-        self.CCadj[self.GrowingSeasonIndex] = (
-            (1.72 * self.CC)
-            - (self.CC ** 2)
-            + (0.3 * (self.CC ** 3)))[self.GrowingSeasonIndex]
-
+        self.CCadj[self.GrowingSeasonIndex] = ((1.72 * self.CC) - (self.CC ** 2) + (0.3 * (self.CC ** 3)))[self.GrowingSeasonIndex]
         # Potential (without water stress)
-        self.CCadj_NS[self.GrowingSeasonIndex] = (
-            (1.72 * self.CC_NS)
-            - (self.CC_NS ** 2)
-            + (0.3 * (self.CC_NS ** 3)))[self.GrowingSeasonIndex]
+        self.CCadj_NS[self.GrowingSeasonIndex] = ((1.72 * self.CC_NS) - (self.CC_NS ** 2) + (0.3 * (self.CC_NS ** 3)))[self.GrowingSeasonIndex]
 
         # No canopy outside growing season - set values to zero
         self.CC[np.logical_not(self.GrowingSeasonIndex)] = 0
@@ -951,7 +943,10 @@ class LandCover(object):
         # logistic growth (i.e. no linear switch)
         cond221 = (cond22 & ((self.CropType == 1) | (self.CropType == 2)))
         self.PctLagPhase[cond221] = 100
-        self.HIref[cond221] = ((self.HIini * self.HI0) / (self.HIini + (self.HI0 - self.HIini) * np.exp(-self.HIGC * HIt)))[cond221]
+        HIref_divd = (self.HIini * self.HI0)
+        HIref_divs = (self.HIini + (self.HI0 - self.HIini) * np.exp(-self.HIGC * HIt))
+        self.HIref[cond221] = np.divide(HIref_divd, HIref_divs, out=np.zeros_like(self.HIref), where=HIref_divs!=0)[cond221]
+        
         # Harvest index approaching maximum limit
         cond2211 = (cond221 & (self.HIref >= (0.9799 * self.HI0)))
         self.HIref[cond2211] = self.HI0[cond2211]
@@ -960,14 +955,21 @@ class LandCover(object):
         # Not yet reached linear switch point, therefore proceed with logistic
         # build-up
         cond2221 = (cond222 & (HIt < self.tLinSwitch))
-        self.PctLagPhase[cond2221] = (100 * (HIt / self.tLinSwitch))[cond2221]
-        self.HIref[cond2221] = ((self.HIini * self.HI0) / (self.HIini + (self.HI0 - self.HIini) * np.exp(-self.HIGC * HIt)))[cond2221]
+        
+        self.PctLagPhase[cond2221] = (100 * np.divide(HIt, self.tLinSwitch, out=np.zeros_like(HIt), where=self.tLinSwitch!=0))[cond2221]
+        HIref_divd = (self.HIini * self.HI0)
+        HIref_divs = (self.HIini + (self.HI0 - self.HIini) * np.exp(-self.HIGC * HIt))
+        self.HIref[cond2221] = np.divide(HIref_divd, HIref_divs, out=np.zeros_like(HIref_divs), where=HIref_divs!=0)[cond2221]
+        
         cond2222 = (cond222 & np.logical_not(cond2221))
         self.PctLagPhase[cond2222] = 100
         # Calculate reference harvest index for current day (logistic portion)
-        self.HIref[cond2222] = ((self.HIini * self.HI0) / (self.HIini + (self.HI0 - self.HIini) * np.exp(-self.HIGC * self.tLinSwitch)))[cond2222]
+        HIref_divd = (self.HIini * self.HI0)
+        HIref_divs = (self.HIini + (self.HI0 - self.HIini) * np.exp(-self.HIGC * self.tLinSwitch))
+        self.HIref[cond2222] = np.divide(HIref_divd, HIref_divs, out=np.zeros_like(HIref_divs), where=HIref_divs!=0)[cond2222]
+        
         # Calculate reference harvest index for current day (total = logistic + linear)
-        self.HIref[cond2222] += (self.dHILinear * (HIt - self.tLinSwitch))[cond222]
+        self.HIref[cond2222] += (self.dHILinear * (HIt - self.tLinSwitch))[cond2222]
 
         # Limit HIref and round off computed value
         cond223 = (cond22 & (self.HIref > self.HI0))
@@ -983,6 +985,8 @@ class LandCover(object):
     def temperature_stress(self, meteo):
         """Function to calculate temperature stress coefficients"""
 
+        arr_zeros = np.zeros((self.nRotation, self.nLat, self.nLon))
+        
         # Add rotation dimension to meteo vars
         tmin = meteo.tmin[None,:,:] * np.ones((self.nRotation))[:,None,None]
         tmax = meteo.tmax[None,:,:] * np.ones((self.nRotation))[:,None,None]
@@ -1001,8 +1005,14 @@ class LandCover(object):
         cond22 = (cond2 & (self.GDD <= self.GDD_lo))
         self.Kst_Bio[cond22] = 0
         cond23 = (cond2 & np.logical_not(cond21 | cond22))
-        GDDrel = (self.GDD - self.GDD_lo) / (self.GDD_up - self.GDD_lo)
-        self.Kst_Bio[cond23] = ((KsBio_up * KsBio_lo) / (KsBio_lo + (KsBio_up - KsBio_lo) * np.exp(-fshapeb * GDDrel)))[cond23]
+        GDDrel_divd = (self.GDD - self.GDD_lo)
+        GDDrel_divs = (self.GDD_up - self.GDD_lo)
+        GDDrel = np.divide(GDDrel_divd, GDDrel_divs, out=np.copy(arr_zeros), where=GDDrel_divs!=0)
+        # GDDrel = (self.GDD - self.GDD_lo) / (self.GDD_up - self.GDD_lo)
+        Kst_Bio_divd = (KsBio_up * KsBio_lo)
+        Kst_Bio_divs = (KsBio_lo + (KsBio_up - KsBio_lo) * np.exp(-fshapeb * GDDrel))
+        self.Kst_Bio[cond23] = np.divide(Kst_Bio_divd, Kst_Bio_divs, out=np.copy(arr_zeros), where=Kst_Bio_divs!=0)[cond23]
+        # self.Kst_Bio[cond23] = ((KsBio_up * KsBio_lo) / (KsBio_lo + (KsBio_up - KsBio_lo) * np.exp(-fshapeb * GDDrel)))[cond23]
         self.Kst_Bio[cond23] = (self.Kst_Bio - KsBio_lo * (1 - GDDrel))[cond23]
 
         # Calculate temperature stress coefficients affecting crop pollination
@@ -1018,8 +1028,13 @@ class LandCover(object):
         cond42 = (cond4 & (tmax >= self.Tmax_up))
         self.Kst_PolH[cond42] = 0
         cond43 = (cond4 & np.logical_not(cond41 | cond42))
-        Trel = (tmax - self.Tmax_lo) / (self.Tmax_up - self.Tmax_lo)
-        self.Kst_PolH[cond43] = ((KsPol_up * KsPol_lo) / (KsPol_lo + (KsPol_up - KsPol_lo) * np.exp(-self.fshape_b * (1 - Trel))))[cond43]
+        Trel_divd = (tmax - self.Tmax_lo)
+        Trel_divs = (self.Tmax_up - self.Tmax_lo)
+        Trel = np.divide(Trel_divd, Trel_divs, out=np.copy(arr_zeros), where=Trel_divs!=0)
+        Kst_PolH_divd = (KsPol_up * KsPol_lo)
+        Kst_PolH_divs = (KsPol_lo + (KsPol_up - KsPol_lo) * np.exp(-self.fshape_b * (1 - Trel)))
+        self.Kst_PolH[cond43] = np.divide(Kst_PolH_divd, Kst_PolH_divs, out=np.copy(arr_zeros), where=Kst_PolH_divs!=0)[cond43]
+        # self.Kst_PolH[cond43] = ((KsPol_up * KsPol_lo) / (KsPol_lo + (KsPol_up - KsPol_lo) * np.exp(-self.fshape_b * (1 - Trel))))[cond43]
 
         # Calculate effects of cold stress on pollination
         cond5 = (self.PolColdStress == 0)
@@ -1029,12 +1044,20 @@ class LandCover(object):
         self.Kst_PolC[cond61] = 1
         cond62 = (cond6 & (tmin <= self.Tmin_lo))
         self.Kst_PolC[cond62] = 0
-        Trel = (self.Tmin_up - tmin) / (self.Tmin_up - self.Tmin_lo)
-        self.Kst_PolC[cond62] = ((KsPol_up * KsPol_lo) / (KsPol_lo + (KsPol_up - KsPol_lo) * np.exp(-self.fshape_b * (1 - Trel))))[cond62]
+        Trel_divd = (self.Tmin_up - tmin)
+        Trel_divs = (self.Tmin_up - self.Tmin_lo)
+        Trel = np.divide(Trel_divd, Trel_divs, out=np.copy(arr_zeros), where=Trel_divs!=0)
+        # Trel = (self.Tmin_up - tmin) / (self.Tmin_up - self.Tmin_lo)
+        Kst_PolC_divd = (KsPol_up * KsPol_lo)
+        Kst_PolC_divs = (KsPol_lo + (KsPol_up - KsPol_lo) * np.exp(-self.fshape_b * (1 - Trel)))
+        self.Kst_PolC[cond62] = np.divide(Kst_PolC_divd, Kst_PolC_divs, out=np.copy(arr_zeros), where=Kst_PolC_divs!=0)[cond62]
+        # self.Kst_PolC[cond62] = ((KsPol_up * KsPol_lo) / (KsPol_lo + (KsPol_up - KsPol_lo) * np.exp(-self.fshape_b * (1 - Trel))))[cond62]
         
     def biomass_accumulation(self, meteo, soilwater):
         """Function to calculate biomass accumulation"""
 
+        arr_zeros = np.zeros((self.nRotation, self.nLat, self.nLon))
+        
         et0 = meteo.referencePotET[None,:,:] * np.ones((self.nRotation))[:,None,None]
         self.temperature_stress(meteo)
 
@@ -1050,7 +1073,7 @@ class LandCover(object):
         fswitch[cond11] = (self.PctLagPhase / 100)[cond11]
         cond12 = (cond1 & np.logical_not(cond11))
         cond121 = (cond12 < (self.YldFormCD / 3))
-        fswitch[cond121] = (HIt / (self.YldFormCD / 3))[cond121]
+        fswitch[cond121] = np.divide(HIt, (self.YldFormCD / 3), out=np.copy(arr_zeros), where=self.YldFormCD!=0)[cond121]
         cond122 = (cond12 & np.logical_not(cond121))
         fswitch[cond122] = 1
         WPadj[cond1] = (self.WP * (1 - (1 - self.WPy / 100) * fswitch))[cond1]
@@ -1076,16 +1099,22 @@ class LandCover(object):
         """Function to calculate adjustment to harvest index for 
         pre-anthesis water stress
         """
+        arr_zeros = np.zeros((self.nRotation, self.nLat, self.nLon))
+        
         # Calculate adjustment
-        Br = self.B / self.B_NS
-        Br_range = np.log(self.dHI_pre) / 5.62
+        Br = np.divide(self.B, self.B_NS, out=np.copy(arr_zeros), where=self.B_NS!=0)
+        Br_range = np.log(self.dHI_pre, out=np.copy(arr_zeros), where=self.dHI_pre>0) / 5.62
         Br_upp = 1
         Br_low = 1 - Br_range
         Br_top = Br_upp - (Br_range / 3)
 
         # Get biomass ratio
-        ratio_low = (Br - Br_low) / (Br_top - Br_low)
-        ratio_upp = (Br - Br_top) / (Br_upp - Br_top)
+        ratio_low_divd = (Br - Br_low)
+        ratio_low_divs = (Br_top - Br_low)
+        ratio_low = np.divide(ratio_low_divd, ratio_low_divs, out=np.copy(arr_zeros), where=ratio_low_divs!=0)
+        ratio_upp_divd = (Br - Br_top)
+        ratio_upp_divs = (Br_upp - Br_top)
+        ratio_upp = np.divide(ratio_upp_divd, ratio_upp_divs, out=np.copy(arr_zeros), where=ratio_upp_divs!=0)
 
         # Calculate adjustment factor
         self.Fpre = np.ones((self.nRotation, self.nLat, self.nLon))
@@ -1114,22 +1143,22 @@ class LandCover(object):
         cond1 = (HIt > 0)
         t1[cond1] = HIt[cond1] - 1
         cond11 = (t1 > 0)
-        t1pct = 100 * (t1 / self.FloweringCD)
+        t1pct = 100 * np.divide(t1, self.FloweringCD, out=np.copy(arr_zeros), where=self.FloweringCD!=0)
         t1pct = np.clip(t1pct, 0, 100)
-        F1[cond11] = (0.00558 * np.exp(0.63 * np.log(t1pct)) - (0.000969 * t1pct) - 0.00383)[cond11]
+        F1[cond11] = (0.00558 * np.exp(0.63 * np.log(t1pct, out=np.copy(arr_zeros), where=t1pct>0)) - (0.000969 * t1pct) - 0.00383)[cond11]
         F1 = np.clip(F1, 0, None)
 
         # Fractional flowering on current day
         t2[cond1] = HIt[cond1]
         cond12 = (t2 > 0)
-        t2pct = 100 * (t2 / self.FloweringCD)
+        t2pct = 100 * np.divide(t2, self.FloweringCD, out=np.copy(arr_zeros), where=self.FloweringCD!=0)
         t2pct = np.clip(t2pct, 0, 100)
-        F2[cond12] = (0.00558 * np.exp(0.63 * np.log(t2pct)) - (0.000969 * t2pct) - 0.00383)[cond11]
+        F2[cond12] = (0.00558 * np.exp(0.63 * np.log(t2pct, out=np.copy(arr_zeros), where=t2pct>0)) - (0.000969 * t2pct) - 0.00383)[cond12]
         F2 = np.clip(F2, 0, None)
 
         # Weight values
         cond13 = (np.abs(F1 - F2) >= 0.0000001)
-        F[cond13] = (100 * ((F1 + F2) / 2) / self.FloweringCD)[cond13]
+        F[cond13] = (100 * np.divide(((F1 + F2) / 2), self.FloweringCD, out=np.copy(arr_zeros), where=self.FloweringCD!=0))[cond13]
         FracFlow[cond1] = F[cond1]
         
         # Calculate pollination adjustment for current day
@@ -1145,7 +1174,9 @@ class LandCover(object):
     def harvest_index_adj_post_anthesis(self):
         """Function to calculate adjustment to harvest index for 
         post-anthesis water stress
-        """        
+        """
+        arr_zeros = np.zeros((self.nRotation, self.nLat, self.nLon))
+        
         # 1 Adjustment for leaf expansion
         tmax1 = self.CanopyDevEndCD - self.HIstartCD
         DAP = self.DAP - self.DelayedCDs
@@ -1155,10 +1186,10 @@ class LandCover(object):
             & (self.Fpre > 0.99)
             & (self.CC > 0.001)
             & (self.a_HI > 0))
-        dCor = (1 + (1 - self.Ksw_Exp) / self.a_HI)
-        self.sCor1[cond1] += (dCor / tmax1)[cond1]
+        dCor = (1 + np.divide((1 - self.Ksw_Exp), self.a_HI, out=np.copy(arr_zeros), where=self.a_HI!=0))
+        self.sCor1[cond1] += np.divide(dCor, tmax1, out=np.copy(arr_zeros), where=tmax1!=0)[cond1]
         DayCor = (DAP - 1 - self.HIstartCD)
-        self.fpost_upp[cond1] = ((tmax1 / DayCor) * self.sCor1)[cond1]
+        self.fpost_upp[cond1] = (np.divide(tmax1, DayCor, out=np.copy(arr_zeros), where=DayCor!=0) * self.sCor1)[cond1]
 
         # 2 Adjustment for stomatal closure
         tmax2 = self.YldFormCD
@@ -1168,10 +1199,10 @@ class LandCover(object):
             & (self.Fpre > 0.99)
             & (self.CC > 0.001)
             & (self.b_HI > 0))
-        dCor = ((np.exp(0.1 * np.log(self.Ksw_Sto))) * (1 - (1 - self.Ksw_Sto) / self.b_HI))
-        self.sCor2[cond2] += (dCor / tmax2)[cond2]
+        dCor = ((np.exp(0.1 * np.log(self.Ksw_Sto))) * (1 - np.divide((1 - self.Ksw_Sto), self.b_HI, out=np.copy(arr_zeros), where=self.b_HI!=0)))
+        self.sCor2[cond2] += np.divide(dCor, tmax2, out=np.copy(arr_zeros), where=tmax2!=0)[cond2]
         DayCor = (DAP - 1 - self.HIstartCD)
-        self.fpost_dwn[cond2] = ((tmax2 / DayCor) * self.sCor2)[cond2]
+        self.fpost_dwn[cond2] = (np.divide(tmax2, DayCor, out=np.copy(arr_zeros), where=DayCor!=0) * self.sCor2)[cond2]
 
         # Determine total multiplier
         cond3 = (tmax1 == 0) & (tmax2 == 0)
@@ -1180,13 +1211,9 @@ class LandCover(object):
         cond41 = (cond4 & (tmax2 == 0))
         self.Fpost[cond41] = self.fpost_upp[cond41]
         cond42 = (cond4 & (tmax1 <= tmax2) & np.logical_not(cond41))
-        self.Fpost[cond42] = (
-            self.fpost_dwn
-            * (((tmax1 * self.fpost_upp) + (tmax2 - tmax1)) / tmax2))[cond42]
+        self.Fpost[cond42] = (self.fpost_dwn * np.divide(((tmax1 * self.fpost_upp) + (tmax2 - tmax1)), tmax2, out=np.copy(arr_zeros), where=tmax2!=0))[cond42]
         cond43 = (cond4 & np.logical_not(cond41 | cond42))
-        self.Fpost[cond43] = (
-            self.fpost_upp
-            * (((tmax2 * self.fpost_dwn) + (tmax1 - tmax2)) / tmax2))[cond43]
+        self.Fpost[cond43] = (self.fpost_upp * np.divide(((tmax2 * self.fpost_dwn) + (tmax1 - tmax2)), tmax2, out=np.copy(arr_zeros), where=tmax2!=0))[cond43]
 
     def harvest_index(self, meteo, soilwater):
         """Function to simulate build up of harvest index"""

@@ -1205,10 +1205,9 @@ class SoilWaterBalance(object):
         # ######################################################################
         # Prepare stage 2 evaporation (REW gone) (Only do this if it is first
         # day of the simulation, or if it is first day of growing season and
-        # not simulating off-season
-        cond1 = (
-            (currTimeStep.timeStepPCR == 1))
-            # | ((landcover.DAP == 1) & (self.OffSeason == False)))
+        # not simulating off-season - NB in this version of the model we always
+        # simulate the off-season)
+        cond1 = (currTimeStep.timeStepPCR == 1)
                  
         # Reset storage in surface soil layer to zero
         self.Wsurf[cond1] = 0
@@ -1218,12 +1217,9 @@ class SoilWaterBalance(object):
         self.Stage2[cond1] = True
         # Get relative water content for start of stage 2 evaporation
         self.evap_layer_water_content(landcover)
-        self.Wstage2[cond1] = (
-            (self.Wevap_Act - (self.Wevap_Fc - self.soil_pars.REW))
-            / (self.Wevap_Sat - (self.Wevap_Fc - self.soil_pars.REW)))[cond1]
+        self.Wstage2[cond1] = ((self.Wevap_Act - (self.Wevap_Fc - self.soil_pars.REW)) / (self.Wevap_Sat - (self.Wevap_Fc - self.soil_pars.REW)))[cond1]
         self.Wstage2[cond1] = (np.round((self.Wstage2 * 100)) / 100)[cond1]
         self.Wstage2[cond1] = np.clip(self.Wstage2, 0, None)[cond1]
-
 
         # ######################################################################
         # Prepare soil evaporation stage 1: adjust water in surface evaporation
@@ -1244,32 +1240,34 @@ class SoilWaterBalance(object):
         self.Stage2[cond21] = False
 
         # ######################################################################
-        # Calculate potential soil evaporation rate (mm/day)
+        # Calculate potential soil evaporation rate (mm/day) (Lines 54-100)
 
-        # NB calculation of potential evaporation rate uses crop-specific
-        # parameters
-        
         # Adjust time for any delayed development
         if landcover.crop_pars.CalendarType == 1:
             tAdj = (landcover.DAP - landcover.DelayedCDs) * landcover.GrowingSeasonIndex
         elif landcover.crop_pars.CalendarType == 2:
             tAdj = (landcover.GDDcum - landcover.DelayedGDDs) * landcover.GrowingSeasonIndex
+    
+        # No canopy cover outside of growing season so potential soil
+        # evaporation only depends on reference evapotranspiration
+        EsPot = (self.soil_pars.Kex * et0)
             
         # Calculate maximum potential soil evaporation and potential soil
         # evaporation given current canopy size
-        EsPotMax = (self.soil_pars.Kex * et0 * (1 - landcover.CCxW * (self.soil_pars.fwcc / 100))) * landcover.GrowingSeasonIndex
-        EsPot = (self.soil_pars.Kex * (1 - landcover.CCadj) * et0) * landcover.GrowingSeasonIndex
+        EsPotMax = (self.soil_pars.Kex * et0 * (1 - landcover.CCxW * (self.soil_pars.fwcc / 100)))
+        EsPot[landcover.GrowingSeasonIndex] = (self.soil_pars.Kex * (1 - landcover.CCadj) * et0)[landcover.GrowingSeasonIndex]
 
         # Adjust potential soil evaporation for effects of withered canopy
         cond3 = (landcover.GrowingSeasonIndex & (tAdj > landcover.Senescence) & (landcover.CCxAct > 0))
-        mult = np.zeros((self.nRotation, self.nLat, self.nLon))
+        mult = np.ones((self.nRotation, self.nLat, self.nLon))
         cond31 = (cond3 & (landcover.CC > (landcover.CCxAct / 2)))
         cond311 = (cond31 & (landcover.CC > landcover.CCxAct))
         mult[cond311] = 0
         cond312 = (cond31 & np.logical_not(cond311))
-        mult[cond312] = ((landcover.CCxAct - landcover.CC) / (landcover.CCxAct / 2))[cond312]
-        cond32 = (cond3 & np.logical_not(cond31))
-        mult[cond32] = 1
+        mult_divd = (landcover.CCxAct - landcover.CC)
+        mult_divs = (landcover.CCxAct / 2)
+        mult[cond312] = np.divide(mult_divd, mult_divs, out=np.zeros_like(mult_divs), where=mult_divs!=0)[cond312]
+
         EsPot[cond3] = (EsPot * (1 - landcover.CCxAct * (self.soil_pars.fwcc / 100) * mult))[cond3]
         CCxActAdj = ((1.72 * landcover.CCxAct) + (landcover.CCxAct ** 2) - 0.3 * (landcover.CCxAct ** 3))
         EsPotMin = np.zeros((self.nRotation, self.nLat, self.nLon))
@@ -1282,13 +1280,9 @@ class SoilWaterBalance(object):
         cond4 = (landcover.GrowingSeasonIndex & landcover.PrematSenes)
         EsPot[cond4] = np.clip(EsPot, None, EsPotMax)[cond4]
 
-        # No canopy cover outside of growing season so potential soil
-        # evaporation only depends on reference evapotranspiration
-        cond5 = np.logical_not(landcover.GrowingSeasonIndex)
-        EsPot[cond5] = (self.soil_pars.Kex * et0)[cond5]
-
         # ######################################################################
         # Adjust potential soil evaporation for mulches and/or partial wetting
+        # (Lines 102-121)
         
         EsPotMul = np.zeros((self.nRotation, self.nLat, self.nLon))
         cond5 = (self.SurfaceStorage < 0.000001)
@@ -1393,9 +1387,9 @@ class SoilWaterBalance(object):
 
             # NB no need for index because chng = 0 if cond1011|1012 not met
             self.EsAct += chng       # actual evaporation 
-            W -= chng           # depth of water in current compartment
-            ToExtract -= chng   # total water to be extracted
-            ExtractPotStg1 -= chng  # water to be extracted from surface layer
+            W -= chng                # depth of water in current compartment
+            ToExtract -= chng        # total water to be extracted
+            ExtractPotStg1 -= chng   # water to be extracted from surface layer
 
             # Update water content
             self.th[comp,:][cond101] = (W / (1000 * dz[comp,:]))[cond101]
@@ -1412,9 +1406,7 @@ class SoilWaterBalance(object):
         self.evap_layer_water_content(landcover)
 
         # Proportional water storage for start of stage two evaporation
-        self.Wstage2[cond103] = (
-            (self.Wevap_Act - (self.Wevap_Fc - self.soil_pars.REW)) /
-            (self.Wevap_Sat - (self.Wevap_Fc - self.soil_pars.REW)))[cond103]
+        self.Wstage2[cond103] = ((self.Wevap_Act - (self.Wevap_Fc - self.soil_pars.REW)) / (self.Wevap_Sat - (self.Wevap_Fc - self.soil_pars.REW)))[cond103]
         self.Wstage2[cond103] = (np.round((self.Wstage2 * 100)) / 100)[cond103]
         self.Wstage2[cond103] = np.clip(self.Wstage2, 0, None)[cond103]
 
@@ -1439,23 +1431,19 @@ class SoilWaterBalance(object):
                 self.evap_layer_water_content(landcover)
                 
                 # Get water storage (mm) at start of stage 2 evaporation
-                Wupper = (
-                    self.Wstage2
-                    * (self.Wevap_Sat - (self.Wevap_Fc - self.soil_pars.REW))
-                    + (self.Wevap_Fc - self.soil_pars.REW))
+                Wupper = (self.Wstage2 * (self.Wevap_Sat - (self.Wevap_Fc - self.soil_pars.REW)) + (self.Wevap_Fc - self.soil_pars.REW))
                 
                 # Get water storage (mm) when there is no evaporation
                 Wlower = self.Wevap_Dry
                 
                 # Get relative depletion of evaporation storage in stage 2
-                Wrel = ((self.Wevap_Act - Wlower) / (Wupper - Wlower))
+                Wrel_divd = (self.Wevap_Act - Wlower)
+                Wrel_divs = (Wupper - Wlower)
+                Wrel = np.divide(Wrel_divd, Wrel_divs, out=np.zeros_like(Wrel_divs), where=Wrel_divs!=0)
                 
                 # Check if need to expand evaporative layer
                 cond111 = (cond11 & (self.soil_pars.EvapZmax > self.soil_pars.EvapZmin))
-                Wcheck = (
-                    self.soil_pars.fWrelExp
-                    * ((self.soil_pars.EvapZmax - self.EvapZ)
-                       / (self.soil_pars.EvapZmax - self.soil_pars.EvapZmin)))
+                Wcheck = (self.soil_pars.fWrelExp * ((self.soil_pars.EvapZmax - self.EvapZ) / (self.soil_pars.EvapZmax - self.soil_pars.EvapZmin)))
                 
                 while np.any(cond111 & (Wrel < Wcheck) & (self.EvapZ < self.soil_pars.EvapZmax)):
                     cond1111 = (cond111 & (Wrel < Wcheck) & (self.EvapZ < self.soil_pars.EvapZmax))
@@ -1465,16 +1453,13 @@ class SoilWaterBalance(object):
 
                     # Recalculate current water storage for new EvapZ
                     self.evap_layer_water_content(landcover)
-                    Wupper = (
-                        self.Wstage2
-                        * (self.Wevap_Sat - (self.Wevap_Fc - self.soil_pars.REW))
-                        + (self.Wevap_Fc - self.soil_pars.REW))
+                    Wupper = (self.Wstage2 * (self.Wevap_Sat - (self.Wevap_Fc - self.soil_pars.REW)) + (self.Wevap_Fc - self.soil_pars.REW))
                     Wlower = self.Wevap_Dry
-                    Wrel = ((self.Wevap_Act - Wlower) / (Wupper - Wlower))
-                    Wcheck = (
-                        self.soil_pars.fWrelExp
-                        * ((self.soil_pars.EvapZmax - self.EvapZ)
-                           / (self.soil_pars.EvapZmax - self.soil_pars.EvapZmin)))
+                    Wrel_divd = (self.Wevap_Act - Wlower)
+                    Wrel_divs = (Wupper - Wlower)
+                    Wrel = np.divide(Wrel_divd, Wrel_divs, out=np.zeros_like(Wrel_divs), where=Wrel_divs!=0)
+                    # Wrel = ((self.Wevap_Act - Wlower) / (Wupper - Wlower))
+                    Wcheck = (self.soil_pars.fWrelExp * ((self.soil_pars.EvapZmax - self.EvapZ) / (self.soil_pars.EvapZmax - self.soil_pars.EvapZmin)))
 
                 # Get stage 2 evaporation reduction coefficient
                 Kr = ((np.exp(self.soil_pars.fevap * Wrel) - 1) / (np.exp(self.soil_pars.fevap) - 1))
@@ -1490,7 +1475,6 @@ class SoilWaterBalance(object):
 
                 # multiply by comp_sto to ensure factor is zero in compartments entirely below EvapZ
                 factor = np.clip(factor, 0, 1) * comp_sto  
-
                 comp_sto = np.sum(comp_sto, axis=0)
                 comp = 0
                 while np.any(cond11 & (comp < comp_sto) & (ToExtractStg2 > 0)):
@@ -1523,7 +1507,6 @@ class SoilWaterBalance(object):
                 
         # ######################################################################
         # Store potential evaporation for irrigation calculations on next day
-
         self.Epot = EsPot
 
     def aeration_stress(self, landcover):
@@ -1535,19 +1518,19 @@ class SoilWaterBalance(object):
         # Calculate aeration stress coefficient
         self.Ksa_Aer = np.ones((self.nRotation, self.nLat, self.nLon))
         cond11 = (cond1 & (self.AerDays < landcover.LagAer))
-        stress = (1 - ((self.thRZ_Sat - self.thRZ_Act)
-                       / (self.thRZ_Sat - self.thRZ_Aer)))
+        x1 = (self.thRZ_Sat - self.thRZ_Act)
+        x2 = (self.thRZ_Sat - self.thRZ_Aer)
+        stress = (1 - np.divide(x1, x2, out=np.zeros_like(x1), where=x2!=0))
         self.Ksa_Aer[cond11] = (1 - ((self.AerDays / 3) * stress))[cond11]
         cond12 = (cond1 & np.logical_not(cond11))
-        self.Ksa_Aer[cond12] = ((self.thRZ_Sat - self.thRZ_Act)
-                                / (self.thRZ_Sat - self.thRZ_Aer))[cond12]
+        self.Ksa_Aer[cond12] = np.divide(x1, x2, out=np.zeros_like(x2), where=x2!=0)[cond12]
 
         # Increment aeration days counter, or set to zero if there is no stress
         self.AerDays[cond1] += 1
         self.AerDays[np.logical_not(cond1)] = 0
         self.AerDays = np.clip(self.AerDays, None, landcover.LagAer)
         
-    def transpiration(self, meteo, landcover):
+    def transpiration(self, meteo, landcover, co2):
         """Function to calculate crop transpiration on current day"""
 
         # Expand soil properties to compartments
@@ -1564,8 +1547,10 @@ class SoilWaterBalance(object):
         # Add rotation dimension to ET0
         et0 = meteo.referencePotET[None,:,:] * np.ones((self.nRotation))[:,None,None]
 
+        arr_zeros = np.zeros((self.nRotation, self.nLat, self.nLon))
+        
         # ######################################################################
-        # Calculate transpiration (if in growing season)
+        # Calculate potential transpiration (if in growing season)
 
         # 1. No prior water stress
 
@@ -1574,24 +1559,22 @@ class SoilWaterBalance(object):
         self.AgeDays_NS[cond1] = (landcover.DAP - landcover.MaxCanopyCD)[cond1]
 
         # Update crop coefficient for ageing of canopy
-        Kcb_NS = np.zeros((self.nRotation, self.nLat, self.nLon))
+        Kcb_NS = landcover.Kcb
         cond2 = (landcover.GrowingSeasonIndex & (self.AgeDays_NS > 5))
-        Kcb_NS[cond2] = (landcover.Kcb - ((self.AgeDays_NS - 5) * (landcover.fage / 100))
-                         * landcover.CCxW_NS)[cond2]
-        cond3 = (landcover.GrowingSeasonIndex & np.logical_not(cond2))
-        Kcb_NS[cond3] = landcover.Kcb[cond3]
+        Kcb_NS[cond2] = (landcover.Kcb - ((self.AgeDays_NS - 5) * (landcover.fage / 100)) * landcover.CCxW_NS)[cond2]
 
-        # Update crop coefficient for CO2 concentration ***TODO***
-        # cond4 = (self.GrowingSeasonIndex & (CurrentConc > RefConc))
-        # Kcb_NS[cond4] *= (1 - 0.05 * (CurrentConc - RefConc) / (550 - RefConc))[cond4]
+        # Update crop coefficient for CO2 concentration
+        conc = co2.conc[None,:,:] * np.ones((self.nRotation))[:,None,None]
+        cond4 = (landcover.GrowingSeasonIndex & (conc > co2.RefConc))
+        Kcb_NS[cond4] *= (1 - 0.05 * ((conc - co2.RefConc) / (550 - co2.RefConc)))[cond4]
 
         # Determine potential transpiration rate (no water stress)
-        self.TrPot_NS = Kcb_NS * landcover.CCadj_NS * et0 * landcover.GrowingSeasonIndex
+        self.TrPot_NS = Kcb_NS * landcover.CCadj_NS * et0
 
         # 2. Potential prior water stress and/or delayed development
 
         # Update ageing days counter
-        DAPadj = (landcover.DAP - landcover.DelayedCDs) * landcover.GrowingSeasonIndex
+        DAPadj = (landcover.DAP - landcover.DelayedCDs)
         cond5 = (landcover.GrowingSeasonIndex & (DAPadj > landcover.MaxCanopyCD))
         self.AgeDays[cond5] = (DAPadj - landcover.MaxCanopyCD)[cond5]
 
@@ -1600,9 +1583,9 @@ class SoilWaterBalance(object):
         cond6 = (landcover.GrowingSeasonIndex & (self.AgeDays > 5))
         Kcb[cond6] = (landcover.Kcb - ((self.AgeDays - 5) * (landcover.fage / 100)) * landcover.CCxW)[cond6]
 
-        # Update crop coefficient for CO2 concentration ***TODO***
-        # cond8 = (self.GrowingSeasonIndex & (CurrentConc > RefConc))
-        # Kcb[cond8] *= (1 - 0.05 * (CurrentConc - RefConc) / (550 - RefConc))[cond4][cond8]
+        # Update crop coefficient for CO2 concentration
+        cond8 = (landcover.GrowingSeasonIndex & (conc > co2.RefConc))
+        Kcb[cond8] *= (1 - 0.05 * ((conc - co2.RefConc) / (550 - co2.RefConc)))[cond8]
 
         # Determine potential transpiration rate
         self.TrPot0 = Kcb * (landcover.CCadj) * et0 * landcover.GrowingSeasonIndex
@@ -1610,14 +1593,13 @@ class SoilWaterBalance(object):
         # Correct potential transpiration for dying green canopy effects
         cond9 = (landcover.GrowingSeasonIndex & (landcover.CC < landcover.CCxW))
         cond91 = (cond9 & (landcover.CCxW > 0.001) & (landcover.CC > 0.001))
-        self.TrPot0[cond91] *= ((landcover.CC / landcover.CCxW) ** landcover.a_Tr)[cond91]
+        x = np.divide(landcover.CC, landcover.CCxW, out=np.copy(arr_zeros), where=landcover.CCxW!=0)
+        self.TrPot0[cond91] *= (x ** landcover.a_Tr)[cond91]
 
         # ######################################################################
         # Calculate surface layer transpiration
 
-        cond10 = (landcover.GrowingSeasonIndex
-                  & (self.SurfaceStorage > 0)
-                  & (self.DaySubmerged < landcover.LagAer))
+        cond10 = (landcover.GrowingSeasonIndex & (self.SurfaceStorage > 0) & (self.DaySubmerged < landcover.LagAer))
 
         # Initialise variables
         TrPot = np.zeros((self.nRotation, self.nLat, self.nLon))
@@ -1633,7 +1615,7 @@ class SoilWaterBalance(object):
 
         # Reduce actual transpiration that is possible to account for aeration
         # stress due to extended submergence
-        fSub = 1 - (self.DaySubmerged / landcover.LagAer)
+        fSub = 1 - np.divide(self.DaySubmerged, landcover.LagAer, out=np.copy(arr_zeros), where=landcover.LagAer!=0)
 
         # Transpiration occurs from surface storage
         cond101 = (cond10 & (self.SurfaceStorage > (fSub * self.TrPot0)))
@@ -1878,7 +1860,7 @@ class SoilWaterBalance(object):
         # Update transpiration ratio
         cond17 = (landcover.GrowingSeasonIndex & (self.TrPot0 > 0))
         cond171 = (cond17 & (self.TrAct < self.TrPot0))
-        self.TrRatio[cond171] = (self.TrAct / self.TrPot0)[cond171]
+        self.TrRatio[cond171] = np.divide(self.TrAct, self.TrPot0, out=np.copy(arr_zeros), where=self.TrPot0!=0)[cond171]
         cond172 = (cond17 & np.logical_not(cond171))
         self.TrRatio[cond172] = 1
         cond18 = (landcover.GrowingSeasonIndex & np.logical_not(cond17))
