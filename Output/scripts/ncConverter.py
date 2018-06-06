@@ -226,10 +226,8 @@ class PCR2netCDF():
             if 'rotation' in dims:
                 rootgrp.variables[shortVarName][:,posCnt,:,:] = varField
             else:
-                print shortVarName
                 rootgrp.variables[shortVarName][posCnt,:,:] = varField
-                
-        
+                        
         rootgrp.sync()
         rootgrp.close()
 
