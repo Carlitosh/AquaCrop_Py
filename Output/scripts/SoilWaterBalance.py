@@ -383,7 +383,7 @@ class SoilWaterBalance(object):
             # print 'dthdt: ' + repr(dthdt[0,0,0])
 
             # Drainage from compartment ii (mm) (Line 41 in AOS_Drainage.m)
-            draincomp = dthdt * self.soil_pars.dz[comp]
+            draincomp = dthdt * self.soil_pars.dz[comp] * 1000
 
             # Check drainage ability of compartment ii against cumulative
             # drainage from compartments above (Lines 45-52 in AOS_Drainage.m)
@@ -592,8 +592,9 @@ class SoilWaterBalance(object):
 
         # Update state variables        
         self.DeepPerc = drainsum
-        # print 'DeepPerc: ' + repr(self.DeepPerc[0,0,0])
         self.th = thnew
+        # print 'DeepPerc: ' + repr(self.DeepPerc[0,0,0])
+        # print 'th      : ' + repr(thnew[0,0,0,0])
 
     def rainfall_partition(self, meteo):
         """Function to partition rainfall into surface runoff and 
@@ -646,7 +647,7 @@ class SoilWaterBalance(object):
         CN[cond11] = np.round(self.soil_pars.CNbot + (self.soil_pars.CNtop - self.soil_pars.CNbot) * wet_top)[cond11]
 
         # Partition rainfall into runoff and infiltration
-        S = (25400 / CN) - 254
+        S = (25400. / CN) - 254
         term = (P - ((5. / 100) * S))
         
         cond12 = (cond1 & (term <= 0))
@@ -654,7 +655,7 @@ class SoilWaterBalance(object):
         self.Infl[cond12] = P[cond12]
 
         cond13 = (cond1 & np.logical_not(cond12))
-        self.Runoff[cond13] = ((term ** 2) / (P + (1 - (5 / 100)) * S))[cond13]
+        self.Runoff[cond13] = ((term ** 2) / (P + (1 - (5. / 100)) * S))[cond13]
         self.Infl[cond13] = (P - self.Runoff)[cond13]
 
         # If there are bunds on the field then there is no runoff
@@ -687,7 +688,8 @@ class SoilWaterBalance(object):
         
         # Fraction of compartment covered by root zone (zero in compartments
         # NOT covered by the root zone)
-        factor = np.clip(rootdepth / dzsum, 0, 1)
+        factor = 1 - ((dzsum - rootdepth) / dz)
+        factor = np.clip(factor, 0, 1)
         factor[np.logical_not(comp_sto)] = 0
 
         # Water storages in root zone (mm) - initially compute value in each
@@ -718,9 +720,9 @@ class SoilWaterBalance(object):
         self.thRZ_Aer = np.divide(WrAer, rootdepth * 1000, out=np.zeros_like(WrAer), where=rootdepth!=0)
 
         # Calculate total available water and root zone depletion
-        self.TAW = np.clip((WrFC - WrWP), 0, None)
-        self.Dr = np.clip((WrFC - Wr), 0, None)
-        self.Wr = Wr
+        self.TAW = np.round(np.clip((WrFC - WrWP), 0, None), 3)  # TODO: work out strategy for handling imprecision
+        self.Dr = np.round(np.clip((WrFC - Wr), 0, None), 3)
+        self.Wr = np.round(Wr, 3)
 
     def irrigation(self, landcover, meteo):
         """Function to get irrigation depth for the current day"""
@@ -758,13 +760,16 @@ class SoilWaterBalance(object):
         # If irrigation is based on soil moisture, get the soil moisture
         # target for the current growth stage and determine threshold to
         # initiate irrigation
-        cond3 = (landcover.GrowingSeasonIndex & (self.IrrMethod == 1))
+        cond3 = (landcover.GrowingSeasonIndex & np.logical_not(cond2) & (self.IrrMethod == 1))
         I,J,K = np.ogrid[:self.nRotation,:self.nLat,:self.nLon]
         growth_stage_index = landcover.GrowthStage - 1
         growth_stage_index = growth_stage_index.astype(int)
         SMT = SMT[growth_stage_index,I,J,K]
-        IrrThr = (1 - SMT / 100) * self.TAW
-        
+        IrrThr = np.round(((1 - SMT / 100) * self.TAW), 3)
+        # print 'SMT: ' + repr(SMT[0,0,0])
+        # print 'TAW: ' + repr(self.TAW[0,0,0])
+        # print 'IrrThr: ' + repr(IrrThr[0,0,0])
+
         # If irrigation is based on a fixed interval, get number of days in
         # growing season so far (subtract 1 so that we always irrigate first
         # on day 1 of each growing season)
@@ -781,12 +786,18 @@ class SoilWaterBalance(object):
         Dr[cond5] = np.clip(Dr, 0, None)[cond5]
 
         # check if conditions for irrigation method 1 or 2 are met
-        cond6 = ((cond3 & (Dr > IrrThr)) | (cond4 & ((nDays % self.IrrInterval) == 0)))
-        
-        IrrReq = Dr
+        cond6 = ((cond3 & (Dr > IrrThr)) | (cond4 & ((nDays % self.IrrInterval) == 0)))        
+        IrrReq = np.copy(Dr)
         EffAdj = ((100 - self.AppEff) + 100) / 100
         IrrReq *= EffAdj
+        # print 'cond3: ' + repr(cond3[0,0,0])
+        # print 'cond4: ' + repr(cond4[0,0,0])
+        # print 'cond6: ' + repr(cond6[0,0,0])
+        # print 'Dr: ' + repr(Dr[0,0,0])
+        # print 'IrrThr: ' + repr(IrrThr[0,0,0])
+        # print 'IrrReq: ' + repr(IrrReq[0,0,0])
         self.Irr[cond6] = np.clip(IrrReq, 0, self.MaxIrr)[cond6]
+        # print 'Irr: ' + repr(self.Irr[0,0,0])
 
         cond7 = (cond5 & np.logical_not(cond6))
         self.Irr[cond7] = 0
@@ -1030,9 +1041,9 @@ class SoilWaterBalance(object):
         self.Infl -= Runoff
         self.Runoff += Runoff
 
-        print self.DeepPerc[0,0,0]
-        print self.Infl[0,0,0]
-        print self.Runoff[0,0,0]
+        # print self.DeepPerc[0,0,0]
+        # print self.Infl[0,0,0]
+        # print self.Runoff[0,0,0]
         
     def capillary_rise(self, groundwater):
         """Function to calculate capillary rise from a shallow 

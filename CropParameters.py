@@ -246,18 +246,18 @@ class CropParameters(object):
         if self.CalendarType == 1:
             # "Duplicate calendar values (needed to minimise if-statements when
             # switching between GDD and CD runs)
-            self.EmergenceCD = self.Emergence      # only used in this function
-            self.Canopy10PctCD = self.Canopy10Pct  # only used in this function
-            self.MaxRootingCD = self.MaxRooting    # only used in this function
-            self.SenescenceCD = self.Senescence    # only used in this function
-            self.MaturityCD = self.Maturity        # only used in this function
-            self.MaxCanopyCD = self.MaxCanopy
-            self.CanopyDevEndCD = self.CanopyDevEnd
-            self.HIstartCD = self.HIstart
-            self.HIendCD = self.HIend
-            self.YldFormCD = self.YldForm            
-            self.FloweringEndCD = self.FloweringEnd  # only used in this function
-            self.FloweringCD = self.Flowering
+            self.EmergenceCD = np.copy(self.Emergence)      # only used in this function
+            self.Canopy10PctCD = np.copy(self.Canopy10Pct)  # only used in this function
+            self.MaxRootingCD = np.copy(self.MaxRooting)    # only used in this function
+            self.SenescenceCD = np.copy(self.Senescence)    # only used in this function
+            self.MaturityCD = np.copy(self.Maturity)        # only used in this function
+            self.MaxCanopyCD = np.copy(self.MaxCanopy)
+            self.CanopyDevEndCD = np.copy(self.CanopyDevEnd)
+            self.HIstartCD = np.copy(self.HIstart)
+            self.HIendCD = np.copy(self.HIend)
+            self.YldFormCD = np.copy(self.YldForm)            
+            self.FloweringEndCD = np.copy(self.FloweringEnd)  # only used in this function
+            self.FloweringCD = np.copy(self.Flowering)
 
         # Pre-compute cumulative GDD during growing season
         if (self.CalendarType == 1 & self.SwitchGDD) | (self.CalendarType == 2):
@@ -395,19 +395,19 @@ class CropParameters(object):
                 self.MaxCanopyCD = maxcanopy_idx - pd + 1
 
                 # "2 Calendar days from sowing to end of vegetative growth"
-                canopydevend_idx = day_idx
+                canopydevend_idx = np.copy(day_idx)
                 canopydevend_idx[np.logical_not(GDDcum > self.CanopyDevEnd)] = np.nan
                 canopydevend_idx = np.nanmin(canopydevend_idx, axis=0)
                 self.CanopyDevEndCD = canopydevend_idx - pd + 1
 
                 # "3 Calendar days from sowing to start of yield formation"
-                histart_idx = day_idx
+                histart_idx = np.copy(day_idx)
                 histart_idx[np.logical_not(GDDcum > self.HIstart)] = np.nan
                 histart_idx = np.nanmin(histart_idx, axis=0)
                 self.HIstartCD = histart_idx - pd + 1
 
                 # "4 Calendar days from sowing to end of yield formation"
-                hiend_idx = day_idx
+                hiend_idx = np.copy(day_idx)
                 hiend_idx[np.logical_not(GDDcum > self.HIend)] = np.nan
                 hiend_idx = np.nanmin(hiend_idx, axis=0)
                 self.HIendCD = hiend_idx - pd + 1
@@ -418,7 +418,7 @@ class CropParameters(object):
                 cond1 = (self.CropType == 3)
 
                 # "1 Calendar days from sowing to end of flowering"
-                floweringend_idx = day_idx
+                floweringend_idx = np.copy(day_idx)
                 floweringend_idx[np.logical_not(GDDcum > self.FloweringEnd)] = np.nan
                 floweringend_idx = np.nanmin(floweringend_idx, axis=0)
                 FloweringEnd = floweringend_idx - pd + 1
@@ -508,28 +508,28 @@ class CropParameters(object):
                 GDDcum = np.cumsum(GDD, axis=0)
         
                 # 1 - Calendar days from sowing to maximum canopy cover
-                maxcanopy_idx = day_idx
+                maxcanopy_idx = np.copy(day_idx)
                 maxcanopy_idx[np.logical_not(GDDcum > self.MaxCanopy)] = np.nan
                 maxcanopy_idx = np.nanmin(maxcanopy_idx, axis=0)
                 MaxCanopyCD = (maxcanopy_idx - pd + 1)
                 self.MaxCanopyCD[cond1] = MaxCanopyCD[cond1]
 
                 # 2 - Calendar days from sowing to end of vegetative growth
-                canopydevend_idx = day_idx
+                canopydevend_idx = np.copy(day_idx)
                 canopydevend_idx[np.logical_not(GDDcum > self.CanopyDevEnd)] = np.nan
                 canopydevend_idx = np.nanmin(canopydevend_idx, axis=0)
                 CanopyDevEndCD = canopydevend_idx - pd + 1
                 self.CanopyDevEndCD[cond1] = CanopyDevEndCD[cond1]
 
                 # 3 - Calendar days from sowing to start of yield formation
-                histart_idx = day_idx
+                histart_idx = np.copy(day_idx)
                 histart_idx[np.logical_not(GDDcum > self.HIstart)] = np.nan
                 histart_idx = np.nanmin(histart_idx, axis=0)
                 HIstartCD = histart_idx - pd + 1
                 self.HIstartCD[cond1] = HIstartCD[cond1]
 
                 # 4 - Calendar days from sowing to end of yield formation
-                hiend_idx = day_idx
+                hiend_idx = np.copy(day_idx)
                 hiend_idx[np.logical_not(GDDcum > self.HIend)] = np.nan
                 hiend_idx = np.nanmin(hiend_idx, axis=0)
                 HIendCD = hiend_idx - pd + 1
@@ -541,7 +541,7 @@ class CropParameters(object):
                 cond11 = (cond1 & (self.CropType == 3))
 
                 # 1 Calendar days from sowing to end of flowering
-                floweringend_idx = day_idx
+                floweringend_idx = np.copy(day_idx)
                 floweringend_idx[np.logical_not(GDDcum > self.FloweringEnd)] = np.nan
                 floweringend_idx = np.nanmin(floweringend_idx, axis=0)
                 FloweringEnd = floweringend_idx - pd + 1

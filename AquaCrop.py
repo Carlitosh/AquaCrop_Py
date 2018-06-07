@@ -136,7 +136,7 @@ class AquaCrop(object):
         self.landcover.update(self.meteo, self.CO2, self._modelTime)
         self.soilwater.update(self.landcover.CropIndex, self._modelTime)
 
-        self.soilwater.check_groundwater_table(self.groundwater)            
+        self.soilwater.check_groundwater_table(self.groundwater)
         self.soilwater.pre_irrigation(self.landcover)
         self.soilwater.drainage()
         self.soilwater.rainfall_partition(self.meteo)
@@ -147,6 +147,7 @@ class AquaCrop(object):
         self.landcover.germination(self.soilwater)
         self.landcover.growth_stage()
         self.landcover.root_development(self.groundwater, self.soilwater)
+        self.soilwater.root_zone_water(self.landcover)  # TODO: required?
         self.landcover.canopy_cover(self.meteo, self.soilwater)
 
         self.soilwater.soil_evaporation(self.meteo, self.landcover, self._modelTime)
