@@ -121,7 +121,7 @@ class LandCover(object):
         self.SeasonCounter = np.zeros((self.nCrop, self.nLat, self.nLon))
         # self.GrowingSeason = np.zeros((self.nCrop, self.nRotation, self.nLat, self.nLon)).astype(bool)
         self.CropIndex = np.zeros((self.nRotation, self.nLat, self.nLon))
-        self.GrowingSeasonIndex = np.zeros((self.nRotation, self.nLat, self.nLon))
+        self.GrowingSeasonIndex = np.zeros((self.nRotation, self.nLat, self.nLon)).astype(bool)
         
         # Harvest index
         self.YieldForm = np.copy(arr_zeros)
@@ -172,11 +172,11 @@ class LandCover(object):
         # is currently grown in each rotation considered.
         GrowingSeason = self.crop_pars.GrowingSeason[:,None,:,:] * np.ones((self.nRotation))[None,:,None,None]
         GrowingSeason *= self.crop_pars.CropSequence  # crop,rotation,lat,lon
-
+        
         # Lastly, check whether the crop has died or reached maturity, then
         # see which rotations have crops currently growing
-        GrowingSeason *= np.logical_not(self.CropDead | self.CropMature)
-        self.GrowingSeasonIndex = np.any(GrowingSeason, axis=0) # rotation,lat,lon
+        # GrowingSeason *= np.logical_not(self.CropDead | self.CropMature)
+        self.GrowingSeasonIndex = np.any(GrowingSeason, axis=0)
         
         # Get index of crops currently grown
         CropIndex = (np.arange(0, self.nCrop)[:,None,None,None] * np.ones((self.nRotation, self.nLon, self.nLat))[None,:,:,:])
@@ -198,9 +198,11 @@ class LandCover(object):
 
         # GrowingSeasonDayOne is a logical array showing rotations for which
         # today is the start of a growing season
-        self.GrowingSeasonDayOne = ((self.DAP == 0) & (self.GrowingSeasonIndex))
+        self.GrowingSeasonDayOne = currTimeStep.doy == self.PlantingDate
         self.reset_initial_conditions(currTimeStep)
 
+        self.GrowingSeasonIndex *= np.logical_not(self.CropDead | self.CropMature)
+        
         # Update counters
         # ###############
 
@@ -628,8 +630,6 @@ class LandCover(object):
 
     def canopy_cover(self, meteo, soilwater):
         """Function to simulate canopy growth/decline"""
-
-        # TODO: call root_zone_water() before running canopy_cover()
         
         # Preallocate some variables
         CCxAdj = np.zeros((self.nRotation, self.nLat, self.nLon))
@@ -646,19 +646,19 @@ class LandCover(object):
 
         # Get canopy cover growth over time
         if self.crop_pars.CalendarType == 1:
-            tCC = self.DAP
+            tCC = np.copy(self.DAP)
             dtCC = np.ones((self.nRotation, self.nLat, self.nLon))
             tCCadj = self.DAP - self.DelayedCDs
         elif self.crop_pars.CalendarType == 2:
-            tCC = self.GDDcum
-            dtCC = self.GDD
+            tCC = np.copy(self.GDDcum)
+            dtCC = np.copy(self.GDD)
             tCCadj = self.GDDcum - self.DelayedGDDs
 
         # ######################################################################
         # Canopy development (potential) (Lines 28-62)
 
         # No canopy development before emergence/germination or after maturity
-        cond1 = (self.GrowingSeasonIndex & ((tCC < self.Emergence) | (np.round(self.Emergence) > self.Maturity)))
+        cond1 = (self.GrowingSeasonIndex & ((tCC < self.Emergence) | (np.round(tCC) > self.Maturity)))
         self.CC_NS[cond1] = 0
 
         # Canopy growth can occur
@@ -773,6 +773,9 @@ class LandCover(object):
         # Mid-season stage - no canopy growth: update actual maximum canopy
         # cover size during growing season only (i.e. do not update CC)
         cond61 = (cond6 & (tCCadj < self.Senescence))
+        # print 'cond61: ' + repr(cond61[0,0,0])
+        # print 'tCCadj: ' + repr(tCCadj[0,0,0])
+        # print 'Senesc: ' + repr(self.Senescence[0,0,0])
         self.CC[cond61] = self.CCprev[cond61]
         cond611 = (cond61 & (self.CC > self.CCxAct))
         self.CCxAct[cond611] = self.CC[cond611]
@@ -1102,13 +1105,20 @@ class LandCover(object):
         cond2 = (self.GrowingSeasonIndex & np.logical_not(cond1))
         WPadj[cond2] = self.WP[cond2]
 
-        # Adjust WP for CO2 effects
+        # Adjust WP for CO2 effects)
         WPadj *= self.fCO2
 
         # Calculate biomass accumulation on current day
-        dB_NS = WPadj * (soilwater.TrPot0 / et0) * self.Kst_Bio  # TODO: check correct TrPot is being used
+        dB_NS = WPadj * (soilwater.TrPot_NS / et0) * self.Kst_Bio  # TODO: check correct TrPot is being used
         dB = WPadj * (soilwater.TrAct / et0) * self.Kst_Bio  # TODO: check correct TrAct is being used
 
+        # print 'TrPot0: ' + repr(soilwater.TrPot_NS[0,0,0])  # slightly out
+        # print 'TrAct:  ' + repr(soilwater.TrAct[0,0,0])   # slightly out
+        # print 'et0:    ' + repr(et0[0,0,0])
+        # print 'Kst_Bio:' + repr(self.Kst_Bio[0,0,0])
+        # print 'dB_NS: ' + repr(dB_NS[0,0,0])
+        # print 'dB: ' + repr(dB[0,0,0])
+        
         # Update biomass accumulation
         self.B += dB
         self.B_NS += dB_NS

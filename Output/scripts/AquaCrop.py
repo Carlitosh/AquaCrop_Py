@@ -128,9 +128,9 @@ class AquaCrop(object):
 
     def update(self):
         """Function to update model state for current time step"""
-
         # Update forcing data
         self.read_forcings()
+        # print 'Time step: ' + repr(self._modelTime.timeStepPCR)
 
         # Update parameters for current time step
         self.landcover.update(self.meteo, self.CO2, self._modelTime)

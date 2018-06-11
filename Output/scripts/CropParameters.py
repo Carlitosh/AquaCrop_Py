@@ -202,7 +202,7 @@ class CropParameters(object):
     def AOS_CalculateHIGC(self):
         """Function to calculate harvest index growth coefficient"""
         # Total yield formation days
-        tHI = self.YldFormCD
+        tHI = np.copy(self.YldFormCD)
 
         # Iteratively estimate HIGC
         self.HIGC = np.full((self.nCrop, self.nLat, self.nLon), 0.001)
@@ -218,7 +218,7 @@ class CropParameters(object):
        
         # "Time from sowing to end of vegetative growth period"
         cond1 = (self.Determinant == 1)
-        self.CanopyDevEnd = self.Senescence
+        self.CanopyDevEnd = np.copy(self.Senescence)
         self.CanopyDevEnd[cond1] = (np.round(self.HIstart + (self.Flowering / 2)))[cond1]
 
         # "Time from sowing to 10% canopy cover (non-stressed conditions)
