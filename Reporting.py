@@ -31,7 +31,7 @@ class Reporting(object):
         self.outNCDir  = self.configuration.outNCDir
 
         # object for reporting:
-        self.netcdfObj = PCR2netCDF(self.configuration, self._model)
+        self.netcdfObj = np2netCDF(self.configuration, self._model)
 
         # daily output in netCDF files:
         self.outDailyTotNC = ["None"]
