@@ -62,6 +62,9 @@ class LandCover(object):
         self.tEarlySen   = np.copy(arr_zeros)
         self.GDDcum      = np.copy(arr_zeros)
         self.DAP         = np.copy(arr_zeros)
+
+        self.AgeDays      = np.copy(arr_zeros)
+        self.AgeDays_NS   = np.copy(arr_zeros)
         
         self.PreAdj      = np.copy(arr_zeros.astype(bool))
         self.CropMature  = np.copy(arr_zeros.astype(bool))
@@ -209,7 +212,10 @@ class LandCover(object):
         # Increment days after planting
         self.DAP[self.GrowingSeasonIndex] += 1
         self.DAP[np.logical_not(self.GrowingSeasonIndex)] = 0
-                        
+
+        cond = (self.GrowingSeasonIndex & (self.DAP > self.MaxCanopyCD))
+        self.AgeDays_NS[cond] = (self.DAP - self.MaxCanopyCD)[cond]
+        
         # Increment growing degree days
         self.growing_degree_day(currTimeStep, meteo)
         self.GDDcum[self.GrowingSeasonIndex] += self.GDD[self.GrowingSeasonIndex]
@@ -231,6 +237,9 @@ class LandCover(object):
         self.tEarlySen[cond] = 0
         self.GDDcum[cond] = 0
         self.DAP[cond] = 0
+
+        self.AgeDays[cond] = 0
+        self.AgeDays_NS[cond] = 0
         
         # States
         self.PreAdj[cond] = False
@@ -347,7 +356,13 @@ class LandCover(object):
         cond5 = (self.GrowingSeasonIndex & (np.logical_not(self.Germination)))
         self.DelayedCDs[cond5] += 1
         self.DelayedGDDs[cond5] += self.GDD[cond5]
-                 
+
+        # Update ageing days counter
+        # TODO: could put this in a separate method
+        DAPadj = (self.DAP - self.DelayedCDs)
+        cond6 = (DAPadj > self.MaxCanopyCD) & self.GrowingSeasonIndex
+        self.AgeDays[cond6] = (DAPadj - self.MaxCanopyCD)[cond6]
+        
         # Not in growing season so no germination calculation is performed
         self.Germination[np.logical_not(self.GrowingSeasonIndex)] = False
         self.DelayedCDs[np.logical_not(self.GrowingSeasonIndex)] = 0

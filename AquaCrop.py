@@ -155,7 +155,8 @@ class AquaCrop(object):
 
         self.landcover.water_stress(self.meteo, self.soilwater, beta=True)
 
-        self.soilwater.aeration_stress(self.landcover)        
+        self.soilwater.aeration_stress(self.landcover)
+        self.soilwater.day_submerged(self.landcover)
         self.soilwater.transpiration(self.meteo, self.landcover, self.CO2)
         self.soilwater.groundwater_inflow(self.groundwater)
 

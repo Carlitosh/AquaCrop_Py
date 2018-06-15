@@ -128,6 +128,7 @@ class AquaCrop(object):
 
     def update(self):
         """Function to update model state for current time step"""
+
         # Update forcing data
         self.read_forcings()
 
@@ -151,8 +152,11 @@ class AquaCrop(object):
 
         self.soilwater.soil_evaporation(self.meteo, self.landcover, self._modelTime)
         self.soilwater.root_zone_water(self.landcover)
+
         self.landcover.water_stress(self.meteo, self.soilwater, beta=True)
-        self.soilwater.aeration_stress(self.landcover)        
+
+        self.soilwater.aeration_stress(self.landcover)
+        self.soilwater.day_submerged(self.landcover)
         self.soilwater.transpiration(self.meteo, self.landcover, self.CO2)
         self.soilwater.groundwater_inflow(self.groundwater)
 
