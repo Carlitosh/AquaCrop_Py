@@ -95,6 +95,12 @@ class SoilAndTopoParameters(object):
         self.CNbot = np.round(1.4 * (np.exp(-14 * np.log(10))) + (0.507 * self.CN) - (0.00374 * self.CN ** 2) + (0.0000867 * self.CN ** 3))
         self.CNtop = np.round(5.6 * (np.exp(-14 * np.log(10))) + (2.33 * self.CN) - (0.0209 * self.CN ** 2) + (0.000076 * self.CN ** 3))
 
+        # transform certain soil properties to (ncomp, nrotation, nlat, nlon)
+        soil_params = ['th_s','th_fc','th_wp','th_dry','ksat','tau']
+        for nm in soil_params:
+            newnm = nm + '_comp'
+            vars(self)[newnm] = vars(self)[nm][self.layerIndex,:]
+        
     def compute_capillary_rise_parameters(self):
         # Function adapted from AOS_ComputeVariables.m, lines 60-127
 
@@ -149,3 +155,6 @@ class SoilAndTopoParameters(object):
         self.aCR[cond43] = (-0.6366 + (8 * (10 ** -4) * 150))
         self.bCR[cond43] = (-1.9165 + (0.7063 * np.log(150)))
 
+        # Expand to soil compartments
+        self.aCR_comp = self.aCR[self.layerIndex,:]
+        self.bCR_comp = self.bCR[self.layerIndex,:]
