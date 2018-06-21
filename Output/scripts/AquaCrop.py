@@ -140,7 +140,10 @@ class AquaCrop(object):
         self.soilwater.pre_irrigation(self.landcover)
         self.soilwater.drainage()
         self.soilwater.rainfall_partition(self.meteo)
+
+        self.soilwater.root_zone_water(self.landcover)
         self.soilwater.irrigation(self.landcover, self.meteo)
+
         self.soilwater.infiltration()
         self.soilwater.capillary_rise(self.groundwater)
 

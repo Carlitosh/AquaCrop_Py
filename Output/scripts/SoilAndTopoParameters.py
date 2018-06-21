@@ -96,7 +96,7 @@ class SoilAndTopoParameters(object):
         self.CNtop = np.round(5.6 * (np.exp(-14 * np.log(10))) + (2.33 * self.CN) - (0.0209 * self.CN ** 2) + (0.000076 * self.CN ** 3))
 
         # transform certain soil properties to (ncomp, nrotation, nlat, nlon)
-        soil_params = ['th_s','th_fc','th_wp','th_dry','ksat','tau']
+        soil_params = ['th_s','th_fc','th_wp','th_dry','ksat','tau','fshape_cr']
         for nm in soil_params:
             newnm = nm + '_comp'
             vars(self)[newnm] = vars(self)[nm][self.layerIndex,:]
