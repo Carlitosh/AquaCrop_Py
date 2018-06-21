@@ -579,32 +579,26 @@ class SoilWaterBalance(object):
                     
     def soil_evaporation(self, meteo, landcover, currTimeStep):
         """Function to calculate daily soil evaporation in AOS"""
-
-        th_s = self.soil_pars.th_s[self.soil_pars.layerIndex,:]
-        th_fc = self.soil_pars.th_fc[self.soil_pars.layerIndex,:]
-        th_wp = self.soil_pars.th_wp[self.soil_pars.layerIndex,:]
-        th_dry  = self.soil_pars.th_dry[self.soil_pars.layerIndex,:]
-        thnew = np.copy(self.th)
         
-        # Add dimensions to dz,dzsum
-        arr_ones = np.ones((self.nRotation, self.nLat, self.nLon))[None,:,:,:]
-        dz = self.soil_pars.dz[:,None,None,None] * arr_ones
-        dzsum = self.soil_pars.dzsum[:,None,None,None] * arr_ones
-
         # Add rotation dimension to meteo vars
         et0 = meteo.referencePotET[None,:,:] * np.ones((self.nRotation))[:,None,None]
         prec = meteo.precipitation[None,:,:] * np.ones((self.nRotation))[:,None,None]
 
         # Prepare stage 2 evaporation (REW gone), if day one of simulation
         cond1 = (currTimeStep.timeStepPCR == 1)
-        self.Wsurf[cond1] = 0
-        self.EvapZ[cond1] = self.soil_pars.EvapZmin[cond1]
-        self.Stage2[cond1] = True
-        self.evap_layer_water_content(thnew)
-        self.Wstage2[cond1] = ((self.Wevap_Act - (self.Wevap_Fc - self.soil_pars.REW)) / (self.Wevap_Sat - (self.Wevap_Fc - self.soil_pars.REW)))[cond1]
-        self.Wstage2[cond1] = (np.round((self.Wstage2 * 100)) / 100)[cond1]
-        self.Wstage2[cond1] = np.clip(self.Wstage2, 0, None)[cond1]
-
+        if currTimeStep.timeStepPCR == 1:
+            self.Wsurf.fill(0)
+            self.EvapZ = np.copy(self.soil_pars.EvapZmin)
+            self.Wstage2 = prepare_stage_two_evaporation(
+                self.th,
+                self.soil_pars.th_s_comp,
+                self.soil_pars.th_fc_comp,
+                self.soil_pars.th_wp_comp,
+                self.soil_pars.th_dry_comp,
+                self.soil_pars.dz,
+                self.soil_pars.REW,
+                self.EvapZ)
+            
         # Prepare soil evaporation stage 1 - adjust water in surface evaporation
         # layer for any infiltration (only do this if rainfall occurs or when
         # irrigation is triggered)
@@ -659,210 +653,56 @@ class SoilWaterBalance(object):
         # Assign minimum value (mulches and partial wetting don't combine)
         EsPot = np.minimum(EsPotIrr, EsPotMul)
 
-        # ###################
-        # Surface evaporation
-        # ###################
-
         # Initialise actual evaporation counter
-        # self.EsAct = np.zeros((self.nRotation, self.nLat, self.nLon))
-        self.EsActSurfaceStorage = np.zeros((self.nRotation, self.nLat, self.nLon))
+        self.EsAct = np.zeros((self.nRotation, self.nLat, self.nLon))
 
-        # Evaporate surface storage
-        cond9 = (self.SurfaceStorage > 0)
-        cond91 = (cond9 & (self.SurfaceStorage > EsPot))
-        self.EsActSurfaceStorage[cond91] = EsPot[cond91]
-        # self.SurfaceStorage[cond91] = (self.SurfaceStorage - self.EsAct)[cond91]
-
-        # Otherwise surface storage is not sufficient to meet all potential
-        # soil evaporation
-        cond92 = (cond9 & np.logical_not(cond91))
-        self.EsActSurfaceStorage[cond92] = self.SurfaceStorage[cond92]
-
-        # Update surface storage, evaporation layer depth, stage
-        # self.SurfaceStorage[cond92] = 0
-        self.Wsurf[cond92] = self.soil_pars.REW[cond92]
-        self.Wstage2[cond92] = 0 # not sure if this is correct
-        self.EvapZ[cond92] = self.soil_pars.EvapZmin[cond92]
-        self.Stage2[cond92] = False
-
-        # ###################
+        # Surface evaporation        
+        EsActSurf = surface_evaporation(self.SurfaceStorage, EsPot)
+        self.EsAct += EsActSurf
+        cond = ((self.SurfaceStorage > 0) & (self.SurfaceStorage <= EsPot))
+        self.SurfaceStorage -= EsActSurf
+        self.Wsurf[cond] = self.soil_pars.REW[cond]
+        self.Wstage2[cond] = 0
+        self.EvapZ[cond] = self.soil_pars.EvapZmin[cond]
+        
         # Stage 1 evaporation
-        # ###################
+        self.th, self.Wsurf, ToExtract, self.Wstage2 = soil_evaporation_stage_one(
+            self.th,
+            self.soil_pars.th_s_comp,
+            self.soil_pars.th_fc_comp,
+            self.soil_pars.th_wp_comp,
+            self.soil_pars.th_dry_comp,
+            EsPot,
+            self.EsAct,
+            self.soil_pars.dz,
+            self.soil_pars.dzsum,
+            self.soil_pars.EvapZmin,
+            self.soil_pars.REW,
+            self.EvapZ,
+            self.Wsurf,
+            self.Wstage2)
 
-        self.EsActComp = np.zeros((self.nComp, self.nRotation, self.nLat, self.nLon))
-        
-        # Determine total water to be extracted
-        ToExtract = EsPot - self.EsActSurfaceStorage
-
-        # # Determine total water to be extracted
-        # ToExtract = EsPot - self.EsAct
-        
-        # Determine total water to be extracted in stage one (limited by
-        # surface layer water storage)
-        ExtractPotStg1 = np.minimum(ToExtract,self.Wsurf)
-
-        # Extract water
-        cond10 = (ExtractPotStg1 > 0)
-        
-        # Determine fraction of compartments covered by evaporation layer
-        comp_sto = (np.round((dzsum - dz) * 1000) < np.round(self.soil_pars.EvapZmin * 1000))
-        factor = 1 - ((dzsum - self.soil_pars.EvapZmin) / dz)
-        factor = np.clip(factor, 0, 1) * comp_sto
-        
-        comp_sto = np.sum(comp_sto, axis=0)
-        comp = 0
-        while np.any((comp < comp_sto) & (ExtractPotStg1 > 0)):
-            
-            cond101 = ((comp < comp_sto) & (ExtractPotStg1 > 0))
-            
-            # Water available in compartment for extraction (mm)
-            Wdry = 1000 * th_dry[comp,:] * dz[comp,:]  
-            W = 1000 * thnew[comp,:] * dz[comp,:]
-            # W = 1000 * self.th[comp,:] * dz[comp,:]
-            AvW = np.zeros((self.nRotation, self.nLat, self.nLon))
-            AvW[cond101] = ((W - Wdry) * factor[comp,:])[cond101]
-            AvW = np.clip(AvW, 0, None)
-
-            # Determine amount by which to adjust variables
-            cond1011 = (cond101 & (AvW >= ExtractPotStg1))
-            self.EsActComp[comp,:][cond1011] += ExtractPotStg1[cond1011]
-            # self.EsAct[cond1011] += ExtractPotStg1[cond1011]
-            W[cond1011] -= ExtractPotStg1[cond1011]
-            ToExtract[cond1011] -= ExtractPotStg1[cond1011]
-            ExtractPotStg1[cond1011] = 0
-
-            cond1012 = (cond101 & np.logical_not(cond1011))
-            self.EsActComp[comp,:][cond1012] += AvW[cond1012]
-            # self.EsAct[cond1012] += AvW[cond1012]
-            W[cond1012] -= AvW[cond1012]
-            ToExtract[cond1012] -= AvW[cond1012]
-            ExtractPotStg1[cond1012] -= AvW[cond1012]
-
-            # Update water content
-            thnew[comp,:][cond101] = (W / (1000 * dz[comp,:]))[cond101]
-            # self.th[comp,:][cond101] = (W / (1000 * dz[comp,:]))[cond101]
-            comp += 1
-
-        # Update surface evaporation layer water balance
-        self.Wsurf[cond10] -= np.sum(self.EsActComp, axis=0)[cond10]
-        # self.Wsurf[cond10] -= self.EsAct[cond10]
-        cond102 = (cond10 & ((self.Wsurf < 0) | (ExtractPotStg1 > 0.0001)))
-        self.Wsurf[cond102] = 0
-
-        # If surface storage completely depleted, prepare stage 2 evaporation
-        cond103 = (cond10 & (self.Wsurf < 0.0001))
-        # Get water contents
-        self.evap_layer_water_content(thnew)
-
-        # Proportional water storage for start of stage two evaporation
-        self.Wstage2[cond103] = ((self.Wevap_Act - (self.Wevap_Fc - self.soil_pars.REW)) / (self.Wevap_Sat - (self.Wevap_Fc - self.soil_pars.REW)))[cond103]
-        self.Wstage2[cond103] = (np.round((self.Wstage2 * 100)) / 100)[cond103]
-        self.Wstage2[cond103] = np.clip(self.Wstage2, 0, None)[cond103]
-
-        # ###################
         # Stage 2 evaporation
-        # ###################
-
-        # Extract water
-        cond11 = (ToExtract > 0)
-        if np.any(cond11):
-
-            # Start stage 2
-            self.Stage2[cond11] = True
-
-            # Get sub-daily evaporative demand
-            self.EvapTimeSteps = 20  # TODO: add to options?
-            Edt = ToExtract / self.EvapTimeSteps
-
-            # Loop sub-daily time steps
-            for jj in range(self.EvapTimeSteps):
-
-                # Get current water storage
-                self.evap_layer_water_content(thnew)
+        self.th, self.EsAct = soil_evaporation_stage_two(
+            self.th,
+            self.soil_pars.th_s_comp,
+            self.soil_pars.th_fc_comp,
+            self.soil_pars.th_wp_comp,
+            self.soil_pars.th_dry_comp,
+            EsPot,
+            self.EsAct,
+            self.soil_pars.dz,
+            self.soil_pars.dzsum,
+            self.soil_pars.EvapZmin,
+            self.soil_pars.EvapZmax,
+            self.soil_pars.REW,
+            self.EvapZ,
+            self.soil_pars.fWrelExp,
+            self.soil_pars.fevap,
+            self.Wstage2,
+            ToExtract,
+            EvapTimeSteps=20)
                 
-                # Get water storage (mm) at start of stage 2 evaporation
-                Wupper = (self.Wstage2 * (self.Wevap_Sat - (self.Wevap_Fc - self.soil_pars.REW)) + (self.Wevap_Fc - self.soil_pars.REW))
-                # Get water storage (mm) when there is no evaporation
-                Wlower = np.copy(self.Wevap_Dry)
-                
-                # Get relative depletion of evaporation storage in stage 2
-                Wrel_divd = (self.Wevap_Act - Wlower)
-                Wrel_divs = (Wupper - Wlower)
-                Wrel = np.divide(Wrel_divd, Wrel_divs, out=np.zeros_like(Wrel_divs), where=Wrel_divs!=0)
-                
-                # Check if need to expand evaporative layer
-                cond111 = (cond11 & (self.soil_pars.EvapZmax > self.soil_pars.EvapZmin))
-                Wcheck = (self.soil_pars.fWrelExp * ((self.soil_pars.EvapZmax - self.EvapZ) / (self.soil_pars.EvapZmax - self.soil_pars.EvapZmin)))                
-                while np.any(cond111 & (Wrel < Wcheck) & (self.EvapZ < self.soil_pars.EvapZmax)):
-                    cond1111 = (cond111 & (Wrel < Wcheck) & (self.EvapZ < self.soil_pars.EvapZmax))
-
-                    # Expand evaporation layer by 1mm
-                    self.EvapZ[cond111] += 0.001
-
-                    # Recalculate current water storage for new EvapZ
-                    self.evap_layer_water_content(thnew)
-                    Wupper = (self.Wstage2 * (self.Wevap_Sat - (self.Wevap_Fc - self.soil_pars.REW)) + (self.Wevap_Fc - self.soil_pars.REW))
-                    Wlower = np.copy(self.Wevap_Dry)
-                    Wrel_divd = (self.Wevap_Act - Wlower)
-                    Wrel_divs = (Wupper - Wlower)
-                    Wrel = np.divide(Wrel_divd, Wrel_divs, out=np.zeros_like(Wrel_divs), where=Wrel_divs!=0)
-                    Wcheck = (self.soil_pars.fWrelExp * ((self.soil_pars.EvapZmax - self.EvapZ) / (self.soil_pars.EvapZmax - self.soil_pars.EvapZmin)))
-
-                # Get stage 2 evaporation reduction coefficient
-                Kr = ((np.exp(self.soil_pars.fevap * Wrel) - 1) / (np.exp(self.soil_pars.fevap) - 1))
-                Kr = np.clip(Kr, None, 1)
-
-                # Get water to extract (NB Edt is zero in cells which do not
-                # need stage 2, so no need for index)
-                ToExtractStg2 = (Kr * Edt)
-                
-                # Determine fraction of compartments covered by evaporation layer
-                comp_sto = (np.round((dzsum - dz) * 1000) < np.round(self.EvapZ * 1000))
-                factor = 1. - ((dzsum - self.EvapZ) / dz)
-
-                # multiply by comp_sto to ensure factor is zero in compartments entirely below EvapZ
-                factor = np.clip(factor, 0, 1) * comp_sto
-                comp_sto = np.sum(comp_sto, axis=0)
-                comp = 0
-                while np.any(cond11 & (comp < comp_sto) & (ToExtractStg2 > 0)):
-
-                    cond111 = (cond11 & (comp < comp_sto) & (ToExtractStg2 > 0))
-
-                    # Water available in compartment for extraction (mm)
-                    Wdry = 1000 * th_dry[comp,:] * dz[comp,:]  
-                    W = 1000 * thnew[comp,:] * dz[comp,:]
-                    # W = 1000 * self.th[comp,:] * dz[comp,:]
-                    AvW = np.zeros((self.nRotation, self.nLat, self.nLon))
-                    AvW[cond111] = ((W - Wdry) * factor[comp,:])[cond111]
-                    AvW = np.clip(AvW, 0, None)
-                    
-                    # Determine amount by which to adjust variables
-                    cond1111 = (cond111 & (AvW >= ToExtractStg2))
-                    self.EsActComp[comp,:][cond1111] += ToExtractStg2[cond1111]
-                    # self.EsAct[cond1111] += ToExtractStg2[cond1111]
-                    W[cond1111] -= ToExtractStg2[cond1111]
-                    ToExtract[cond1111] -= ToExtractStg2[cond1111]
-                    ToExtractStg2[cond1111] = 0
-                    
-                    cond1112 = (cond111 & np.logical_not(cond1111))
-                    self.EsActComp[comp,:][cond1112] += AvW[cond1112]
-                    # self.EsAct[cond1112] += AvW[cond1112]
-                    W[cond1112] -= AvW[cond1112]
-                    ToExtract[cond1112] -= AvW[cond1112]
-                    ToExtractStg2[cond1112] -= AvW[cond1112]
-
-                    # Update water content
-                    thnew[comp,:][cond111] = (W / (1000 * dz[comp,:]))[cond111]
-                    # self.th[comp,:][cond111] = (W / (1000 * dz[comp,:]))[cond111]
-                    comp += 1
-
-        self.EsAct = self.EsActSurfaceStorage + np.sum(self.EsActComp, axis=0)
-
-        # TODO: take these out of soil_evaporation function
-        self.SurfaceStorage -= self.EsActSurfaceStorage
-        self.th -= self.EsActComp / 1000 / dz
-        
-        # ######################################################################
         # Store potential evaporation for irrigation calculations on next day
         self.Epot = np.copy(EsPot)
 

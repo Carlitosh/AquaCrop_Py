@@ -10,15 +10,104 @@ import math
 import gc
 import numpy as np
 
-def soil_evaporation_stage_one(th, th_dry, EsPot, EsAct, dz, dzsum, EvapZmin, Wsurf):
+def evap_layer_water_content(th, th_s, th_fc, th_wp, th_dry, dz, evapz):
+    """Function to get water contents in the evaporation layer"""
+
+    dims = th.shape
+    arr_ones = np.ones((dims[1], dims[2], dims[3]))
+    dz = dz[:,None,None,None] * arr_ones
+    dzsum = np.cumsum(dz, axis=0)
+
+    # Find compartments covered by evaporation layer
+    comp_sto = (np.round((dzsum - dz) * 1000) < np.round(evapz * 1000))
+    factor = 1 - ((dzsum - evapz) / dz)
+    factor = np.clip(factor, 0, 1) * comp_sto
+
+    # Water storages in evaporation layer (mm)
+    Wevap = {}
+    Wevap_Act = np.sum((factor * 1000 * th * dz), axis=0)
+    Wevap['Act'] = np.clip(Wevap_Act, 0, None)
+    Wevap['Sat'] = np.sum((factor * 1000 * th_s * dz), axis=0)
+    Wevap['Fc'] = np.sum((factor * 1000 * th_fc * dz), axis=0)
+    Wevap['Wp'] = np.sum((factor * 1000 * th_wp * dz), axis=0)
+    Wevap['Dry'] = np.sum((factor * 1000 * th_dry * dz), axis=0)
+    return Wevap
+
+def prepare_stage_two_evaporation(th, th_s, th_fc, th_wp, th_dry, dz, REW, EvapZ):
+    Wevap = evap_layer_water_content(th, th_s, th_fc, th_wp, th_dry, dz, EvapZ)
+    Wstage2 = ((Wevap['Act'] - (Wevap['Fc'] - REW)) / (Wevap['Sat'] - (Wevap['Fc'] - REW)))
+    Wstage2 = (np.round((Wstage2 * 100)) / 100)
+    Wstage2 = np.clip(Wstage2, 0, None)
+    return Wstage2
+
+def surface_evaporation(surface_storage, EsPot):
+
+    dims = surface_storage.shape
+    nr, nlat, nlon = dims[0], dims[1], dims[2]
+    
+    # Initialise actual evaporation counter
+    EsActSurf = np.zeros((nr, nlat, nlon))
+    cond9 = (surface_storage > 0)
+    cond91 = (cond9 & (surface_storage > EsPot))
+    EsActSurf[cond91] = EsPot[cond91]
+    surface_storage[cond91] = (surface_storage - EsActSurf)[cond91]
+    cond92 = (cond9 & np.logical_not(cond91))
+    EsActSurf[cond92] = surface_storage[cond92]
+    return EsActSurf
+
+def extract_water(th, th_dry, dz, dzsum, EvapZmin, EsAct, ToExtract, ToExtractStg):
+
+    # Extract water
+    # cond10 = (ToExtractStg > 0)
+    dims = th.shape
+    nc, nr, nlat, nlon = dims[0], dims[1], dims[2], dims[3]
+    thnew = np.copy(th)
+    
+    # Determine fraction of compartments covered by evaporation layer
+    comp_sto = (np.round((dzsum - dz) * 1000) < np.round(EvapZmin * 1000))
+    factor = 1 - ((dzsum - EvapZmin) / dz)
+    factor = np.clip(factor, 0, 1) * comp_sto
+
+    comp_sto = np.sum(comp_sto, axis=0)
+    comp = 0
+    while np.any((comp < comp_sto) & (ToExtractStg > 0) & (ToExtract > 0)):
+
+        cond101 = ((comp < comp_sto) & (ToExtractStg > 0) & (ToExtract > 0))
+
+        # Water available in compartment for extraction (mm)
+        Wdry = 1000 * th_dry[comp,:] * dz[comp,:]  
+        W = 1000 * thnew[comp,:] * dz[comp,:]
+        AvW = np.zeros((nr, nlat, nlon))
+        AvW[cond101] = ((W - Wdry) * factor[comp,:])[cond101]
+        AvW = np.clip(AvW, 0, None)
+
+        # Determine amount by which to adjust variables
+        cond1011 = (cond101 & (AvW >= ToExtractStg))
+        EsAct[cond1011] += ToExtractStg[cond1011]
+        W[cond1011] -= ToExtractStg[cond1011]
+        ToExtract[cond1011] -= ToExtractStg[cond1011]
+        ToExtractStg[cond1011] = 0
+
+        cond1012 = (cond101 & np.logical_not(cond1011))
+        EsAct[cond1012] += AvW[cond1012]
+        W[cond1012] -= AvW[cond1012]
+        ToExtract[cond1012] -= AvW[cond1012]
+        ToExtractStg[cond1012] -= AvW[cond1012]
+
+        # Update water content
+        thnew[comp,:][cond101] = (W / (1000 * dz[comp,:]))[cond101]
+        comp += 1
+        
+    return thnew, EsAct, ToExtract, ToExtractStg
+
+def soil_evaporation_stage_one(th, th_s, th_fc, th_wp, th_dry, EsPot, EsAct, dz, dzsum, EvapZmin, REW, EvapZ, Wsurf, Wstage2):
 
     dims = th.shape
     nc, nr, nlat, nlon = dims[0], dims[1], dims[2], dims[3]
     thnew = np.copy(th)
     dz = dz[:,None,None,None] * np.ones((nr, nlat, nlon))[None,:,:,:]
     dzsum = dzsum[:,None,None,None] * np.ones((nr, nlat, nlon))[None,:,:,:]
-    # EsActComp = np.zeros((nc, nr, nlat, nlon))
-
+        
     # Determine total water to be extracted
     ToExtract = EsPot - EsAct
 
@@ -29,61 +118,80 @@ def soil_evaporation_stage_one(th, th_dry, EsPot, EsAct, dz, dzsum, EvapZmin, Ws
     # Extract water
     cond10 = (ExtractPotStg1 > 0)
 
-    # Determine fraction of compartments covered by evaporation layer
-    comp_sto = (np.round((dzsum - dz) * 1000) < np.round(EvapZmin * 1000))
-    factor = 1 - ((dzsum - EvapZmin) / dz)
-    factor = np.clip(factor, 0, 1) * comp_sto
-
-    comp_sto = np.sum(comp_sto, axis=0)
-    comp = 0
-    while np.any((comp < comp_sto) & (ExtractPotStg1 > 0)):
-
-        cond101 = ((comp < comp_sto) & (ExtractPotStg1 > 0))
-
-        # Water available in compartment for extraction (mm)
-        Wdry = 1000 * th_dry[comp,:] * dz[comp,:]  
-        W = 1000 * thnew[comp,:] * dz[comp,:]
-        AvW = np.zeros((nr, nlat, nlon))
-        AvW[cond101] = ((W - Wdry) * factor[comp,:])[cond101]
-        AvW = np.clip(AvW, 0, None)
-
-        # Determine amount by which to adjust variables
-        cond1011 = (cond101 & (AvW >= ExtractPotStg1))
-        # EsActComp[comp,:][cond1011] += ExtractPotStg1[cond1011]
-        EsAct[cond1011] += ExtractPotStg1[cond1011]
-        W[cond1011] -= ExtractPotStg1[cond1011]
-        ToExtract[cond1011] -= ExtractPotStg1[cond1011]
-        ExtractPotStg1[cond1011] = 0
-
-        cond1012 = (cond101 & np.logical_not(cond1011))
-        # self.EsActComp[comp,:][cond1012] += AvW[cond1012]
-        EsAct[cond1012] += AvW[cond1012]
-        W[cond1012] -= AvW[cond1012]
-        ToExtract[cond1012] -= AvW[cond1012]
-        ExtractPotStg1[cond1012] -= AvW[cond1012]
-
-        # Update water content
-        thnew[comp,:][cond101] = (W / (1000 * dz[comp,:]))[cond101]
-        comp += 1
-
+    thnew, EsAct, ToExtract, ExtractPotStg1 = extract_water(
+        thnew, th_dry, dz, dzsum, EvapZmin, EsAct, ToExtract, ExtractPotStg1)
+    
     # Update surface evaporation layer water balance
-    # self.Wsurf[cond10] -= np.sum(self.EsActComp, axis=0)[cond10]
     Wsurf[cond10] -= EsAct[cond10]
     cond102 = (cond10 & ((Wsurf < 0) | (ExtractPotStg1 > 0.0001)))
     Wsurf[cond102] = 0
-    return thnew, Wsurf, ToExtract
 
-    # # If surface storage completely depleted, prepare stage 2 evaporation
-    # cond103 = (cond10 & (Wsurf < 0.0001))
-    # # Get water contents
-    # self.evap_layer_water_content(thnew)
+    # If surface storage completely depleted, prepare stage 2 evaporation
+    cond103 = (cond10 & (Wsurf < 0.0001))
+    Wstage2_tmp = prepare_stage_two_evaporation(thnew, th_s, th_fc, th_wp, th_dry, dz[:,0,0,0], REW, EvapZ)
+    Wstage2[cond103] = Wstage2_tmp[cond103]  # TODO: add MASK argument to function?
+    return thnew, Wsurf, ToExtract, Wstage2
 
-    # # Proportional water storage for start of stage two evaporation
-    # self.Wstage2[cond103] = ((self.Wevap_Act - (self.Wevap_Fc - self.soil_pars.REW)) / (self.Wevap_Sat - (self.Wevap_Fc - self.soil_pars.REW)))[cond103]
-    # self.Wstage2[cond103] = (np.round((self.Wstage2 * 100)) / 100)[cond103]
-    # self.Wstage2[cond103] = np.clip(self.Wstage2, 0, None)[cond103]
+def relative_depletion(th, th_s, th_fc, th_wp, th_dry, dz, EvapZ, Wstage2, REW):
+
+    # Get current water storage
+    Wevap = evap_layer_water_content(th, th_s, th_fc, th_wp, th_dry, dz, EvapZ)
+    # Get water storage (mm) at start of stage 2 evaporation
+    Wupper = (Wstage2 * (Wevap['Sat'] - (Wevap['Fc'] - REW)) + (Wevap['Fc'] - REW))
+    # Get water storage (mm) when there is no evaporation
+    Wlower = np.copy(Wevap['Dry'])
+    # Get relative depletion of evaporation storage in stage 2
+    Wrel_divd = (Wevap['Act'] - Wlower)
+    Wrel_divs = (Wupper - Wlower)
+    Wrel = np.divide(Wrel_divd, Wrel_divs, out=np.zeros_like(Wrel_divs), where=Wrel_divs!=0)
+    return Wrel, Wlower, Wupper    
     
+def soil_evaporation_stage_two(th, th_s, th_fc, th_wp, th_dry, EsPot, EsAct, dz, dzsum, EvapZmin, EvapZmax, REW, EvapZ, fWrelExp, fevap, Wstage2, ToExtract, EvapTimeSteps):
 
+    dims = th.shape
+    nc, nr, nlat, nlon = dims[0], dims[1], dims[2], dims[3]
+    thnew = np.copy(th)
+    dz = dz[:,None,None,None] * np.ones((nr, nlat, nlon))[None,:,:,:]
+    dzsum = dzsum[:,None,None,None] * np.ones((nr, nlat, nlon))[None,:,:,:]
+    
+    # Extract water
+    cond11 = (ToExtract > 0)
+    if np.any(cond11):
+        Edt = ToExtract / EvapTimeSteps
+        
+        # Loop sub-daily time steps
+        for jj in range(EvapTimeSteps):
+
+            # Get water storage (mm) at start of stage 2 evaporation
+            Wrel, Wlower, Wupper = relative_depletion(thnew, th_s, th_fc, th_wp, th_dry, dz[:,0,0,0], EvapZ, Wstage2, REW)
+
+            # Check if need to expand evaporative layer
+            cond111 = (cond11 & (EvapZmax > EvapZmin))
+            Wcheck = (fWrelExp * ((EvapZmax - EvapZ) / (EvapZmax - EvapZmin)))                
+
+            while np.any(cond111 & (Wrel < Wcheck) & (EvapZ < EvapZmax)):
+                cond1111 = (cond111 & (Wrel < Wcheck) & (EvapZ < EvapZmax))
+
+                # Expand evaporation layer by 1mm
+                EvapZ[cond1111] += 0.001
+
+                # Recalculate current water storage for new EvapZ
+                Wrel, Wlower, Wupper = relative_depletion(thnew, th_s, th_fc, th_wp, th_dry, dz[:,0,0,0], EvapZ, Wstage2, REW)
+                Wcheck = (fWrelExp * ((EvapZmax - EvapZ) / (EvapZmax - EvapZmin)))
+
+            # Get stage 2 evaporation reduction coefficient
+            Kr = ((np.exp(fevap * Wrel) - 1) / (np.exp(fevap) - 1))
+            Kr = np.clip(Kr, None, 1)
+
+            # Get water to extract (NB Edt is zero in cells which do not
+            # need stage 2, so no need for index)
+            ToExtractStg2 = (Kr * Edt)
+            thnew, EsAct, ToExtract, ToExtractStg2 = extract_water(
+                thnew, th_dry, dz, dzsum, EvapZmin, EsAct, ToExtract, ToExtractStg2)
+            
+    return thnew, EsAct
+    
+    
 def adjust_potential_soil_evaporation_for_irrigation(surface_storage, EsPot, irr_method, irr_depth, prec, wet_surf):
     EsPotIrr = np.copy(EsPot)
     cond1 = ((irr_depth > 0) & (irr_method != 4))
@@ -742,27 +850,4 @@ def root_zone_water(th, th_s, th_fc, th_wp, th_dry, dz, zmin, zroot, aer):
     Dr = np.clip((WrFC - Wr), 0, None)
     Wr = np.copy(Wr)
     return thRZ, TAW, Dr, Wr
-    
-def evap_layer_water_content(th, th_s, th_fc, th_wp, th_dry, dz, evapz):
-    """Function to get water contents in the evaporation layer"""
-
-    dims = th.shape
-    arr_ones = np.ones((dims[1], dims[2], dims[3]))
-    dz = dz[:,None,None,None] * arr_ones
-    dzsum = np.cumsum(dz, axis=0)
-
-    # Find compartments covered by evaporation layer
-    comp_sto = (np.round((dzsum - dz) * 1000) < np.round(evapz * 1000))
-    factor = 1 - ((dzsum - evapz) / dz)
-    factor = np.clip(factor, 0, 1) * comp_sto
-
-    # Water storages in evaporation layer (mm)
-    Wevap = {}
-    Wevap_Act = np.sum((factor * 1000 * th * dz), axis=0)
-    Wevap['Act'] = np.clip(Wevap_Act, 0, None)
-    Wevap['Sat'] = np.sum((factor * 1000 * th_s * dz), axis=0)
-    Wevap['Fc'] = np.sum((factor * 1000 * th_fc * dz), axis=0)
-    Wevap['Wp'] = np.sum((factor * 1000 * th_wp * dz), axis=0)
-    Wevap['Dry'] = np.sum((factor * 1000 * th_dry * dz), axis=0)
-    return Wevap
-    
+        
