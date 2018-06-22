@@ -10,6 +10,258 @@ import math
 import gc
 import numpy as np
 
+def maximum_sink_term(growing_season, irrigation_method, SxTop, SxBot, rCor, Zmin, Zroot, dz, dzsum):
+
+    dims = (dz.shape[0],) + growing_season.shape
+    nc, nr, nlat, nlon = dims[0], dims[1], dims[2], dims[3]
+    SxComp = np.zeros((nc, nr, nlat, nlon))
+
+    rootdepth = np.maximum(Zmin, Zroot)
+    rootdepth = np.round(rootdepth * 100) / 100
+    dz = dz[:,None,None,None] * np.ones((nr, nlat, nlon))[None,:,:,:]
+    dzsum = dzsum[:,None,None,None] * np.ones((nr, nlat, nlon))[None,:,:,:]
+    comp_sto = (np.round((dzsum - dz) * 1000) < np.round(rootdepth * 1000))
+
+    # Fraction of compartment covered by root zone (zero in compartments
+    # NOT covered by the root zone)
+    RootFact = 1 - ((dzsum - rootdepth) / dz)
+    RootFact = np.clip(RootFact, 0, 1) * comp_sto
+                      
+    # Net irrigation mode
+    cond12 = (growing_season & (irrigation_method == 4))
+    cond12_comp = np.broadcast_to(cond12, SxComp.shape)
+    SxComp[cond12_comp] = np.broadcast_to(((SxTop + SxBot) / 2.), SxComp.shape)[cond12_comp]
+
+    # Otherwise sink term declines linearly with depth
+    cond13 = (growing_season & np.logical_not(cond12))
+
+    if (np.any(cond13)):
+        comp = 0
+        comp_sto_sum = np.sum(comp_sto, axis=0)
+        SxCompBot = np.copy(SxTop)
+        while np.any(comp < comp_sto_sum):
+            SxCompTop = np.copy(SxCompBot)
+            cond131 = (cond13 & (dzsum[comp,:] <= rootdepth))
+            SxCompBot[cond131] = (SxBot * rCor + ((SxTop - SxBot * rCor) * ((rootdepth - dzsum[comp,:]) / rootdepth)))[cond131]
+            cond132 = (cond13 & np.logical_not(cond131))
+            SxCompBot[cond132] = (SxBot * rCor)[cond132]
+            SxComp[comp,:][cond13] = ((SxCompTop + SxCompBot) / 2)[cond13]
+            comp += 1
+
+    SxComp *= comp_sto
+    return comp_sto, RootFact, SxComp
+
+def extract_transpiration_water(TrPot, growing_season, comp_sto, day_submerged, irrigation_method, th, th_s, th_fc, th_wp, th_dry, ETadj, p_up2, p_lo2, fshape_w2, LagAer, Aer, AerDaysComp, et0, dz, SxComp, RootFact):
+
+    dims = th.shape
+    nc, nr, nlat, nlon = dims[0], dims[1], dims[2], dims[3]
+    ToExtract = np.copy(TrPot)
+    # TrActComp = np.zeros((nc, nr, nlat, nlon))
+    TrAct = np.zeros((nr, nlat, nlon))
+    thnew = np.copy(th)
+    
+    cond14_ini = (growing_season & (ToExtract > 0))
+    if (np.any(cond14_ini)):
+        comp = 0
+        comp_sto_sum = np.sum(comp_sto, axis=0)
+        while np.any((comp < comp_sto_sum) & (ToExtract > 0)):
+
+            cond14 = (growing_season & (comp_sto[comp,:]) & (ToExtract > 0))
+
+            # Determine TAW for compartment
+            thTAW = th_fc[comp,:] - th_wp[comp,:]
+            p_up_sto = np.ones((nr, nlat, nlon))
+            cond141 = (cond14 & (ETadj == 1))
+            p_up_sto[cond141] = (p_up2 + (0.04 * (5. - et0)) * (np.log10(10. - 9. * p_up2)))[cond141]
+
+            # Determine critical water content at which stomatal closure
+            # will occur in compartment
+            thCrit = (th_fc[comp,:] - (thTAW * p_up_sto))
+
+            # Check for soil water stress
+            KsComp = np.zeros((nr, nlat, nlon))
+
+            # No stress
+            cond142 = (cond14 & (thnew[comp,:] >= thCrit))
+            KsComp[cond142] = 1.
+
+            # Transpiration from compartment is affected by water stress
+            cond143 = (cond14 & (thnew[comp,:] > th_wp[comp,:]) & np.logical_not(cond142))
+            Wrel = ((th_fc[comp,:] - thnew[comp,:]) / (th_fc[comp,:] - th_wp[comp,:]))
+            pRel = ((Wrel - p_up2) / (p_lo2 - p_up2))
+            KsComp[cond143] = (1 - ((np.exp(pRel * fshape_w2) - 1) / (np.exp(fshape_w2) - 1)))[cond143]
+            KsComp = np.clip(KsComp, 0, 1)
+            KsComp[pRel <= 0] = 1
+            KsComp[pRel >= 1] = 0
+
+            # Otherwise no transpiration is possible from the compartment
+            # as water does not exceed wilting point
+            KsComp[(cond14 & np.logical_not(cond142 | cond143))] = 0
+
+            # Adjust compartment stress factor for aeration stress
+            AerComp = np.zeros((nr, nlat, nlon))
+
+            # Full aeration stress - no transpiration possible from
+            # compartment
+            cond144 = (cond14 & (day_submerged >= LagAer))
+            cond145 = (cond14 & (thnew[comp,:] > (th_s[comp,:] - (Aer / 100))) & np.logical_not(cond144))
+            AerDaysComp[comp,:][cond145] += 1
+            fAer = np.ones((nr, nlat, nlon))
+            cond1451 = (cond145 & (AerDaysComp[comp,:] >= LagAer))
+            AerDaysComp[comp,:][cond1451] = LagAer[cond1451]
+            fAer[cond1451] = 0
+
+            # Calculate aeration stress factor
+            AerComp[cond145] = ((th_s[comp,:] - thnew[comp,:]) / (th_s[comp,:] - (th_s[comp,:] - (Aer / 100))))[cond145]
+            AerComp = np.clip(AerComp, 0, None)
+            AerComp_divd = (fAer + (AerDaysComp[comp,:] - 1) * AerComp)
+            AerComp_divs = (fAer + AerDaysComp[comp,:] - 1)
+            AerComp[cond145] = np.divide(AerComp_divd, AerComp_divs, out=np.zeros_like(AerComp_divs), where=AerComp_divs!=0)[cond145]
+
+            # Otherwise there is no aeration stress as number of submerged
+            # days does not exceed threshold for initiation of aeration
+            # stress
+            cond146 = (cond14 & np.logical_not(cond144 | cond145))
+            AerComp[cond146] = 1
+            AerDaysComp[comp,:][cond146] = 0
+
+            # Extract water
+            ThToExtract = ((ToExtract / 1000) / dz[comp])
+            Sink = np.zeros((nr, nlat, nlon))
+
+            # Don't reduce compartment sink for stomatal water stress if in
+            # net irrigation mode. Stress only occurs due to deficient
+            # aeration conditions
+            cond147 = (cond14 & irrigation_method == 4)
+            Sink[cond147] = (AerComp * SxComp[comp,:] * RootFact[comp,:])[cond147]
+
+            # Otherwise, reduce compartment sink for greatest of stomatal
+            # and aeration stress
+            cond148 = (cond14 & np.logical_not(cond147))
+            cond1481 = (cond148 & (KsComp == AerComp))
+            Sink[cond1481] = (KsComp * SxComp[comp,:] * RootFact[comp,:])[cond1481]
+            cond1482 = (cond148 & np.logical_not(cond1481))
+            Sink[cond1482] = (np.minimum(KsComp,AerComp) * SxComp[comp,:] * RootFact[comp,:])[cond1482]
+
+            # Limit extraction to demand
+            Sink = np.clip(Sink, None, ThToExtract)
+
+            # Limit extraction to avoid compartment water content dropping
+            # below air dry
+            cond149 = (cond14 & ((thnew[comp,:] - Sink) < th_dry[comp,:]))
+            Sink[cond149] = (thnew[comp,:] - th_dry[comp,:])[cond149]
+            Sink = np.clip(Sink, 0, None)
+
+            # Update water content in compartment
+            thnew[comp,:][cond14] -= Sink[cond14]
+
+            # Update amount of water to extract
+            ToExtract[cond14] -= (Sink * 1000 * dz[comp])[cond14]
+
+            # Update actual transpiration
+            # TrActComp[comp,:][cond14] += (Sink * 1000 * dz[comp])[cond14]
+            TrAct[cond14] += (Sink * 1000 * dz[comp])[cond14]
+
+            # Update compartment counter
+            comp += 1
+
+    return thnew, AerDaysComp, TrAct
+    
+def surface_transpiration(growing_season, surface_storage, day_submerged, LagAer, AerDaysComp, TrPot0):
+
+    dims = AerDaysComp.shape
+    nc, nr, nlat, nlon = dims[0], dims[1], dims[2], dims[3]
+    
+    cond10 = (growing_season & (surface_storage > 0) & (day_submerged < LagAer))
+
+    # Initialise variables
+    TrPot = np.zeros((nr, nlat, nlon))
+    TrAct0 = np.zeros((nr, nlat, nlon))
+    
+    # Update anaerobic conditions counter for each compartment
+    cond10_comp = np.broadcast_to(cond10, AerDaysComp.shape)
+    AerDaysComp[cond10_comp] += 1 
+    LagAer_comp = np.broadcast_to(LagAer, AerDaysComp.shape)
+    AerDaysComp[cond10_comp] = np.clip(AerDaysComp, None, LagAer_comp)[cond10_comp]
+
+    # Reduce actual transpiration that is possible to account for aeration
+    # stress due to extended submergence
+    fSub = 1 - np.divide(day_submerged, LagAer, out=np.zeros_like(LagAer), where=LagAer!=0)
+
+    # Transpiration occurs from surface storage
+    cond101 = (cond10 & (surface_storage > (fSub * TrPot0)))
+    surface_storage[cond101] -= (fSub * TrPot0)[cond101]
+    TrAct0[cond101] = (fSub * TrPot0)[cond101]
+
+    # Otherwise there is no transpiration from surface storage
+    cond102 = (cond10 & np.logical_not(cond101))
+    TrAct0[cond102] = 0
+
+    # More water can be extracted from soil profile for transpiration
+    cond103 = (cond10 & (TrAct0 < (fSub * TrPot0)))
+    TrPot[cond103] = ((fSub * TrPot0) - TrAct0)[cond103]
+
+    # Otherwise no more transpiration possible on current day
+    cond104 = (cond10 & np.logical_not(cond103))
+    TrPot[cond104] = 0
+
+    cond11 = (growing_season & np.logical_not(cond10))
+    TrPot[cond11] = TrPot0[cond11]
+    TrAct0[cond11] = 0
+    return TrPot, TrAct0, AerDaysComp
+    
+def potential_transpiration(growing_season, Kcb_ini, AgeDays, fage, CCadj, CCxW, co2_conc, co2_refconc, et0):
+
+    nr = growing_season.shape[0]
+    Kcb = np.copy(Kcb_ini)
+    cond2 = (growing_season & (AgeDays > 5))
+    Kcb[cond2] = (Kcb_ini - ((AgeDays - 5) * (fage / 100)) * CCxW)[cond2]
+
+    # Update crop coefficient for CO2 concentration
+    conc = co2_conc[None,:,:] * np.ones((nr))[:,None,None]
+    cond4 = (growing_season & (conc > co2_refconc))
+    Kcb[cond4] *= (1 - 0.05 * ((conc - co2_refconc) / (550 - co2_refconc)))[cond4]
+
+    # Determine potential transpiration rate (no water stress)
+    TrPot = Kcb * CCadj * et0 * growing_season
+    return TrPot
+
+# def potential_transpiration(growing_season, Kcb, AgeDays_NS, AgeDays_NS, fage,
+#                             CC, CCadj, CCxW_NS, CCadj_NS, co2_conc,
+#                             co2_refconc, et0):
+
+#     # Update crop coefficient for ageing of canopy
+#     Kcb_NS = np.copy(Kcb)
+#     cond2 = (growing_season & (AgeDays_NS > 5))
+#     Kcb_NS[cond2] = (Kcb - ((AgeDays_NS - 5) * (fage / 100)) * CCxW_NS)[cond2]
+
+#     # Update crop coefficient for CO2 concentration
+#     co2_factor = (1 - 0.05 * ((co2_conc - co2_refconc) / (550 - co2_refconc)))
+#     cond4 = (growing_season & (co2_conc > co2_refconc))
+#     Kcb_NS[cond4] *= co2_factor
+
+#     # Determine potential transpiration rate (no water stress)
+#     TrPot_NS = Kcb_NS * CCadj_NS * et0 * growing_season
+
+#     # 2. Potential prior water stress and/or delayed development
+
+#     # Update crop coefficient for ageing of canopy
+#     cond6 = (growing_season & (AgeDays > 5))
+#     Kcb[cond6] = (Kcb - ((AgeDays - 5) * (fage / 100)) * CCxW)[cond6]
+
+#     # Update crop coefficient for CO2 concentration
+#     Kcb[cond8] *= (1 - 0.05 * ((conc - co2.RefConc) / (550 - co2.RefConc)))[cond8]
+
+#     # Determine potential transpiration rate
+#     TrPot0 = Kcb * CCadj * et0 * growing_season
+
+#     # Correct potential transpiration for dying green canopy effects
+#     cond9 = (landcover.GrowingSeasonIndex & (landcover.CC < landcover.CCxW))
+#     cond91 = (cond9 & (landcover.CCxW > 0.001) & (landcover.CC > 0.001))
+#     x = np.divide(landcover.CC, landcover.CCxW, out=np.copy(arr_zeros), where=landcover.CCxW!=0)
+#     self.TrPot0[cond91] *= (x ** landcover.a_Tr)[cond91]
+    
+
 def evap_layer_water_content(th, th_s, th_fc, th_wp, th_dry, dz, evapz):
     """Function to get water contents in the evaporation layer"""
 
