@@ -260,10 +260,6 @@ class SoilWaterBalance(object):
         present, to adjust compartment water contents and field 
         capacities where necessary
         """
-        # # expand soil properties to compartments
-        # th_fc = self.soil_pars.th_fc[self.soil_pars.layerIndex,:]
-        # th_s  = self.soil_pars.th_s[self.soil_pars.layerIndex,:]
-        
         if groundwater.WaterTable:
 
             # Copy depth to groundwater, and add rotation dimension for convenience
@@ -336,10 +332,6 @@ class SoilWaterBalance(object):
         """Function to calculate pre-irrigation when in net irrigation 
         mode.
         """
-        # # Expand soil properties to compartments
-        # th_wp = self.soil_pars.th_wp[self.soil_pars.layerIndex,:]
-        # th_fc = self.soil_pars.th_fc[self.soil_pars.layerIndex,:]
-
         # Expand dz and dzsum to rotation, lat, lon
         arr_ones = np.ones((self.nRotation, self.nLat, self.nLon))[None,:,:,:]
         dz = (self.soil_pars.dz[:,None,None,None] * arr_ones)
@@ -415,9 +407,6 @@ class SoilWaterBalance(object):
                               self.SMT3[None,:],
                               self.SMT4[None,:]), axis=0)
 
-        # # Update root zone water content and depletion
-        # self.root_zone_water(landcover)
-
         # Determine adjustment for inflows and outflows on current day
         cond1 = (self.thRZ_Act > self.thRZ_Fc)
         rootdepth = np.maximum(landcover.Zmin, landcover.Zroot)
@@ -485,7 +474,6 @@ class SoilWaterBalance(object):
         """Function to infiltrate incoming water (rainfall and 
         irrigation)
         """
-
         # Update infiltration rate for irrigation
         self.Infl += self.Irr * (self.AppEff / 100)
 
@@ -568,16 +556,6 @@ class SoilWaterBalance(object):
             
             self.th = np.copy(thnew)
             self.CrTot = CrTot
-    
-    # def evap_layer_water_content(self, th):
-    #     """Function to get water contents in the evaporation layer"""
-
-    #     Wevap = evap_layer_water_content(th, self.soil_pars.th_s_comp, self.soil_pars.th_fc_comp, self.soil_pars.th_wp_comp, self.soil_pars.th_dry_comp, self.soil_pars.dz, self.EvapZ)        
-    #     self.Wevap_Act = Wevap['Act']
-    #     self.Wevap_Sat = Wevap['Sat']
-    #     self.Wevap_Fc  = Wevap['Fc']
-    #     self.Wevap_Wp  = Wevap['Wp']
-    #     self.Wevap_Dry = Wevap['Dry']
                     
     def soil_evaporation(self, meteo, landcover, currTimeStep):
         """Function to calculate daily soil evaporation in AOS"""
@@ -736,26 +714,13 @@ class SoilWaterBalance(object):
     def transpiration(self, meteo, landcover, co2):
         """Function to calculate crop transpiration on current day"""
 
-        # Expand soil properties to compartments
-        th_s = self.soil_pars.th_s[self.soil_pars.layerIndex,:]
-        th_fc = self.soil_pars.th_fc[self.soil_pars.layerIndex,:]
-        th_wp = self.soil_pars.th_wp[self.soil_pars.layerIndex,:]
-        th_dry = self.soil_pars.th_dry[self.soil_pars.layerIndex,:]
-        thnew = np.copy(self.th)  # work on a copy
-        
-        # Add dimensions to dz,dzsum
-        arr_ones = np.ones((self.nRotation, self.nLat, self.nLon))[None,:,:,:]
-        dz = self.soil_pars.dz[:,None,None,None] * arr_ones
-        dzsum = self.soil_pars.dzsum[:,None,None,None] * arr_ones
-        
         # Add rotation dimension to ET0
         et0 = meteo.referencePotET[None,:,:] * np.ones((self.nRotation))[:,None,None]
-        arr_zeros = np.zeros((self.nRotation, self.nLat, self.nLon))
+        # arr_zeros = np.zeros((self.nRotation, self.nLat, self.nLon))
         
-        # #######################
         # potential transpiration
         # #######################
-
+        
         # 1. No prior water stress
         self.TrPot_NS = potential_transpiration(
             landcover.GrowingSeasonIndex,
@@ -771,13 +736,12 @@ class SoilWaterBalance(object):
         # Correct potential transpiration for dying green canopy effects
         cond9 = (landcover.GrowingSeasonIndex & (landcover.CC < landcover.CCxW))
         cond91 = (cond9 & (landcover.CCxW > 0.001) & (landcover.CC > 0.001))
-        x = np.divide(landcover.CC, landcover.CCxW, out=np.copy(arr_zeros), where=landcover.CCxW!=0)
+        x = np.divide(landcover.CC, landcover.CCxW, out=np.zeros_like(landcover.CCxW), where=landcover.CCxW!=0)
         self.TrPot0[cond91] *= (x ** landcover.a_Tr)[cond91]
 
-        # ###########################
         # surface layer transpiration
         # ###########################
-
+        
         # Potential transpiration counter
         TrPot = np.zeros((self.nRotation, self.nLat, self.nLon))
         TrPot_surf, self.TrAct0, self.AerDaysComp = surface_transpiration(
@@ -789,9 +753,7 @@ class SoilWaterBalance(object):
             self.TrPot0)
         TrPot += TrPot_surf
 
-        # ######################################################################
         # Update potential root zone transpiration for water stress
-
         # Maximum stress effect
         Ks = np.minimum(landcover.Ksw_StoLin, self.Ksa_Aer)
         
@@ -810,45 +772,37 @@ class SoilWaterBalance(object):
 
         # Extract water
         self.th, self.AerDaysComp, self.TrAct = extract_transpiration_water(
-            TrPot, landcover.GrowingSeasonIndex,
-            comp_sto, self.DaySubmerged, self.IrrMethod, self.th, self.soil_pars.th_s_comp, self.soil_pars.th_fc_comp, self.soil_pars.th_wp_comp, self.soil_pars.th_dry_comp, landcover.ETadj, landcover.p_up2, landcover.p_lo2, landcover.fshape_w2, landcover.LagAer, landcover.Aer, self.AerDaysComp, et0, self.soil_pars.dz, SxComp, RootFact)
+            TrPot, landcover.GrowingSeasonIndex, comp_sto, self.DaySubmerged,
+            self.IrrMethod, self.th, self.soil_pars.th_s_comp,
+            self.soil_pars.th_fc_comp, self.soil_pars.th_wp_comp,
+            self.soil_pars.th_dry_comp, landcover.ETadj, landcover.p_up2,
+            landcover.p_lo2, landcover.fshape_w2, landcover.LagAer,
+            landcover.Aer, self.AerDaysComp, et0, self.soil_pars.dz,
+            SxComp, RootFact)
         
-        # ####################################
         # Add net irrigation water requirement
         # ####################################
-
-        # TODO: move section to irrigation module
-        
-        cond15 = (landcover.GrowingSeasonIndex & (self.IrrMethod == 4) & (TrPot > 0))
-        self.IrrNet = np.zeros((self.nRotation, self.nLat, self.nLon))
         self.root_zone_water(landcover)
-        thCrit = self.thRZ_Wp + ((self.NetIrrSMT / 100) * (self.thRZ_Fc - self.thRZ_Wp))
-        cond151 = (cond15 & (self.thRZ_Act < thCrit))
-        cond151_comp = np.broadcast_to(cond151, self.th.shape)
-
-        # Calculate thCrit in each compartment
-        thCrit_comp = (th_wp + ((self.NetIrrSMT / 100) * (th_fc - th_wp)))
-
-        # Determine necessary change in water content in compartments to reach
-        # critical water content
-        dWC = RootFact * (thCrit_comp - self.th * 1000 * dz)
-        self.th[cond151_comp] = (self.th + (dWC / (1000 * dz)))[cond151_comp]
-        self.IrrNet[cond151] = np.sum(dWC, axis=0)[cond151]
-
+        self.th, self.IrrNet = add_net_irrigation(
+            landcover.GrowingSeasonIndex,
+            self.IrrMethod,
+            self.th,
+            self.soil_pars.th_wp_comp,
+            self.soil_pars.th_fc_comp,
+            self.thRZ_Wp, self.thRZ_Fc, self.thRZ_Act, self.NetIrrSMT, TrPot, RootFact, self.soil_pars.dz)
+        
         # Update net irrigation counter for the growing season
         self.IrrNetCum += self.IrrNet
-
-
         
         # Add any surface transpiration to root zone total
-        # self.TrAct = self.TrAct0 + np.sum(self.TrActComp, axis=0)
         self.TrAct += self.TrAct0
 
-        # ######################################################################
         # Update transpiration ratio
+        # ##########################
+        
         cond17 = (landcover.GrowingSeasonIndex & (self.TrPot0 > 0))
         cond171 = (cond17 & (self.TrAct < self.TrPot0))
-        self.TrRatio[cond171] = np.divide(self.TrAct, self.TrPot0, out=np.copy(arr_zeros), where=self.TrPot0!=0)[cond171]
+        self.TrRatio[cond171] = np.divide(self.TrAct, self.TrPot0, out=np.zeros_like(self.TrPot0), where=self.TrPot0!=0)[cond171]
         cond172 = (cond17 & np.logical_not(cond171))
         self.TrRatio[cond172] = 1
         cond18 = (landcover.GrowingSeasonIndex & np.logical_not(cond17))
@@ -856,6 +810,8 @@ class SoilWaterBalance(object):
         self.TrRatio = np.clip(self.TrRatio, 0, 1)
 
         # No transpiration or irrigation if outside growing season
+        # ########################################################
+        
         self.TrAct[np.logical_not(landcover.GrowingSeasonIndex)] = 0
         self.TrPot0[np.logical_not(landcover.GrowingSeasonIndex)] = 0
         self.TrPot_NS[np.logical_not(landcover.GrowingSeasonIndex)] = 0
@@ -865,42 +821,16 @@ class SoilWaterBalance(object):
         # Store potential transpiration for irrigation calculations on next day
         self.Tpot = np.copy(self.TrPot0)
 
-        # # TODO: move out of current method
-        # self.th -= (self.TrActComp / 1000 / dz)
-        
     def groundwater_inflow(self, groundwater):
         """Function to calculate capillary rise in the presence of a 
         shallow groundwater table
         """
-        # Expand soil properties to compartments
-        th_s = self.soil_pars.th_s[self.soil_pars.layerIndex,:]
+        self.th, self.GwIn = groundwater_inflow(
+            self.th, self.soil_pars.th_s_comp,
+            self.WTinSoil,
+            self.zGW,
+            self.soil_pars.dz,
+            self.soil_pars.dzsum)
         
-        # Add dimensions to dz,dzsum
-        arr_ones = np.ones((self.nRotation, self.nLat, self.nLon))[None,:,:,:]
-        dz = self.soil_pars.dz[:,None,None,None] * arr_ones
-        dzsum = self.soil_pars.dzsum[:,None,None,None] * arr_ones
-
-        # Initialize groudwater inflow array
-        self.GwIn = np.zeros((self.nRotation, self.nLat, self.nLon))
-        
-        # Water table in soil profile: calculate horizontal inflow; get
-        # groundwater table elevation on current day
-        zBot = np.cumsum(dz, axis=0)
-        zTop = zBot - dz
-        zMid = (zTop + zBot) / 2
-
-        # For compartments below water table, set to saturation
-        dth = np.zeros((self.nComp, self.nRotation, self.nLat, self.nLon))
-        cond1 = (self.WTinSoil & (zMid >= self.zGW))
-        cond11 = (cond1 & (self.th < th_s))
-
-        # Update water content
-        dth[cond11] = (th_s - self.th)[cond11]
-        self.th[cond11] = th_s[cond11]
-
-        # Update groundwater inflow
-        GwIn_comp = dth * 1000 * dz
-        self.GwIn = np.sum(GwIn_comp, axis=0)
-
     def add_pre_irrigation(self):
         self.IrrNet += self.PreIrr

@@ -10,6 +10,61 @@ import math
 import gc
 import numpy as np
 
+def groundwater_inflow(th, th_s, WTinSoil, zGW, dz, dzsum):
+
+    dims = th.shape
+    nc, nr, nlat, nlon = dims[0], dims[1], dims[2], dims[3]
+    thnew = np.copy(th)
+    dz = dz[:,None,None,None] * np.ones((nr, nlat, nlon))[None,:,:,:]
+    dzsum = dzsum[:,None,None,None] * np.ones((nr, nlat, nlon))[None,:,:,:]
+    
+    # Initialize groudwater inflow array
+    GwIn = np.zeros((nr, nlat, nlon))
+
+    # Water table in soil profile: calculate horizontal inflow; get
+    # groundwater table elevation on current day
+    zBot = np.cumsum(dz, axis=0)
+    zTop = zBot - dz
+    zMid = (zTop + zBot) / 2
+
+    # For compartments below water table, set to saturation
+    dth = np.zeros((nc, nr, nlat, nlon))
+    cond1 = (WTinSoil & (zMid >= zGW))
+    cond11 = (cond1 & (th < th_s))
+
+    # Update water content
+    dth[cond11] = (th_s - th)[cond11]
+    thnew[cond11] = th_s[cond11]
+
+    # Update groundwater inflow
+    GwIn_comp = dth * 1000 * dz
+    GwIn = np.sum(GwIn_comp, axis=0)
+    return thnew, GwIn    
+
+def add_net_irrigation(growing_season, irrigation_method, th, th_wp, th_fc, thRZ_Wp, thRZ_Fc, thRZ_Act, NetIrrSMT, TrPot, RootFact, dz):
+
+    dims = th.shape
+    nc, nr, nlat, nlon = dims[0], dims[1], dims[2], dims[3]
+    thnew = np.copy(th)
+    dz = dz[:,None,None,None] * np.ones((nr, nlat, nlon))[None,:,:,:]
+    
+    cond15 = (growing_season & (irrigation_method == 4) & (TrPot > 0))
+    IrrNet = np.zeros((nr, nlat, nlon))
+    thCrit = thRZ_Wp + ((NetIrrSMT / 100) * (thRZ_Fc - thRZ_Wp))
+    cond151 = (cond15 & (thRZ_Act < thCrit))
+    cond151_comp = np.broadcast_to(cond151, th.shape)
+
+    # Calculate thCrit in each compartment
+    thCrit_comp = (th_wp + ((NetIrrSMT / 100) * (th_fc - th_wp)))
+
+    # Determine necessary change in water content in compartments to reach
+    # critical water content
+    dWC = RootFact * (thCrit_comp - th * 1000 * dz)
+    thnew[cond151_comp] = (th + (dWC / (1000 * dz)))[cond151_comp]
+    IrrNet[cond151] = np.sum(dWC, axis=0)[cond151]
+
+    return thnew, IrrNet
+    
 def maximum_sink_term(growing_season, irrigation_method, SxTop, SxBot, rCor, Zmin, Zroot, dz, dzsum):
 
     dims = (dz.shape[0],) + growing_season.shape
