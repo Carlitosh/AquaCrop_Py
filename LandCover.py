@@ -95,6 +95,7 @@ class LandCover(object):
         self.B = np.copy(np.copy(arr_zeros))
         self.B_NS = np.copy(np.copy(arr_zeros))
         self.HI = np.copy(np.copy(arr_zeros))
+        self.HIref = np.copy(np.copy(arr_zeros))
         self.HIadj = np.copy(np.copy(arr_zeros))
         self.CCxAct = np.copy(np.copy(arr_zeros))
         self.CCxAct_NS = np.copy(np.copy(arr_zeros))
@@ -458,8 +459,6 @@ class LandCover(object):
 
         update_CC_after_senescence(
             self.GrowingSeasonIndex, self.CC, self.CCprev, self.CC0, self.CC0adj, self.CGC, self.CDC, self.CCx, self.CCxAct, self.CCxW, self.CCxEarlySen, self.Ksw_Sen, self.tEarlySen, tCCadj, dtCC, self.Emergence, self.Senescence, self.PrematSenes, self.CropDead)
-        # self.CC, self.CC0adj, self.CCxAct, self.CCxW, self.CropDead, self.PrematSenes, self.tEarlySen = update_CC_after_senescence(
-        #     self.GrowingSeasonIndex, self.CC, self.CCprev, self.CC0, self.CC0adj, self.CGC, self.CDC, self.CCx, self.CCxAct, self.CCxW, self.CCxEarlySen, self.Ksw_Sen, self.tEarlySen, tCCadj, dtCC, self.Emergence, self.Senescence, self.PrematSenes, self.CropDead)
 
         # ##################################
         # adjust for micro-advective effects
@@ -499,145 +498,37 @@ class LandCover(object):
         """Function to calculate reference (no adjustment for stress 
         effects) harvest index on current day
         """
-        # Initialize (TODO: check it is OK to do this)
-        self.HIref = np.zeros((self.nRotation, self.nLat, self.nLon))
-        
+
         # Check if in yield formation period
         if self.crop_pars.CalendarType == 1:
             tAdj = self.DAP - self.DelayedCDs
         elif self.crop_pars.CalendarType == 2:
             tAdj = self.GDDcum - self.DelayedGDDs
-
         self.YieldForm = (self.GrowingSeasonIndex & (tAdj > self.HIstart))
-
+        
         # Get time for harvest index calculation
         self.HIt = self.DAP - self.DelayedCDs - self.HIstartCD - 1
 
-        # Yet to reach time for HI build-up
-        cond1 = (self.GrowingSeasonIndex & (self.HIt <= 0))
-        self.HIref[cond1] = 0
-        self.PctLagPhase[cond1] = 0
-
-        cond2 = (self.GrowingSeasonIndex & np.logical_not(cond1))
-
-        # HI cannot develop further as canopy is too small (no need to do
-        # anything here as HIref doesn't change)
-        cond21 = (cond2 & (self.CCprev <= (self.CCmin * self.CCx)))
-        cond22 = (cond2 & np.logical_not(cond21))
-
-        # If crop type is leafy vegetable or root/tuber then proceed with
-        # logistic growth (i.e. no linear switch)
-        cond221 = (cond22 & ((self.CropType == 1) | (self.CropType == 2)))
-        self.PctLagPhase[cond221] = 100
-        HIref_divd = (self.HIini * self.HI0)
-        HIref_divs = (self.HIini + (self.HI0 - self.HIini) * np.exp(-self.HIGC * self.HIt))
-        self.HIref[cond221] = np.divide(HIref_divd, HIref_divs, out=np.zeros_like(self.HIref), where=HIref_divs!=0)[cond221]
+        harvest_index_ref_current_day(
+            self.GrowingSeasonIndex, self.CropType,
+            tAdj,
+            self.HIt, self.HIref, self.HIini, self.HIGC, self.HI0, self.PctLagPhase,
+            self.CCprev, self.CCmin, self.CCx, self.tLinSwitch, self.dHILinear)
         
-        # Harvest index approaching maximum limit
-        cond2211 = (cond221 & (self.HIref >= (0.9799 * self.HI0)))
-        self.HIref[cond2211] = self.HI0[cond2211]
-
-        cond222 = (cond22 & (self.CropType == 3))
-        # Not yet reached linear switch point, therefore proceed with logistic
-        # build-up
-        cond2221 = (cond222 & (self.HIt < self.tLinSwitch))
-        
-        self.PctLagPhase[cond2221] = (100 * np.divide(self.HIt, self.tLinSwitch, out=np.zeros_like(self.HIt), where=self.tLinSwitch!=0))[cond2221]
-        HIref_divd = (self.HIini * self.HI0)
-        HIref_divs = (self.HIini + (self.HI0 - self.HIini) * np.exp(-self.HIGC * self.HIt))
-        self.HIref[cond2221] = np.divide(HIref_divd, HIref_divs, out=np.zeros_like(HIref_divs), where=HIref_divs!=0)[cond2221]
-        
-        cond2222 = (cond222 & np.logical_not(cond2221))
-        self.PctLagPhase[cond2222] = 100
-        # Calculate reference harvest index for current day (logistic portion)
-        HIref_divd = (self.HIini * self.HI0)
-        HIref_divs = (self.HIini + (self.HI0 - self.HIini) * np.exp(-self.HIGC * self.tLinSwitch))
-        self.HIref[cond2222] = np.divide(HIref_divd, HIref_divs, out=np.zeros_like(HIref_divs), where=HIref_divs!=0)[cond2222]
-        
-        # Calculate reference harvest index for current day (total = logistic + linear)
-        self.HIref[cond2222] += (self.dHILinear * (self.HIt - self.tLinSwitch))[cond2222]
-
-        # Limit HIref and round off computed value
-        cond223 = (cond22 & (self.HIref > self.HI0))
-        self.HIref[cond223] = self.HI0[cond223]
-        cond224 = (cond22 & (self.HIref <= (self.HIini + 0.004)))
-        self.HIref[cond224] = 0
-        cond225 = (cond22 & ((self.HI0 - self.HIref) < 0.004))
-        self.HIref[cond225] = self.HI0[cond225]
-
-        # Reference harvest index is zero outside growing season
-        self.HIref[np.logical_not(self.GrowingSeasonIndex)] = 0
-
     def temperature_stress(self, meteo):
         """Function to calculate temperature stress coefficients"""
 
-        arr_zeros = np.zeros((self.nRotation, self.nLat, self.nLon))
-        
         # Add rotation dimension to meteo vars
         tmin = meteo.tmin[None,:,:] * np.ones((self.nRotation))[:,None,None]
         tmax = meteo.tmax[None,:,:] * np.ones((self.nRotation))[:,None,None]
         
-        # Calculate temperature stress coefficient affecting biomass growth
-        KsBio_up = 1
-        KsBio_lo = 0.02
-        fshapeb = -1 * (np.log(((KsBio_lo * KsBio_up) - 0.98 * KsBio_lo) / (0.98 * (KsBio_up - KsBio_lo))))
-
-        # Calculate temperature stress effects on biomass production
-        cond1 = (self.BioTempStress == 0)
-        self.Kst_Bio[cond1] = 1
-        cond2 = (self.BioTempStress == 1)
-        cond21 = (cond2 & (self.GDD >= self.GDD_up))
-        self.Kst_Bio[cond21] = 1
-        cond22 = (cond2 & (self.GDD <= self.GDD_lo))
-        self.Kst_Bio[cond22] = 0
-        cond23 = (cond2 & np.logical_not(cond21 | cond22))
-        GDDrel_divd = (self.GDD - self.GDD_lo)
-        GDDrel_divs = (self.GDD_up - self.GDD_lo)
-        GDDrel = np.divide(GDDrel_divd, GDDrel_divs, out=np.copy(arr_zeros), where=GDDrel_divs!=0)
-        # GDDrel = (self.GDD - self.GDD_lo) / (self.GDD_up - self.GDD_lo)
-        Kst_Bio_divd = (KsBio_up * KsBio_lo)
-        Kst_Bio_divs = (KsBio_lo + (KsBio_up - KsBio_lo) * np.exp(-fshapeb * GDDrel))
-        self.Kst_Bio[cond23] = np.divide(Kst_Bio_divd, Kst_Bio_divs, out=np.copy(arr_zeros), where=Kst_Bio_divs!=0)[cond23]
-        # self.Kst_Bio[cond23] = ((KsBio_up * KsBio_lo) / (KsBio_lo + (KsBio_up - KsBio_lo) * np.exp(-fshapeb * GDDrel)))[cond23]
-        self.Kst_Bio[cond23] = (self.Kst_Bio - KsBio_lo * (1 - GDDrel))[cond23]
-
         # Calculate temperature stress coefficients affecting crop pollination
+        self.Kst_Bio = temperature_stress_biomass(self.BioTempStress, self.GDD, self.GDD_up, self.GDD_lo)
+
         KsPol_up = 1
         KsPol_lo = 0.001
-
-        # Calculate effects of heat stress on pollination
-        cond3 = (self.PolHeatStress == 0)
-        self.Kst_PolH[cond3] = 1
-        cond4 = (self.PolHeatStress == 1)
-        cond41 = (cond4 & (tmax <= self.Tmax_lo))
-        self.Kst_PolH[cond41] = 1
-        cond42 = (cond4 & (tmax >= self.Tmax_up))
-        self.Kst_PolH[cond42] = 0
-        cond43 = (cond4 & np.logical_not(cond41 | cond42))
-        Trel_divd = (tmax - self.Tmax_lo)
-        Trel_divs = (self.Tmax_up - self.Tmax_lo)
-        Trel = np.divide(Trel_divd, Trel_divs, out=np.copy(arr_zeros), where=Trel_divs!=0)
-        Kst_PolH_divd = (KsPol_up * KsPol_lo)
-        Kst_PolH_divs = (KsPol_lo + (KsPol_up - KsPol_lo) * np.exp(-self.fshape_b * (1 - Trel)))
-        self.Kst_PolH[cond43] = np.divide(Kst_PolH_divd, Kst_PolH_divs, out=np.copy(arr_zeros), where=Kst_PolH_divs!=0)[cond43]
-        # self.Kst_PolH[cond43] = ((KsPol_up * KsPol_lo) / (KsPol_lo + (KsPol_up - KsPol_lo) * np.exp(-self.fshape_b * (1 - Trel))))[cond43]
-
-        # Calculate effects of cold stress on pollination
-        cond5 = (self.PolColdStress == 0)
-        self.Kst_PolC[cond5] = 1
-        cond6 = (self.PolColdStress == 1)
-        cond61 = (cond6 & (tmin >= self.Tmin_up))
-        self.Kst_PolC[cond61] = 1
-        cond62 = (cond6 & (tmin <= self.Tmin_lo))
-        self.Kst_PolC[cond62] = 0
-        Trel_divd = (self.Tmin_up - tmin)
-        Trel_divs = (self.Tmin_up - self.Tmin_lo)
-        Trel = np.divide(Trel_divd, Trel_divs, out=np.copy(arr_zeros), where=Trel_divs!=0)
-        # Trel = (self.Tmin_up - tmin) / (self.Tmin_up - self.Tmin_lo)
-        Kst_PolC_divd = (KsPol_up * KsPol_lo)
-        Kst_PolC_divs = (KsPol_lo + (KsPol_up - KsPol_lo) * np.exp(-self.fshape_b * (1 - Trel)))
-        self.Kst_PolC[cond62] = np.divide(Kst_PolC_divd, Kst_PolC_divs, out=np.copy(arr_zeros), where=Kst_PolC_divs!=0)[cond62]
-        # self.Kst_PolC[cond62] = ((KsPol_up * KsPol_lo) / (KsPol_lo + (KsPol_up - KsPol_lo) * np.exp(-self.fshape_b * (1 - Trel))))[cond62]
+        self.Kst_PolH = temperature_stress_heat(tmax, self.Tmax_lo, self.Tmax_up, self.PolHeatStress, self.fshape_b, KsPol_up, KsPol_lo)
+        self.Kst_PolC = temperature_stress_cold(tmin, self.Tmin_lo, self.Tmin_up, self.PolColdStress, self.fshape_b, KsPol_up, KsPol_lo)
         
     def biomass_accumulation(self, meteo, soilwater):
         """Function to calculate biomass accumulation"""
@@ -646,23 +537,9 @@ class LandCover(object):
         
         et0 = meteo.referencePotET[None,:,:] * np.ones((self.nRotation))[:,None,None]
         self.temperature_stress(meteo)
-
-        fswitch = np.zeros((self.nRotation, self.nLat, self.nLon))
-        WPadj = np.zeros((self.nRotation, self.nLat, self.nLon))
-        cond1 = (self.GrowingSeasonIndex & (((self.CropType == 2) | (self.CropType == 3)) & (self.HIref > 0)))
-
-        # Adjust WP for reproductive stage
-        cond11 = (cond1 & (self.Determinant == 1))
-        fswitch[cond11] = (self.PctLagPhase / 100)[cond11]
-        cond12 = (cond1 & np.logical_not(cond11))
-        cond121 = (cond12 < (self.YldFormCD / 3))
-        fswitch[cond121] = np.divide(self.HIt, (self.YldFormCD / 3), out=np.copy(arr_zeros), where=self.YldFormCD!=0)[cond121]
-        cond122 = (cond12 & np.logical_not(cond121))
-        fswitch[cond122] = 1
-        WPadj[cond1] = (self.WP * (1 - (1 - self.WPy / 100) * fswitch))[cond1]
-        cond2 = (self.GrowingSeasonIndex & np.logical_not(cond1))
-        WPadj[cond2] = self.WP[cond2]
-
+        WPadj = adjust_WP_for_reproductive_stage(
+            self.GrowingSeasonIndex, self.CropType, self.HIref, self.HIt, self.PctLagPhase, self.Determinant, self.YldFormCD, self.WP, self.WPy)
+        
         # Adjust WP for CO2 effects)
         WPadj *= self.fCO2
 

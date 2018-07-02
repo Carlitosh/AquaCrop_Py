@@ -10,6 +10,153 @@ import math
 import gc
 import numpy as np
 
+def adjust_WP_for_reproductive_stage(growing_season, crop_type, HIref, HIt, PctLagPhase, Determinant, YldFormCD, WP, WPy):
+
+    dims = growing_season.shape
+    nr, nlat, nlon = dims[0], dims[1], dims[2]
+    
+    fswitch = np.zeros((nr, nlat, nlon))
+    WPadj = np.zeros((nr, nlat, nlon))
+    cond1 = (growing_season & (((crop_type == 2) | (crop_type == 3)) & (HIref > 0)))
+
+    # Adjust WP for reproductive stage
+    cond11 = (cond1 & (Determinant == 1))
+    fswitch[cond11] = (PctLagPhase / 100)[cond11]
+    cond12 = (cond1 & np.logical_not(cond11))
+    cond121 = (cond12 < (YldFormCD / 3))
+    fswitch[cond121] = np.divide(HIt, (YldFormCD / 3), out=np.zeros_like(YldFormCD), where=YldFormCD!=0)[cond121]
+    cond122 = (cond12 & np.logical_not(cond121))
+    fswitch[cond122] = 1
+    WPadj[cond1] = (WP * (1 - (1 - WPy / 100) * fswitch))[cond1]
+    cond2 = (growing_season & np.logical_not(cond1))
+    WPadj[cond2] = WP[cond2]
+    return WPadj
+
+def temperature_stress_cold(tmin, Tmin_lo, Tmin_up, PolColdStress, fshape_b, KsPol_up, KsPol_lo):
+
+    Kst_PolC = np.zeros_like(Tmin_lo)
+    # Calculate effects of cold stress on pollination
+    cond5 = (PolColdStress == 0)
+    Kst_PolC[cond5] = 1
+    cond6 = (PolColdStress == 1)
+    cond61 = (cond6 & (tmin >= Tmin_up))
+    Kst_PolC[cond61] = 1
+    cond62 = (cond6 & (tmin <= Tmin_lo))
+    Kst_PolC[cond62] = 0
+    Trel_divd = (Tmin_up - tmin)
+    Trel_divs = (Tmin_up - Tmin_lo)
+    Trel = np.divide(Trel_divd, Trel_divs, out=np.zeros_like(Trel_divs), where=Trel_divs!=0)
+    Kst_PolC_divd = (KsPol_up * KsPol_lo)
+    Kst_PolC_divs = (KsPol_lo + (KsPol_up - KsPol_lo) * np.exp(-fshape_b * (1 - Trel)))
+    Kst_PolC[cond62] = np.divide(Kst_PolC_divd, Kst_PolC_divs, out=np.zeros_like(Kst_PolC_divs), where=Kst_PolC_divs!=0)[cond62]
+    return Kst_PolC
+    
+def temperature_stress_heat(tmax, Tmax_lo, Tmax_up, PolHeatStress, fshape_b, KsPol_up, KsPol_lo):
+
+    Kst_PolH = np.zeros_like(Tmax_lo)
+
+    # Calculate effects of heat stress on pollination
+    cond3 = (PolHeatStress == 0)
+    Kst_PolH[cond3] = 1
+    cond4 = (PolHeatStress == 1)
+    cond41 = (cond4 & (tmax <= Tmax_lo))
+    Kst_PolH[cond41] = 1
+    cond42 = (cond4 & (tmax >= Tmax_up))
+    Kst_PolH[cond42] = 0
+    cond43 = (cond4 & np.logical_not(cond41 | cond42))
+    Trel_divd = (tmax - Tmax_lo)
+    Trel_divs = (Tmax_up - Tmax_lo)
+    Trel = np.divide(Trel_divd, Trel_divs, out=np.zeros_like(Trel_divs), where=Trel_divs!=0)
+    Kst_PolH_divd = (KsPol_up * KsPol_lo)
+    Kst_PolH_divs = (KsPol_lo + (KsPol_up - KsPol_lo) * np.exp(-fshape_b * (1 - Trel)))
+    Kst_PolH[cond43] = np.divide(Kst_PolH_divd, Kst_PolH_divs, out=np.zeros_like(Kst_PolH_divs), where=Kst_PolH_divs!=0)[cond43]
+    return Kst_PolH
+    
+def temperature_stress_biomass(BioTempStress, GDD, GDD_up, GDD_lo):
+# def temperature_stress_biomass(Kst_Bio, BioTempStress, GDD, GDD_up, GDD_lo):
+
+    Kst_Bio = np.zeros_like(GDD)
+    
+    # Calculate temperature stress coefficient affecting biomass growth
+    KsBio_up = 1
+    KsBio_lo = 0.02
+    fshapeb = -1 * (np.log(((KsBio_lo * KsBio_up) - 0.98 * KsBio_lo) / (0.98 * (KsBio_up - KsBio_lo))))
+
+    # Calculate temperature stress effects on biomass production
+    cond1 = (BioTempStress == 0)
+    Kst_Bio[cond1] = 1
+    cond2 = (BioTempStress == 1)
+    cond21 = (cond2 & (GDD >= GDD_up))
+    Kst_Bio[cond21] = 1
+    cond22 = (cond2 & (GDD <= GDD_lo))
+    Kst_Bio[cond22] = 0
+    cond23 = (cond2 & np.logical_not(cond21 | cond22))
+    GDDrel_divd = (GDD - GDD_lo)
+    GDDrel_divs = (GDD_up - GDD_lo)
+    GDDrel = np.divide(GDDrel_divd, GDDrel_divs, out=np.zeros_like(GDDrel_divs), where=GDDrel_divs!=0)
+    Kst_Bio_divd = (KsBio_up * KsBio_lo)
+    Kst_Bio_divs = (KsBio_lo + (KsBio_up - KsBio_lo) * np.exp(-fshapeb * GDDrel))
+    Kst_Bio[cond23] = np.divide(Kst_Bio_divd, Kst_Bio_divs, out=np.zeros_like(Kst_Bio_divs), where=Kst_Bio_divs!=0)[cond23]
+    Kst_Bio[cond23] = (Kst_Bio - KsBio_lo * (1 - GDDrel))[cond23]
+    return Kst_Bio
+
+def harvest_index_ref_current_day(growing_season, crop_type, tAdj, HIt, HIref, HIini, HIGC, HI0, PctLagPhase, CCprev, CCmin, CCx, tLinSwitch, dHILinear):
+
+    # Yet to reach time for HI build-up
+    cond1 = (growing_season & (HIt <= 0))
+    HIref[cond1] = 0
+    PctLagPhase[cond1] = 0
+
+    cond2 = (growing_season & np.logical_not(cond1))
+
+    # HI cannot develop further as canopy is too small (no need to do
+    # anything here as HIref doesn't change)
+    cond21 = (cond2 & (CCprev <= (CCmin * CCx)))
+    cond22 = (cond2 & np.logical_not(cond21))
+
+    # If crop type is leafy vegetable or root/tuber then proceed with
+    # logistic growth (i.e. no linear switch)
+    cond221 = (cond22 & ((crop_type == 1) | (crop_type == 2)))
+    PctLagPhase[cond221] = 100
+    HIref_divd = (HIini * HI0)
+    HIref_divs = (HIini + (HI0 - HIini) * np.exp(-HIGC * HIt))
+    HIref[cond221] = np.divide(HIref_divd, HIref_divs, out=np.zeros_like(HIref), where=HIref_divs!=0)[cond221]
+
+    # Harvest index approaching maximum limit
+    cond2211 = (cond221 & (HIref >= (0.9799 * HI0)))
+    HIref[cond2211] = HI0[cond2211]
+
+    cond222 = (cond22 & (crop_type == 3))
+    # Not yet reached linear switch point, therefore proceed with logistic
+    # build-up
+    cond2221 = (cond222 & (HIt < tLinSwitch))
+
+    PctLagPhase[cond2221] = (100 * np.divide(HIt, tLinSwitch, out=np.zeros_like(HIt), where=tLinSwitch!=0))[cond2221]
+    HIref_divd = (HIini * HI0)
+    HIref_divs = (HIini + (HI0 - HIini) * np.exp(-HIGC * HIt))
+    HIref[cond2221] = np.divide(HIref_divd, HIref_divs, out=np.zeros_like(HIref_divs), where=HIref_divs!=0)[cond2221]
+
+    cond2222 = (cond222 & np.logical_not(cond2221))
+    PctLagPhase[cond2222] = 100
+    # Calculate reference harvest index for current day (logistic portion)
+    HIref_divd = (HIini * HI0)
+    HIref_divs = (HIini + (HI0 - HIini) * np.exp(-HIGC * tLinSwitch))
+    HIref[cond2222] = np.divide(HIref_divd, HIref_divs, out=np.zeros_like(HIref_divs), where=HIref_divs!=0)[cond2222]
+
+    # Calculate reference harvest index for current day (total = logistic + linear)
+    HIref[cond2222] += (dHILinear * (HIt - tLinSwitch))[cond2222]
+
+    # Limit HIref and round off computed value
+    cond223 = (cond22 & (HIref > HI0))
+    HIref[cond223] = HI0[cond223]
+    cond224 = (cond22 & (HIref <= (HIini + 0.004)))
+    HIref[cond224] = 0
+    cond225 = (cond22 & ((HI0 - HIref) < 0.004))
+    HIref[cond225] = HI0[cond225]
+
+    # Reference harvest index is zero outside growing season
+    HIref[np.logical_not(growing_season)] = 0
+    
 def canopy_cover_development(CC0, CCx, CGC, CDC, dt, Mode):
     """Function to calculate canopy cover development by end of the 
     current simulation day
