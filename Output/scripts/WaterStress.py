@@ -29,9 +29,6 @@ class WaterStress(object):
         fshape_w = np.concatenate((self.var.fshape_w1[None,:], self.var.fshape_w2[None,:], self.var.fshape_w3[None,:], self.var.fshape_w4[None,:]), axis=0)
 
         et0 = (self.var.referencePotET[None,:,:] * np.ones((self.var.nRotation))[:,None,None])
-        # self.var.Ksw_Exp, self.var.Ksw_Sto, self.var.Ksw_Sen, self.var.Ksw_Pol, self.var.Ksw_StoLin = water_stress(
-        #     p_lo, p_up, fshape_w, et0, self.var.ETadj, self.var.tEarlySen,
-        #     beta, self.var.beta, self.var.TAW, self.var.Dr)
         
         dims = et0.shape
         nr, nlat, nlon = dims[0], dims[1], dims[2]
@@ -83,4 +80,3 @@ class WaterStress(object):
 
         # Mean water stress coefficient for stomatal closure
         self.var.Ksw_StoLin = 1 - Drel[1,:]
-        # return Ksw_Exp, Ksw_Sto, Ksw_Sen, Ksw_Pol, Ksw_StoLin

@@ -501,35 +501,35 @@ def soil_evaporation_stage_two(th, th_s, th_fc, th_wp, th_dry, EsPot, EsAct, dz,
     return thnew, EsAct
     
     
-def adjust_potential_soil_evaporation_for_irrigation(surface_storage, EsPot, irr_method, irr_depth, prec, wet_surf):
-    EsPotIrr = np.copy(EsPot)
-    cond1 = ((irr_depth > 0) & (irr_method != 4))
-    cond11 = (cond1 & ((prec > 0) | (surface_storage > 0)))
-    EsPotIrr[cond11] = EsPot[cond11]
-    cond12 = (cond1 & np.logical_not(cond11))
-    EsPotIrr[cond12] = (EsPot * (wet_surf / 100))[cond12]  # TODO: more informative name for wet_surf
-    return EsPotIrr
+# def adjust_potential_soil_evaporation_for_irrigation(surface_storage, EsPot, irr_method, irr_depth, prec, wet_surf):
+#     EsPotIrr = np.copy(EsPot)
+#     cond1 = ((irr_depth > 0) & (irr_method != 4))
+#     cond11 = (cond1 & ((prec > 0) | (surface_storage > 0)))
+#     EsPotIrr[cond11] = EsPot[cond11]
+#     cond12 = (cond1 & np.logical_not(cond11))
+#     EsPotIrr[cond12] = (EsPot * (wet_surf / 100))[cond12]  # TODO: more informative name for wet_surf
+#     return EsPotIrr
     
-def adjust_potential_soil_evaporation_for_mulches(growing_season, surface_storage, EsPot, Mulches, fMulch, MulchPctGS, MulchPctOS):
+# def adjust_potential_soil_evaporation_for_mulches(growing_season, surface_storage, EsPot, Mulches, fMulch, MulchPctGS, MulchPctOS):
 
-    # NB if surface is flooded then there is no adjustment of potential soil
-    # evaporation, regardless of mulches    
-    EsPotMul = np.copy(EsPot)
-    cond1 = (surface_storage < 0.000001)
-    cond11 = (cond1 & (Mulches == 1))
-    cond111 = (cond11 & growing_season)
-    EsPotMul[cond111] = (EsPot * (1 - fMulch * (MulchPctGS / 100)))[cond111]
-    cond112 = (cond11 & np.logical_not(growing_season))
-    EsPotMul[cond112] = (EsPot * (1 - fMulch * (MulchPctOS / 100)))[cond112]
-    return EsPotMul
+#     # NB if surface is flooded then there is no adjustment of potential soil
+#     # evaporation, regardless of mulches    
+#     EsPotMul = np.copy(EsPot)
+#     cond1 = (surface_storage < 0.000001)
+#     cond11 = (cond1 & (Mulches == 1))
+#     cond111 = (cond11 & growing_season)
+#     EsPotMul[cond111] = (EsPot * (1 - fMulch * (MulchPctGS / 100)))[cond111]
+#     cond112 = (cond11 & np.logical_not(growing_season))
+#     EsPotMul[cond112] = (EsPot * (1 - fMulch * (MulchPctOS / 100)))[cond112]
+#     return EsPotMul
 
-def adjust_time_for_delayed_development(calendar_type, DAP, DelayedCDs, DelayedGDDs, GDDcum):
-    # Adjust time for any delayed development
-    if calendar_type == 1:
-        tAdj = (DAP - DelayedCDs) # * growing_season_index
-    elif calendar_type == 2:
-        tAdj = (GDDcum - DelayedGDDs) # * growing_season_index
-    return tAdj
+# def adjust_time_for_delayed_development(calendar_type, DAP, DelayedCDs, DelayedGDDs, GDDcum):
+#     # Adjust time for any delayed development
+#     if calendar_type == 1:
+#         tAdj = (DAP - DelayedCDs) # * growing_season_index
+#     elif calendar_type == 2:
+#         tAdj = (GDDcum - DelayedGDDs) # * growing_season_index
+#     return tAdj
 
 def potential_soil_evaporation_rate(growing_season, tAdj, CC, CCadj, CCxAct, CCxW, Senescence, PrematSenes, et0, Kex, fwcc):
 
