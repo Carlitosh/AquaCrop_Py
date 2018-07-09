@@ -71,31 +71,31 @@ class Reporting(object):
         """Function to process model variables to output variables. In 
         most cases this simply involves copying model attributes
         """
-        self.precipitation = self._model.meteo.precipitation
-        self.th = self._model.soilwater.th
-        self.Wr = self._model.soilwater.Wr
-        self.zGW = self._model.groundwater.zGW
-        self.SurfaceStorage = self._model.soilwater.SurfaceStorage
-        self.Irr = self._model.soilwater.Irr
-        self.Infl = self._model.soilwater.Infl
-        self.Runoff = self._model.soilwater.Runoff
-        self.DeepPerc = self._model.soilwater.DeepPerc
-        self.CrTot = self._model.soilwater.CrTot
-        self.GwIn = self._model.soilwater.GwIn
-        self.EsAct = self._model.soilwater.EsAct
-        self.Epot = self._model.soilwater.Epot
-        self.TrAct = self._model.soilwater.TrAct
-        self.Tpot = self._model.soilwater.Tpot
-        self.GDD = self._model.landcover.GDD
-        self.GDDcum = self._model.landcover.GDDcum
-        self.Zroot = self._model.landcover.Zroot
-        self.CC = self._model.landcover.CC
-        self.CC_NS = self._model.landcover.CC_NS
-        self.B = self._model.landcover.B
-        self.B_NS = self._model.landcover.B_NS
-        self.HI = self._model.landcover.HI
-        self.HIadj = self._model.landcover.HIadj
-        self.Y = self._model.landcover.Y
+        self.precipitation = self._model.precipitation
+        self.th = self._model.th
+        self.Wr = self._model.Wr
+        self.zGW = self._model.zGW
+        self.SurfaceStorage = self._model.SurfaceStorage
+        self.Irr = self._model.Irr
+        self.Infl = self._model.Infl
+        self.Runoff = self._model.Runoff
+        self.DeepPerc = self._model.DeepPerc
+        self.CrTot = self._model.CrTot
+        self.GwIn = self._model.GwIn
+        self.EsAct = self._model.EsAct
+        self.Epot = self._model.Epot
+        self.TrAct = self._model.TrAct
+        self.Tpot = self._model.Tpot
+        self.GDD = self._model.GDD
+        self.GDDcum = self._model.GDDcum
+        self.Zroot = self._model.Zroot
+        self.CC = self._model.CC
+        self.CC_NS = self._model.CC_NS
+        self.B = self._model.B
+        self.B_NS = self._model.B_NS
+        self.HI = self._model.HI
+        self.HIadj = self._model.HIadj
+        self.Y = self._model.Y
 
     def report(self):
 

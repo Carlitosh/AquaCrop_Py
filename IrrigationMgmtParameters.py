@@ -13,38 +13,31 @@ import calendar as calendar
 
 class IrrigationMgmtParameters(object):
 
-    def __init__(self, iniItems, landmask):
-        object.__init__(self)
+    def __init__(self, IrrigationMgmtParameters_variable):
+        self.var = IrrigationMgmtParameters_variable
 
-        self.cloneMap = iniItems.cloneMap
-        self.landmask = landmask
-
-        attr = vos.getMapAttributesALL(self.cloneMap)
-        self.nLat = int(attr['rows'])
-        self.nLon = int(attr['cols'])
-
-        self.irrMgmtParameterFileNC = iniItems.irrMgmtOptions['irrMgmtParameterNC']
-
-    def read(self):
-        """Function to read irrigation management input parameters"""
-        
-        self.parameter_names = ['IrrMethod','IrrInterval','SMT1','SMT2','SMT3','SMT4','MaxIrr','AppEff','NetIrrSMT','WetSurf']
-        for var in self.parameter_names:
-            vars(self)[var] = vos.netcdf2PCRobjCloneWithoutTime(
-                self.irrMgmtParameterFileNC,
+    def initial(self):
+        self.var.irrMgmtParameterFileNC = self.var._configuration.irrMgmtOptions['irrMgmtParameterNC']
+        self.var.parameter_names = ['IrrMethod','IrrInterval','SMT1','SMT2','SMT3','SMT4','MaxIrr','AppEff','NetIrrSMT','WetSurf']
+        for var in self.var.parameter_names:
+            nm = '_' + var
+            vars(self.var)[nm] = vos.netcdf2PCRobjCloneWithoutTime(
+                self.var.irrMgmtParameterFileNC,
                 var,
-                cloneMapFileName=self.cloneMap)
-
-        # # create array of soil moisture target for the respective growth stages
-        # self.SMT = np.concatenate((self.SMT1[None,:], self.SMT2[None,:], self.SMT3[None,:], self.SMT4[None,:]), axis=0)
+                cloneMapFileName=self.var.cloneMap)
 
         # check if an irrigation schedule file is required
-        if np.sum(self.IrrMethod == 3) > 0:
-            if self.irrMgmtOptions['irrScheduleNC'] != "None":
-                self.irrMgmtOptions['irrScheduleNC'] = vos.getFullPath(self.irrMgmtOptions[item], self.globalOptions['inputDir'])
-                self.irrScheduleFileNC = irrMgmtOptions['irrScheduleNC']
+        if np.sum(self.var._IrrMethod == 3) > 0:
+            if self.var._configuration.irrMgmtOptions['irrScheduleNC'] != "None":
+                self.var._configuration.irrMgmtOptions['irrScheduleNC'] = vos.getFullPath(self.var._configuration.irrMgmtOptions[item], self.var._configuration.globalOptions['inputDir'])
+                self.var.irrScheduleFileNC = self.var._configuration.irrMgmtOptions['irrScheduleNC']
             else:
                 logger.error('IrrMethod equals 3 in some or all places, but irrScheduleNC is not set in configuration file')
 
         else:
-            self.irrScheduleFileNC = None
+            self.var.irrScheduleFileNC = None
+
+    def dynamic(self):
+        I,J,K = np.ogrid[:self.var.nRotation,:self.var.nLat,:self.var.nLon]
+        for var in self.var.parameter_names:
+            vars(self.var)[var] = getattr(self.var, '_' + var)[self.var.CropIndex,I,J,K]

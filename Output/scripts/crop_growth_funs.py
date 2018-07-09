@@ -10,6 +10,127 @@ import math
 import gc
 import numpy as np
 
+def harvest_index_adj_post_anthesis(growing_season, crop_type, Fpost, Fpre, sCor1, sCor2, fpost_upp, fpost_dwn, HIt, a_HI, b_HI, HIstartCD, HIendCD, YieldForm, YldFormCD, DAP, CC, CanopyDevEndCD, DelayedCDs, Ksw_Exp, Ksw_Sto):
+    """Function to calculate adjustment to harvest index for 
+    post-anthesis water stress
+    """
+    dims = growing_season.shape
+    nr, nlat, nlon = dims[0], dims[1], dims[2]
+    arr_zeros = np.zeros((nr, nlat, nlon))
+    cond0 = (growing_season & YieldForm & (HIt > 0) & ((crop_type == 2) | (crop_type == 3)))
+
+    # 1 Adjustment for leaf expansion
+    tmax1 = CanopyDevEndCD - HIstartCD
+    DAP = DAP - DelayedCDs
+    cond1 = (cond0 & (DAP <= (CanopyDevEndCD + 1)) & (tmax1 > 0) & (Fpre > 0.99) & (CC > 0.001) & (a_HI > 0))
+    dCor = (1 + np.divide((1 - Ksw_Exp), a_HI, out=np.copy(arr_zeros), where=a_HI!=0))
+    sCor1[cond1] += np.divide(dCor, tmax1, out=np.copy(arr_zeros), where=tmax1!=0)[cond1]
+    DayCor = (DAP - 1 - HIstartCD)
+    fpost_upp[cond1] = (np.divide(tmax1, DayCor, out=np.copy(arr_zeros), where=DayCor!=0) * sCor1)[cond1]
+
+    # 2 Adjustment for stomatal closure
+    tmax2 = np.copy(YldFormCD)
+    cond2 = (cond0 & (DAP <= (HIendCD + 1)) & (tmax2 > 0) & (Fpre > 0.99) & (CC > 0.001) & (b_HI > 0))
+    dCor = ((np.exp(0.1 * np.log(Ksw_Sto))) * (1 - np.divide((1 - Ksw_Sto), b_HI, out=np.copy(arr_zeros), where=b_HI!=0)))
+    sCor2[cond2] += np.divide(dCor, tmax2, out=np.copy(arr_zeros), where=tmax2!=0)[cond2]
+    DayCor = (DAP - 1 - HIstartCD)
+    fpost_dwn[cond2] = (np.divide(tmax2, DayCor, out=np.copy(arr_zeros), where=DayCor!=0) * sCor2)[cond2]
+
+    # Determine total multiplier
+    cond3 = (cond0 & (tmax1 == 0) & (tmax2 == 0))
+    Fpost[cond3] = 1
+    cond4 = (cond0 & np.logical_not(cond3))
+    cond41 = (cond4 & (tmax2 == 0))
+    Fpost[cond41] = fpost_upp[cond41]
+    cond42 = (cond4 & (tmax1 <= tmax2) & np.logical_not(cond41))
+    Fpost[cond42] = (fpost_dwn * np.divide(((tmax1 * fpost_upp) + (tmax2 - tmax1)), tmax2, out=np.copy(arr_zeros), where=tmax2!=0))[cond42]
+    cond43 = (cond4 & np.logical_not(cond41 | cond42))
+    Fpost[cond43] = (fpost_upp * np.divide(((tmax2 * fpost_dwn) + (tmax1 - tmax2)), tmax2, out=np.copy(arr_zeros), where=tmax2!=0))[cond43]
+
+def HI_adj_pollination(growing_season, crop_type, Fpol, YieldForm, HIt, FloweringCD, CC, CCmin, Ks, exc):
+    """Function to calculate adjustment to harvest index for 
+    failure of pollination due to water or temperature stress
+    """
+    dims = growing_season.shape
+    nr, nlat, nlon = dims[0], dims[1], dims[2]
+    arr_zeros = np.zeros((nr, nlat, nlon))
+    FracFlow = np.copy(arr_zeros)
+    t1 = np.copy(arr_zeros)
+    t2 = np.copy(arr_zeros)
+    F1 = np.copy(arr_zeros)
+    F2 = np.copy(arr_zeros)
+    F = np.copy(arr_zeros)
+
+    cond0 = (growing_season & YieldForm & (crop_type == 3) & (HIt > 0) & (HIt <= FloweringCD))
+
+    # Fractional flowering on previous day
+    # cond1 = (HIt > 0)
+    t1[cond0] = HIt[cond0] - 1
+    cond11 = (cond0 & (t1 > 0))
+    t1pct = 100 * np.divide(t1, FloweringCD, out=np.copy(arr_zeros), where=FloweringCD!=0)
+    t1pct = np.clip(t1pct, 0, 100)
+    F1[cond11] = (0.00558 * np.exp(0.63 * np.log(t1pct, out=np.copy(arr_zeros), where=t1pct>0)) - (0.000969 * t1pct) - 0.00383)[cond11]
+    F1 = np.clip(F1, 0, None)
+
+    # Fractional flowering on current day
+    t2[cond0] = HIt[cond0]
+    cond12 = (cond0 & (t2 > 0))
+    t2pct = 100 * np.divide(t2, FloweringCD, out=np.copy(arr_zeros), where=FloweringCD!=0)
+    t2pct = np.clip(t2pct, 0, 100)
+    F2[cond12] = (0.00558 * np.exp(0.63 * np.log(t2pct, out=np.copy(arr_zeros), where=t2pct>0)) - (0.000969 * t2pct) - 0.00383)[cond12]
+    F2 = np.clip(F2, 0, None)
+
+    # Weight values
+    cond13 = (cond0 & (np.abs(F1 - F2) >= 0.0000001))
+    F[cond13] = (100 * np.divide(((F1 + F2) / 2), FloweringCD, out=np.copy(arr_zeros), where=FloweringCD!=0))[cond13]
+    FracFlow[cond13] = F[cond13]
+
+    # Calculate pollination adjustment for current day
+    dFpol = arr_zeros##np.zeros((self.nRotation, self.nLat, self.nLon))
+    cond2 = (cond0 & (CC >= CCmin))
+    # Ks = np.minimum(self.Ksw_Pol, self.Kst_PolC, self.Kst_PolH)
+    dFpol[cond2] = (Ks * FracFlow * (1 + (exc / 100)))[cond2]
+
+    # Calculate pollination adjustment to date
+    Fpol += dFpol
+    Fpol = np.clip(Fpol, None, 1)
+
+def HI_adj_pre_anthesis(growing_season, crop_type, PreAdj, Fpre, YieldForm, HIt, B, B_NS, dHI_pre, CC):
+    """Function to calculate adjustment to harvest index for 
+    pre-anthesis water stress
+    """
+    cond0 = (growing_season & YieldForm & (HIt >= 0) & ((crop_type == 2) | (crop_type == 3)) & np.logical_not(PreAdj))
+    PreAdj[cond0] = True
+    
+    # Calculate adjustment
+    Br = np.divide(B, B_NS, out=np.zeros_like(B_NS), where=B_NS!=0)
+    Br_range = np.log(dHI_pre, out=np.zeros_like(dHI_pre), where=dHI_pre>0) / 5.62
+    Br_upp = 1
+    Br_low = 1 - Br_range
+    Br_top = Br_upp - (Br_range / 3)
+
+    # Get biomass ratio
+    ratio_low_divd = (Br - Br_low)
+    ratio_low_divs = (Br_top - Br_low)
+    ratio_low = np.divide(ratio_low_divd, ratio_low_divs, out=np.zeros_like(ratio_low_divs), where=ratio_low_divs!=0)
+    ratio_upp_divd = (Br - Br_top)
+    ratio_upp_divs = (Br_upp - Br_top)
+    ratio_upp = np.divide(ratio_upp_divd, ratio_upp_divs, out=np.zeros_like(ratio_upp_divs), where=ratio_upp_divs!=0)
+
+    # Calculate adjustment factor
+    cond1 = (cond0 & ((Br >= Br_low) & (Br < Br_top)))
+    Fpre[cond1] = (1 + (((1 + np.sin((1.5 - ratio_low) * np.pi)) / 2) * (dHI_pre / 100)))[cond1]
+    cond2 = (cond0 & np.logical_not(cond1) & ((Br > Br_top) & (Br <= Br_upp)))
+    Fpre[cond2] = (1 + (((1 + np.sin((0.5 + ratio_upp) * np.pi)) / 2) * (dHI_pre / 100)))[cond2]
+    cond3 = (cond0 & np.logical_not(cond1 | cond2))
+    Fpre[cond3] = 1
+
+    # No green canopy left at start of flowering so no harvestable crop
+    # will develop
+    cond3 = (cond0 & (CC <= 0.01))
+    Fpre[cond3] = 0
+    
+
 def adjust_WP_for_reproductive_stage(growing_season, crop_type, HIref, HIt, PctLagPhase, Determinant, YldFormCD, WP, WPy):
 
     dims = growing_season.shape
@@ -24,7 +145,7 @@ def adjust_WP_for_reproductive_stage(growing_season, crop_type, HIref, HIt, PctL
     fswitch[cond11] = (PctLagPhase / 100)[cond11]
     cond12 = (cond1 & np.logical_not(cond11))
     cond121 = (cond12 < (YldFormCD / 3))
-    fswitch[cond121] = np.divide(HIt, (YldFormCD / 3), out=np.zeros_like(YldFormCD), where=YldFormCD!=0)[cond121]
+    fswitch[cond121] = np.divide(HIt.astype(np.float64), (YldFormCD.astype(np.float64) / 3.), out=np.zeros_like(YldFormCD.astype(np.float64)), where=YldFormCD!=0)[cond121]
     cond122 = (cond12 & np.logical_not(cond121))
     fswitch[cond122] = 1
     WPadj[cond1] = (WP * (1 - (1 - WPy / 100) * fswitch))[cond1]
@@ -546,9 +667,9 @@ def root_development(growing_season, calendar_type, DAP, DelayedCDs, DelayedGDDs
     cond3 = (growing_season & np.logical_not(cond2) & (tOld <= t0))
     ZrOld[cond3] = Zini[cond3]
     cond4 = (growing_season & (np.logical_not(cond2 | cond3)))
-    X_divd = tOld - t0
-    X_divs = tmax - t0
-    X = np.divide(X_divd, X_divs, out=np.zeros_like(t0), where=X_divs!=0)
+    X_divd = (tOld - t0).astype('float64')
+    X_divs = (tmax - t0).astype('float64')
+    X = np.divide(X_divd, X_divs, out=np.zeros_like(X_divs), where=X_divs!=0)
     ZrOld_exp = np.divide(1, fshape_r, out=np.zeros_like(fshape_r), where=cond4)
     ZrOld_pow = np.power(X, ZrOld_exp, out=np.zeros_like(ZrOld), where=cond4)
     ZrOld[cond4] = (Zini + (Zmax - Zini) * ZrOld_pow)[cond4]        
@@ -565,9 +686,9 @@ def root_development(growing_season, calendar_type, DAP, DelayedCDs, DelayedGDDs
     cond7 = (growing_season & np.logical_not(cond6) & (tAdj <= t0))
     Zr[cond7] = Zini[cond7]
     cond8 = (growing_season & (np.logical_not(cond6 | cond7)))
-    X_divd = tAdj - t0
-    X_divs = tmax - t0
-    X = np.divide(X_divd, X_divs, out=np.zeros_like(t0), where=X_divs!=0)
+    X_divd = (tAdj - t0).astype('float64')
+    X_divs = (tmax - t0).astype('float64')
+    X = np.divide(X_divd, X_divs, out=np.zeros_like(X_divs), where=X_divs!=0)
     Zr_exp = np.divide(1, fshape_r, out=np.zeros_like(fshape_r), where=cond8)
     Zr_pow = np.power(X, Zr_exp, out=np.zeros_like(Zr), where=cond8)
     Zr[cond8] = (Zini + (Zmax - Zini) * Zr_pow)[cond8]

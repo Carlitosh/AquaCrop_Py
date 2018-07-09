@@ -229,6 +229,8 @@ def surface_transpiration(growing_season, surface_storage, day_submerged, LagAer
     
     cond10 = (growing_season & (surface_storage > 0) & (day_submerged < LagAer))
 
+    day_submerged[cond10] += 1
+    
     # Initialise variables
     TrPot = np.zeros((nr, nlat, nlon))
     TrAct0 = np.zeros((nr, nlat, nlon))
@@ -241,7 +243,7 @@ def surface_transpiration(growing_season, surface_storage, day_submerged, LagAer
 
     # Reduce actual transpiration that is possible to account for aeration
     # stress due to extended submergence
-    fSub = 1 - np.divide(day_submerged, LagAer, out=np.zeros_like(LagAer), where=LagAer!=0)
+    fSub = 1 - np.divide(day_submerged.astype(np.float64), LagAer.astype(np.float64), out=np.zeros_like(LagAer.astype(np.float64)), where=LagAer!=0)
 
     # Transpiration occurs from surface storage
     cond101 = (cond10 & (surface_storage > (fSub * TrPot0)))

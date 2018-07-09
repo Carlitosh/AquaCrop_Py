@@ -3,101 +3,79 @@
 
 # AquaCrop crop growth model
 
-import os
-from pcraster.framework import *
-import pcraster as pcr
-
-import logging
-logger = logging.getLogger(__name__)
-
+import numpy as np
 import VirtualOS as vos
-# from ncConverter import *
-# import ETPFunctions as refPotET
+
+from crop_growth_funs import *
 
 import logging
 logger = logging.getLogger(__name__)
 
 class Groundwater(object):
 
-    def __init__(self, iniItems, landmask, spinUp):
-        object.__init__(self)
+    def __init__(self, Groundwater_variable):
+        self.var = Groundwater_variable
 
-        self.cloneMap = iniItems.cloneMap
-        self.tmpDir = iniItems.tmpDir
-        self.inputDir = iniItems.globalOptions['inputDir']
-        
-        # landmask/area of interest
-        self.landmask = landmask
-        if iniItems.globalOptions['landmask'] != "None":
-           self.landmask = vos.readPCRmapClone(iniItems.globalOptions['landmask'],\
-                                               self.cloneMap,self.tmpDir,self.inputDir)
+    def initial(self):
 
-        # check if water table is to be modelled; if it is, check whether it is variable or constant
-        # TODO: if a constant groundwater table is used then the groundwater 
         # NB added additional option to config: VariableWaterTable (= 1|0, i.e. True|False)
 
-        self.WaterTable = bool(int(iniItems.groundwaterOptions['WaterTable']))
-        self.VariableWaterTable = bool(int(iniItems.groundwaterOptions['VariableWaterTable']))
+        self.var.WaterTable = bool(int(self.var._configuration.groundwaterOptions['WaterTable']))
+        self.var.VariableWaterTable = bool(int(self.var._configuration.groundwaterOptions['VariableWaterTable']))
 
-        if self.WaterTable:
-            self.gwFileNC = iniItems.groundwaterOptions['groundwaterNC']
-            self.gwVarName = iniItems.groundwaterOptions['groundwaterVariableName']
+        if self.var.WaterTable:
+            self.var.gwFileNC = self.var._configuration.groundwaterOptions['groundwaterNC']
+            self.var.gwVarName = self.var._configuration.groundwaterOptions['groundwaterVariableName']
 
-        # TODO: decide whether this is necessary
         # daily time step
-        self.usingDailyTimeStepForcingData = False
-        if iniItems.timeStep == 1.0 and iniItems.timeStepUnit == "day":
-            self.usingDailyTimeStepForcingData = True
+        self.var.usingDailyTimeStepForcingData = False
+        if self.var._configuration.timeStep == 1.0 and self.var._configuration.timeStepUnit == "day":
+            self.var.usingDailyTimeStepForcingData = True
 
-        # TODO: work out how to do this
         # option to use netcdf file that is defined per year (redundant?)
-        self.groundwater_set_per_year  = False
+        self.var.groundwater_set_per_year  = False
             
-        # make the iniItems available for the other modules:
-        self.iniItems = iniItems
+    # def update(self,currTimeStep):
+    #     pass
+
+    def dynamic(self):
+
+        # TODO: write coupling method for AMBHAS
         
-    def update(self,currTimeStep):
-        pass
-
-    def read_forcings(self,currTimeStep):
-
-        # TODO: decide whether this section is necessary
         # method for finding time indexes in the groundwater netdf file:
         # - the default one
         method_for_time_index = None
         # - based on the ini/configuration file (if given)
 
-        if 'time_index_method_for_groundwater_netcdf' in self.iniItems.groundwaterOptions.keys() and\
-                                                           self.iniItems.groundwaterOptions['time_index_method_for_groundwater_netcdf'] != "None":
-            method_for_time_index = self.iniItems.groundwaterOptions['time_index_method_for_groundwater_netcdf']
+        if 'time_index_method_for_groundwater_netcdf' in self.var._configuration.groundwaterOptions.keys() and\
+                                                           self.var._configuration.groundwaterOptions['time_index_method_for_groundwater_netcdf'] != "None":
+            method_for_time_index = self.var._configuration.groundwaterOptions['time_index_method_for_groundwater_netcdf']
 
         # reading groundwater:
-        if self.WaterTable:
+        if self.var.WaterTable:
             
-            if self.VariableWaterTable:
-                if self.groundwater_set_per_year:
-                    nc_file_per_year = self.gwFileNC %(float(currTimeStep.year), float(currTimeStep.year))
-                    self.zGW = vos.netcdf2PCRobjClone(nc_file_per_year,\
-                                                      self.gwVarName,\
+            if self.var.VariableWaterTable:
+                if self.var.groundwater_set_per_year:
+                    nc_file_per_year = self.var.gwFileNC %(float(currTimeStep.year), float(currTimeStep.year))
+                    self.var.zGW = vos.netcdf2PCRobjClone(nc_file_per_year,\
+                                                      self.var.gwVarName,\
                                                       str(currTimeStep.fulldate),\
                                                       useDoy = method_for_time_index,\
-                                                      cloneMapFileName = self.cloneMap,\
+                                                      cloneMapFileName = self.var.cloneMap,\
                                                       LatitudeLongitude = True)
                 else:
-                    self.zGW = vos.netcdf2PCRobjClone(self.gwFileNC,\
-                                                      self.gwVarName,\
+                    self.var.zGW = vos.netcdf2PCRobjClone(self.var.gwFileNC,\
+                                                      self.var.gwVarName,\
                                                       str(currTimeStep.fulldate),\
                                                       useDoy = method_for_time_index,\
-                                                      cloneMapFileName = self.cloneMap,\
+                                                      cloneMapFileName = self.var.cloneMap,\
                                                       LatitudeLongitude = True)
                     
             else:
-                self.zGW = vos.netcdf2PCRobjCloneWithoutTime(self.gwFileNC,\
-                                                             self.gwVarName,\
-                                                             cloneMapFileName = self.cloneMap,\
+                self.var.zGW = vos.netcdf2PCRobjCloneWithoutTime(self.var.gwFileNC,\
+                                                             self.var.gwVarName,\
+                                                             cloneMapFileName = self.var.cloneMap,\
                                                              LatitudeLongitude = True)
                 
         else:
-            self.zGW = None  # TODO: check that this is OK in other parts of the program
-
-        # SM: ignore reporting for now (see meteo.py for example of how to do reporting)
+            self.var.zGW = None # TODO: check that this is OK in other parts of the program

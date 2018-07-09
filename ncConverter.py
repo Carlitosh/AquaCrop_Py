@@ -19,42 +19,42 @@ import VirtualOS as vos
 
 class np2netCDF():
     
-    def __init__(self,iniItems,model,specificAttributeDictionary=None):
+    def __init__(self,configuration,model,specificAttributeDictionary=None):
 
 	# Set clone map
-        pcr.setclone(iniItems.cloneMap)
+        pcr.setclone(configuration.cloneMap)
         cloneMap = pcr.boolean(1.0)  # map with all cell values equal to 1
 
         # Retrieve latitudes and longitudes from clone map
         self.latitudes  = np.unique(pcr.pcr2numpy(pcr.ycoordinate(cloneMap), vos.MV))[::-1]
         self.longitudes = np.unique(pcr.pcr2numpy(pcr.xcoordinate(cloneMap), vos.MV))
-        self.rotations  = np.arange(1, model.landcover.nRotation + 1)
-        self.depths = np.arange(1, model.soilwater.nComp + 1)
+        self.rotations  = np.arange(1, model.nRotation + 1)
+        self.depths = np.arange(1, model.nComp + 1)
         
         # Let users decide what their preference regarding latitude order
         self.netcdf_y_orientation_follow_cf_convention = False
-        if 'netcdf_y_orientation_follow_cf_convention' in iniItems.reportingOptions.keys() and\
-            iniItems.reportingOptions['netcdf_y_orientation_follow_cf_convention'] == "True":
+        if 'netcdf_y_orientation_follow_cf_convention' in configuration.reportingOptions.keys() and\
+            configuration.reportingOptions['netcdf_y_orientation_follow_cf_convention'] == "True":
             msg = "Latitude (y) orientation for output netcdf files start from the bottom to top."
             self.netcdf_y_orientation_follow_cf_convention = True
             self.latitudes  = np.unique(pcr.pcr2numpy(pcr.ycoordinate(cloneMap), vos.MV))
         
         # Set general netcdf attributes (based on the information given in the ini/configuration file) 
-        self.set_general_netcdf_attributes(iniItems, specificAttributeDictionary)
+        self.set_general_netcdf_attributes(configuration, specificAttributeDictionary)
         
         # netcdf format and zlib setup 
         self.format = 'NETCDF3_CLASSIC'
         self.zlib = False
-        if "formatNetCDF" in iniItems.reportingOptions.keys():
-            self.format = str(iniItems.reportingOptions['formatNetCDF'])
-        if "zlib" in iniItems.reportingOptions.keys():
-            if iniItems.reportingOptions['zlib'] == "True": self.zlib = True
+        if "formatNetCDF" in configuration.reportingOptions.keys():
+            self.format = str(configuration.reportingOptions['formatNetCDF'])
+        if "zlib" in configuration.reportingOptions.keys():
+            if configuration.reportingOptions['zlib'] == "True": self.zlib = True
 
         # # if given in the ini file, use the netcdf as given in the section 'specific_attributes_for_netcdf_output_files'
-        # if 'specific_attributes_for_netcdf_output_files' in iniItems.allSections:
-        #     for key in iniItems.specific_attributes_for_netcdf_output_files.keys():
+        # if 'specific_attributes_for_netcdf_output_files' in configuration.allSections:
+        #     for key in configuration.specific_attributes_for_netcdf_output_files.keys():
 
-        #         self.attributeDictionary[key] = iniItems.specific_attributes_for_netcdf_output_files[key]
+        #         self.attributeDictionary[key] = configuration.specific_attributes_for_netcdf_output_files[key]
                 
         #         if self.attributeDictionary[key] == "None": self.attributeDictionary[key] = ""
 
@@ -65,15 +65,15 @@ class np2netCDF():
         #           (key == "date_created" or key == "date_issued"):
         #             self.attributeDictionary[key] = datetime.datetime.today().isoformat(' ')
                     
-    def set_general_netcdf_attributes(self,iniItems,specificAttributeDictionary=None):
+    def set_general_netcdf_attributes(self,configuration,specificAttributeDictionary=None):
         """Function to set general netCDF attributes"""
         
         # netCDF attributes (based on the configuration file or specificAttributeDictionary):
         self.attributeDictionary = {}
         if specificAttributeDictionary == None:
-            self.attributeDictionary['institution'] = iniItems.globalOptions['institution']
-            self.attributeDictionary['title'      ] = iniItems.globalOptions['title'      ]
-            self.attributeDictionary['description'] = iniItems.globalOptions['description']
+            self.attributeDictionary['institution'] = configuration.globalOptions['institution']
+            self.attributeDictionary['title'      ] = configuration.globalOptions['title'      ]
+            self.attributeDictionary['description'] = configuration.globalOptions['description']
         else:
             self.attributeDictionary['institution'] = specificAttributeDictionary['institution']
             self.attributeDictionary['title'      ] = specificAttributeDictionary['title'      ]
