@@ -17,6 +17,49 @@ class Germination(object):
 
     def initial(self):
         pass
+
+    def water_content_affecting_germination(self):
+
+        dims = self.var.th_fc_comp.shape
+        nc, nr, nlat, nlon = dims[0], dims[1], dims[2], dims[3]
+
+        # Here we force zGerm to have a maximum value equal to the depth of the
+        # deepest soil compartment
+        zgerm = np.copy(self.var.zGerm)
+        zgerm[zgerm > np.sum(self.var.dz, axis=0)] = np.sum(dz, axis=0)
+
+        # Add rotation, lat, lon dimensions to dz and dzsum
+        dz = self.var.dz[:,None,None,None] * np.ones((nr, nlat, nlon))
+        dzsum = self.var.dzsum[:,None,None,None] * np.ones((nr, nlat, nlon))
+
+        # Find compartments covered by top soil layer affecting germination
+        comp_sto = (np.round(dzsum * 1000) <= np.round(zgerm * 1000))  # round to nearest mm
+
+        # Calculate water content in top soil layer
+        arr_zeros = np.zeros((nc, nr, nlat, nlon))
+        Wr_comp   = np.copy(arr_zeros)
+        WrFC_comp = np.copy(arr_zeros)
+        WrWP_comp = np.copy(arr_zeros)
+
+        # Determine fraction of compartment covered by top soil layer
+        factor = 1. - np.round(((dzsum - zgerm) / dz), 3)
+        factor = np.clip(factor, 0, 1) * comp_sto
+
+        # Increment water storages (mm)
+        Wr_comp = np.round((factor * 1000 * self.var.th * dz))
+        Wr_comp = np.clip(Wr_comp, 0, None)
+        Wr = np.sum(Wr_comp, axis=0)
+
+        WrFC_comp = np.round((factor * 1000 * self.var.th_fc_comp * dz))
+        WrFC = np.sum(WrFC_comp, axis=0)
+
+        WrWP_comp = np.round((factor * 1000 * self.var.th_wp_comp * dz))
+        WrWP = np.sum(WrWP_comp, axis=0)
+
+        # Calculate proportional water content
+        WrTAW = WrFC - WrWP
+        WcProp = 1 - np.divide((WrFC - Wr), WrTAW, out=np.zeros_like(WrTAW), where=WrTAW!=0)
+        return WcProp
     
     def dynamic(self):
         """Function to check if crop has germinated"""

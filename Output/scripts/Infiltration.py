@@ -11,7 +11,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 class Infiltration(object):
-    """Class to infiltrate incoming water"""
+    """Class to infiltrate incoming water (rainfall and irrigation)"""
     
     def __init__(self, Infiltration_variable):
         self.var = Infiltration_variable
@@ -20,9 +20,6 @@ class Infiltration(object):
         pass
     
     def dynamic(self):
-        """Function to infiltrate incoming water (rainfall and 
-        irrigation)
-        """
         dims = self.var.ksat_comp.shape
         nc, nr, nlon, nlat = dims[0], dims[1], dims[2], dims[3]
         ToStore = np.zeros((nr, nlat, nlon))
@@ -72,9 +69,6 @@ class Infiltration(object):
         RunoffIni[cond22] = 0
 
         # #######################################################################
-
-        # dims = self.var.th.shape
-        # nc, nr, nlat, nlon = dims[0], dims[1], dims[2], dims[3]
 
         # Initialize counters
         comp = 0
