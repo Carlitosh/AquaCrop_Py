@@ -25,22 +25,6 @@ class RainfallPartition(object):
         """Function to partition rainfall into surface runoff and 
         infiltration using the curve number approach.
         """
-        # Runoff, Infl = rainfall_partition(self.var.precipitation,
-        #                                   self.var.th,
-        #                                   self.var.th_fc_comp,
-        #                                   self.var.th_wp_comp,
-        #                                   self.var.zCN,
-        #                                   self.var.AdjCN,
-        #                                   self.var.CN,
-        #                                   self.var.CNbot,
-        #                                   self.var.CNtop,
-        #                                   self.var.dz,
-        #                                   self.var.dzsum,
-        #                                   self.var.Bunds,
-        #                                   self.var.zBund)
-        # self.var.Runoff = Runoff
-        # self.var.Infl = Infl
-
         dims = self.var.th_fc_comp.shape
         nc, nr, nlon, nlat = dims[0], dims[1], dims[2], dims[3]
 
