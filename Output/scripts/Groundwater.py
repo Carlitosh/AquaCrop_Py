@@ -6,8 +6,6 @@
 import numpy as np
 import VirtualOS as vos
 
-from crop_growth_funs import *
-
 import logging
 logger = logging.getLogger(__name__)
 

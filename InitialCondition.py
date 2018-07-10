@@ -11,9 +11,6 @@ import netCDF4 as nc
 import datetime as datetime
 import calendar as calendar
 
-from hydrology_funs import *
-from crop_growth_funs import *
-
 class InitialCondition(object):
     """Class to represent the initial condition of an AquaCrop run. 
     Although not yet implemented, this class should include a method 
@@ -265,7 +262,19 @@ class InitialCondition(object):
     def growing_degree_day(self):
         tmax = self.var.tmax[None,:,:] * np.ones((self.var.nRotation))[:,None,None]
         tmin = self.var.tmin[None,:,:] * np.ones((self.var.nRotation))[:,None,None]
-        self.var.GDD = growing_degree_day(tmax, tmin, self.var.Tbase, self.var.Tupp, self.var.GDDmethod)
+        if self.var.GDDmethod == 1:
+            Tmean = ((tmax + tmin) / 2)
+            Tmean = np.clip(Tmean, self.var.Tbase, self.var.Tupp)
+        elif self.var.GDDmethod == 2:
+            tmax = np.clip(tmax, self.var.Tbase, self.var.Tupp)
+            tmin = np.clip(tmin, self.var.Tbase, self.var.Tupp)
+            Tmean = ((tmax + tmin) / 2)
+        elif self.var.GDDmethod == 3:
+            tmax = np.clip(tmax, self.var.Tbase, self.var.Tupp)
+            tmin = np.clip(tmin, None, self.var.Tupp)
+            Tmean = np.clip(Tmean, self.var.Tbase, None)
+        self.var.GDD = (Tmean - self.var.Tbase)
+        
         
     def dynamic(self):
 

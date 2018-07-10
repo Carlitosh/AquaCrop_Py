@@ -5,8 +5,6 @@
 
 import numpy as np
 
-from hydrology_funs import *
-
 import logging
 logger = logging.getLogger(__name__)
 
@@ -19,6 +17,18 @@ class Drainage(object):
     def initial(self):
         self.var.FluxOut = np.zeros((self.var.nComp, self.var.nRotation, self.var.nLat, self.var.nLon))
         self.var.DeepPerc = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+
+    def compute_dthdt(self, th, th_s, th_fc, th_fc_adj, tau):
+        dthdt = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        cond1 = th <= th_fc_adj
+        dthdt[cond1] = 0
+        cond2 = np.logical_not(cond1) & (th >= th_s)
+        dthdt[cond2] = (tau * (th_s - th_fc))[cond2]
+        cond3 = np.logical_not(cond1 | cond2)
+        dthdt[cond3] = (tau * (th_s - th_fc) * ((np.exp(th - th_fc) - 1) / (np.exp(th_s - th_fc) - 1)))[cond3]
+        cond4 = ((cond2 | cond3) & ((th - dthdt) < th_fc_adj))
+        dthdt[cond4] = (th - th_fc_adj)[cond4]
+        return dthdt
         
     def dynamic(self):
         """Function to redistribute stored soil water"""
@@ -28,7 +38,7 @@ class Drainage(object):
         for comp in range(dims[0]):
 
             # Calculate drainage ability of compartment ii
-            dthdt = compute_dthdt(self.var.th[comp,:], self.var.th_s_comp[comp,:], self.var.th_fc_comp[comp,:], self.var.th_fc_adj[comp,:], self.var.tau_comp[comp,:])
+            dthdt = self.compute_dthdt(self.var.th[comp,:], self.var.th_s_comp[comp,:], self.var.th_fc_comp[comp,:], self.var.th_fc_adj[comp,:], self.var.tau_comp[comp,:])
 
             # Drainage from compartment ii (mm) (Line 41 in AOS_Drainage.m)
             draincomp = dthdt * self.var.dz[comp] * 1000
@@ -77,7 +87,7 @@ class Drainage(object):
             drainsum[cond641] = ((thnew[comp,:] - thX) * 1000 * self.var.dz[comp])[cond641]
 
             # Calculate drainage ability for thX
-            dthdt = compute_dthdt(thX, self.var.th_s_comp[comp,:], self.var.th_fc_comp[comp,:], self.var.th_fc_adj[comp,:], self.var.tau_comp[comp,:])
+            dthdt = self.compute_dthdt(thX, self.var.th_s_comp[comp,:], self.var.th_fc_comp[comp,:], self.var.th_fc_adj[comp,:], self.var.tau_comp[comp,:])
 
             # Update cumulative drainage (mm), restrict to saturated hydraulic
             # conductivity and adjust excess drainage flow
@@ -91,7 +101,7 @@ class Drainage(object):
 
             # Calculate drainage ability for updated water content
             cond642 = (cond64 & np.logical_not(cond641) & (thnew[comp,:] > self.var.th_fc_adj[comp,:]))
-            dthdt = compute_dthdt(thnew[comp,:], self.var.th_s_comp[comp,:], self.var.th_fc_comp[comp,:], self.var.th_fc_adj[comp,:], self.var.tau_comp[comp,:])
+            dthdt = self.compute_dthdt(thnew[comp,:], self.var.th_s_comp[comp,:], self.var.th_fc_comp[comp,:], self.var.th_fc_adj[comp,:], self.var.tau_comp[comp,:])
 
             # Update water content
             thnew[comp,:][cond642] = (thnew[comp,:] - dthdt)[cond642]
@@ -118,7 +128,7 @@ class Drainage(object):
 
             # Calculate new drainage ability
             cond6511 = (cond651 & (thnew[comp,:] > self.var.th_fc_adj[comp,:]))
-            dthdt = compute_dthdt(thnew[comp,:], self.var.th_s_comp[comp,:], self.var.th_fc_comp[comp,:], self.var.th_fc_adj[comp,:], self.var.tau_comp[comp,:])
+            dthdt = self.compute_dthdt(thnew[comp,:], self.var.th_s_comp[comp,:], self.var.th_fc_comp[comp,:], self.var.th_fc_adj[comp,:], self.var.tau_comp[comp,:])
 
             # Update water content
             thnew[comp,:][cond6511] -= (dthdt)[cond6511]
@@ -138,7 +148,7 @@ class Drainage(object):
             excess[cond652] = ((thnew[comp,:] - self.var.th_s_comp[comp,:]) * 1000 * self.var.dz[comp])[cond652]
 
             # Calculate drainage ability for updated water content
-            dthdt = compute_dthdt(thnew[comp,:], self.var.th_s_comp[comp,:], self.var.th_fc_comp[comp,:], self.var.th_fc_adj[comp,:], self.var.tau_comp[comp,:])
+            dthdt = self.compute_dthdt(thnew[comp,:], self.var.th_s_comp[comp,:], self.var.th_fc_comp[comp,:], self.var.th_fc_adj[comp,:], self.var.tau_comp[comp,:])
 
             # Update water content
             thnew[comp,:][cond652] = (self.var.th_s_comp[comp,:] - dthdt)[cond652]

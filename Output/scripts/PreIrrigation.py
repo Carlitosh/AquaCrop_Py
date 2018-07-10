@@ -5,8 +5,6 @@
 
 import numpy as np
 
-from hydrology_funs import *
-
 import logging
 logger = logging.getLogger(__name__)
 
@@ -19,8 +17,8 @@ class PreIrrigation(object):
 
     def initial(self):
         arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
-        self.PreIrr = np.copy(arr_zeros)
-        self.IrrNet = np.copy(arr_zeros)
+        self.var.PreIrr = np.copy(arr_zeros)
+        self.var.IrrNet = np.copy(arr_zeros)
         
     def dynamic(self):
         # Expand dz and dzsum to rotation, lat, lon

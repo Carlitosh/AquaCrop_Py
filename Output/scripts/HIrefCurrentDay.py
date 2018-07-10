@@ -5,8 +5,6 @@
 
 import numpy as np
 
-from crop_growth_funs import *
-
 import logging
 logger = logging.getLogger(__name__)
 
@@ -35,8 +33,53 @@ class HIrefCurrentDay(object):
         # Get time for harvest index calculation
         self.var.HIt = self.var.DAP - self.var.DelayedCDs - self.var.HIstartCD - 1
 
-        harvest_index_ref_current_day(
-            self.var.GrowingSeasonIndex, self.var.CropType,
-            tAdj,
-            self.var.HIt, self.var.HIref, self.var.HIini, self.var.HIGC, self.var.HI0, self.var.PctLagPhase,
-            self.var.CCprev, self.var.CCmin, self.var.CCx, self.var.tLinSwitch, self.var.dHILinear)
+        # Yet to reach time for HI build-up
+        cond1 = (self.var.GrowingSeasonIndex & (self.var.HIt <= 0))
+        self.var.HIref[cond1] = 0
+        self.var.PctLagPhase[cond1] = 0
+
+        cond2 = (self.var.GrowingSeasonIndex & np.logical_not(cond1))
+
+        # HI cannot develop further as canopy is too small (no need to do
+        # anything here as self.var.HIref doesn't change)
+        cond21 = (cond2 & (self.var.CCprev <= (self.var.CCmin * self.var.CCx)))
+        cond22 = (cond2 & np.logical_not(cond21))
+
+        # If crop type is leafy vegetable or root/tuber then proceed with
+        # logistic growth (i.e. no linear switch)
+        cond221 = (cond22 & ((self.var.CropType == 1) | (self.var.CropType == 2)))
+        self.var.PctLagPhase[cond221] = 100
+        HIref_divd = (self.var.HIini * self.var.HI0)
+        HIref_divs = (self.var.HIini + (self.var.HI0 - self.var.HIini) * np.exp(-self.var.HIGC * self.var.HIt))
+        HIref = np.divide(HIref_divd, HIref_divs, out=np.zeros_like(HIref_divs), where=HIref_divs!=0)
+        self.var.HIref[cond221] = HIref[cond221]
+
+        # Harvest index approaching maximum limit
+        cond2211 = (cond221 & (self.var.HIref >= (0.9799 * self.var.HI0)))
+        self.var.HIref[cond2211] = self.var.HI0[cond2211]
+
+        cond222 = (cond22 & (self.var.CropType == 3))
+        # Not yet reached linear switch point, therefore proceed with logistic
+        # build-up
+        cond2221 = (cond222 & (self.var.HIt < self.var.tLinSwitch))
+
+        self.var.PctLagPhase[cond2221] = (100 * np.divide(self.var.HIt, self.var.tLinSwitch, out=np.zeros_like(self.var.HIt), where=self.var.tLinSwitch!=0))[cond2221]
+        self.var.HIref[cond2221] = HIref[cond2221]
+
+        cond2222 = (cond222 & np.logical_not(cond2221))
+        self.var.PctLagPhase[cond2222] = 100
+        self.var.HIref[cond2222] = HIref[cond2222]
+
+        # Calculate reference harvest index for current day (total = logistic + linear)
+        self.var.HIref[cond2222] += (self.var.dHILinear * (self.var.HIt - self.var.tLinSwitch))[cond2222]
+
+        # Limit self.var.HIref and round off computed value
+        cond223 = (cond22 & (self.var.HIref > self.var.HI0))
+        self.var.HIref[cond223] = self.var.HI0[cond223]
+        cond224 = (cond22 & (self.var.HIref <= (self.var.HIini + 0.004)))
+        self.var.HIref[cond224] = 0
+        cond225 = (cond22 & ((self.var.HI0 - self.var.HIref) < 0.004))
+        self.var.HIref[cond225] = self.var.HI0[cond225]
+
+        # Reference harvest index is zero outside growing season
+        self.var.HIref[np.logical_not(self.var.GrowingSeasonIndex)] = 0

@@ -5,8 +5,6 @@
 
 import numpy as np
 
-from crop_growth_funs import *
-
 import logging
 logger = logging.getLogger(__name__)
 
@@ -79,7 +77,7 @@ class CanopyCover(object):
         tCCtmp = self.canopy_cover_required_time(CC0, CCx, CGC, dt, tSum, 'CGC')
         cond1 = (tCCtmp > 0)
         tCCtmp[cond1] += ((CanopyDevEnd - tSum) + dt)[cond1]
-        CCxAdj = canopy_cover_development(CC0, CCx, CGC, self.var.CDC, tCCtmp, 'Growth')
+        CCxAdj = self.canopy_cover_development(CC0, CCx, CGC, self.var.CDC, tCCtmp, 'Growth')
         CCxAdj[np.logical_not(cond1)] = 0
         return CCxAdj
     
@@ -293,7 +291,7 @@ class CanopyCover(object):
         tmp_tCC = tCCadj - dtCC - self.var.Senescence
         CCxAdj,CDCadj = self.update_CCx_and_CDC(tmp_tCC)
         tmp_tCC = tCCadj - self.var.Senescence
-        tmp_CC = canopy_cover_development(self.var.CC0adj, CCxAdj, self.var.CGC, CDCadj, tmp_tCC, 'Decline')
+        tmp_CC = self.canopy_cover_development(self.var.CC0adj, CCxAdj, self.var.CGC, CDCadj, tmp_tCC, 'Decline')
         self.var.CC[cond7121] = tmp_CC[cond7121]
 
         # Check for crop growth termination

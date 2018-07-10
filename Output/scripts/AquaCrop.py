@@ -25,7 +25,6 @@ from Groundwater import *
 from GrowthStage import *
 from HarvestIndex import *
 from HIrefCurrentDay import *
-from hydrology_funs import *
 from Infiltration import *
 from Inflow import *
 from InitialCondition import *

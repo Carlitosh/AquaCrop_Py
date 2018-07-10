@@ -5,8 +5,6 @@
 
 import numpy as np
 
-from crop_growth_funs import *
-
 import logging
 logger = logging.getLogger(__name__)
 

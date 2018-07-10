@@ -5,8 +5,6 @@
 
 import numpy as np
 
-from crop_growth_funs import *
-
 import logging
 logger = logging.getLogger(__name__)
 
@@ -25,8 +23,22 @@ class BiomassAccumulation(object):
         
         et0 = self.var.referencePotET[None,:,:] * np.ones((self.var.nRotation))[:,None,None]
         self.var.temperature_stress_module.dynamic()
-        WPadj = adjust_WP_for_reproductive_stage(
-            self.var.GrowingSeasonIndex, self.var.CropType, self.var.HIref, self.var.HIt, self.var.PctLagPhase, self.var.Determinant, self.var.YldFormCD, self.var.WP, self.var.WPy)
+
+        fswitch = np.copy(arr_zeros)
+        WPadj = np.copy(arr_zeros)
+        cond1 = (self.var.GrowingSeasonIndex & (((self.var.CropType == 2) | (self.var.CropType == 3)) & (self.var.HIref > 0)))
+
+        # Adjust WP for reproductive stage
+        cond11 = (cond1 & (self.var.Determinant == 1))
+        fswitch[cond11] = (self.var.PctLagPhase / 100)[cond11]
+        cond12 = (cond1 & np.logical_not(cond11))
+        cond121 = (cond12 < (self.var.YldFormCD / 3))
+        fswitch[cond121] = np.divide(self.var.HIt.astype(np.float64), (self.var.YldFormCD.astype(np.float64) / 3.), out=np.zeros_like(self.var.YldFormCD.astype(np.float64)), where=self.var.YldFormCD!=0)[cond121]
+        cond122 = (cond12 & np.logical_not(cond121))
+        fswitch[cond122] = 1
+        WPadj[cond1] = (self.var.WP * (1 - (1 - self.var.WPy / 100) * fswitch))[cond1]
+        cond2 = (self.var.GrowingSeasonIndex & np.logical_not(cond1))
+        WPadj[cond2] = self.var.WP[cond2]
         
         # Adjust WP for CO2 effects)
         WPadj *= self.var.fCO2

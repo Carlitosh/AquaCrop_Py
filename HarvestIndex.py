@@ -5,8 +5,6 @@
 
 import numpy as np
 
-from crop_growth_funs import *
-
 import logging
 logger = logging.getLogger(__name__)
 
@@ -16,7 +14,125 @@ class HarvestIndex(object):
 
     def initial(self):
         pass
-    
+
+    def HI_adj_pollination(self):
+        """Function to calculate adjustment to harvest index for 
+        failure of pollination due to water or temperature stress
+        """
+        # dims = self.var.GrowingSeasonIndex.shape
+        # nr, nlat, nlon = dims[0], dims[1], dims[2]
+        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        FracFlow = np.copy(arr_zeros)
+        t1 = np.copy(arr_zeros)
+        t2 = np.copy(arr_zeros)
+        F1 = np.copy(arr_zeros)
+        F2 = np.copy(arr_zeros)
+        F = np.copy(arr_zeros)
+
+        cond0 = (self.var.GrowingSeasonIndex & self.var.YieldForm & (self.var.CropType == 3) & (self.var.HIt > 0) & (self.var.HIt <= self.var.FloweringCD))
+
+        # Fractional flowering on previous day
+        # cond1 = (HIt > 0)
+        t1[cond0] = self.var.HIt[cond0] - 1
+        cond11 = (cond0 & (t1 > 0))
+        t1pct = 100 * np.divide(t1, self.var.FloweringCD, out=np.copy(arr_zeros), where=self.var.FloweringCD!=0)
+        t1pct = np.clip(t1pct, 0, 100)
+        F1[cond11] = (0.00558 * np.exp(0.63 * np.log(t1pct, out=np.copy(arr_zeros), where=t1pct>0)) - (0.000969 * t1pct) - 0.00383)[cond11]
+        F1 = np.clip(F1, 0, None)
+
+        # Fractional flowering on current day
+        t2[cond0] = self.var.HIt[cond0]
+        cond12 = (cond0 & (t2 > 0))
+        t2pct = 100 * np.divide(t2, self.var.FloweringCD, out=np.copy(arr_zeros), where=self.var.FloweringCD!=0)
+        t2pct = np.clip(t2pct, 0, 100)
+        F2[cond12] = (0.00558 * np.exp(0.63 * np.log(t2pct, out=np.copy(arr_zeros), where=t2pct>0)) - (0.000969 * t2pct) - 0.00383)[cond12]
+        F2 = np.clip(F2, 0, None)
+
+        # Weight values
+        cond13 = (cond0 & (np.abs(F1 - F2) >= 0.0000001))
+        F[cond13] = (100 * np.divide(((F1 + F2) / 2), self.var.FloweringCD, out=np.copy(arr_zeros), where=self.var.FloweringCD!=0))[cond13]
+        FracFlow[cond13] = F[cond13]
+
+        # Calculate pollination adjustment for current day
+        dFpol = arr_zeros##np.zeros((self.nRotation, self.nLat, self.nLon))
+        cond2 = (cond0 & (self.var.CC >= self.var.CCmin))
+        Ks = np.minimum(self.var.Ksw_Pol, self.var.Kst_PolC, self.var.Kst_PolH)
+        dFpol[cond2] = (Ks * FracFlow * (1 + (self.var.exc / 100)))[cond2]
+
+        # Calculate pollination adjustment to dateppp
+        self.var.Fpol += dFpol
+        self.var.Fpol = np.clip(self.var.Fpol, None, 1)
+
+    def HI_adj_pre_anthesis(self):
+        """Function to calculate adjustment to harvest index for 
+        pre-anthesis water stress
+        """
+        cond0 = (self.var.GrowingSeasonIndex & self.var.YieldForm & (self.var.HIt >= 0) & ((self.var.CropType == 2) | (self.var.CropType == 3)) & np.logical_not(self.var.PreAdj))
+        self.var.PreAdj[cond0] = True
+
+        # Calculate adjustment
+        Br = np.divide(self.var.B, self.var.B_NS, out=np.zeros_like(self.var.B_NS), where=self.var.B_NS!=0)
+        Br_range = np.log(self.var.dHI_pre, out=np.zeros_like(self.var.dHI_pre), where=self.var.dHI_pre>0) / 5.62
+        Br_upp = 1
+        Br_low = 1 - Br_range
+        Br_top = Br_upp - (Br_range / 3)
+
+        # Get biomass ratio
+        ratio_low_divd = (Br - Br_low)
+        ratio_low_divs = (Br_top - Br_low)
+        ratio_low = np.divide(ratio_low_divd, ratio_low_divs, out=np.zeros_like(ratio_low_divs), where=ratio_low_divs!=0)
+        ratio_upp_divd = (Br - Br_top)
+        ratio_upp_divs = (Br_upp - Br_top)
+        ratio_upp = np.divide(ratio_upp_divd, ratio_upp_divs, out=np.zeros_like(ratio_upp_divs), where=ratio_upp_divs!=0)
+
+        # Calculate adjustment factor
+        cond1 = (cond0 & ((Br >= Br_low) & (Br < Br_top)))
+        self.var.Fpre[cond1] = (1 + (((1 + np.sin((1.5 - ratio_low) * np.pi)) / 2) * (self.var.dHI_pre / 100)))[cond1]
+        cond2 = (cond0 & np.logical_not(cond1) & ((Br > Br_top) & (Br <= Br_upp)))
+        self.var.Fpre[cond2] = (1 + (((1 + np.sin((0.5 + ratio_upp) * np.pi)) / 2) * (self.var.dHI_pre / 100)))[cond2]
+        cond3 = (cond0 & np.logical_not(cond1 | cond2))
+        self.var.Fpre[cond3] = 1
+
+        # No green canopy left at start of flowering so no harvestable crop
+        # will develop
+        cond3 = (cond0 & (self.var.CC <= 0.01))
+        self.var.Fpre[cond3] = 0
+
+    def HI_adj_post_anthesis(self):
+        """Function to calculate adjustment to harvest index for 
+        post-anthesis water stress
+        """
+        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        cond0 = (self.var.GrowingSeasonIndex & self.var.YieldForm & (self.var.HIt > 0) & ((self.var.CropType == 2) | (self.var.CropType == 3)))
+
+        # 1 Adjustment for leaf expansion
+        tmax1 = self.var.CanopyDevEndCD - self.var.HIstartCD
+        self.var.DAP -= self.var.DelayedCDs
+        cond1 = (cond0 & (self.var.DAP <= (self.var.CanopyDevEndCD + 1)) & (tmax1 > 0) & (self.var.Fpre > 0.99) & (self.var.CC > 0.001) & (self.var.a_HI > 0))
+        dCor = (1 + np.divide((1 - self.var.Ksw_Exp), self.var.a_HI, out=np.copy(arr_zeros), where=self.var.a_HI!=0))
+        self.var.sCor1[cond1] += np.divide(dCor, tmax1, out=np.copy(arr_zeros), where=tmax1!=0)[cond1]
+        DayCor = (self.var.DAP - 1 - self.var.HIstartCD)
+        self.var.fpost_upp[cond1] = (np.divide(tmax1, DayCor, out=np.copy(arr_zeros), where=DayCor!=0) * self.var.sCor1)[cond1]
+
+        # 2 Adjustment for stomatal closure
+        tmax2 = np.copy(self.var.YldFormCD)
+        cond2 = (cond0 & (self.var.DAP <= (self.var.HIendCD + 1)) & (tmax2 > 0) & (self.var.Fpre > 0.99) & (self.var.CC > 0.001) & (self.var.b_HI > 0))
+        dCor = ((np.exp(0.1 * np.log(self.var.Ksw_Sto))) * (1 - np.divide((1 - self.var.Ksw_Sto), self.var.b_HI, out=np.copy(arr_zeros), where=self.var.b_HI!=0)))
+        self.var.sCor2[cond2] += np.divide(dCor, tmax2, out=np.copy(arr_zeros), where=tmax2!=0)[cond2]
+        DayCor = (self.var.DAP - 1 - self.var.HIstartCD)
+        self.var.fpost_dwn[cond2] = (np.divide(tmax2, DayCor, out=np.copy(arr_zeros), where=DayCor!=0) * self.var.sCor2)[cond2]
+
+        # Determine total multiplier
+        cond3 = (cond0 & (tmax1 == 0) & (tmax2 == 0))
+        self.var.Fpost[cond3] = 1
+        cond4 = (cond0 & np.logical_not(cond3))
+        cond41 = (cond4 & (tmax2 == 0))
+        self.var.Fpost[cond41] = self.var.fpost_upp[cond41]
+        cond42 = (cond4 & (tmax1 <= tmax2) & np.logical_not(cond41))
+        self.var.Fpost[cond42] = (self.var.fpost_dwn * np.divide(((tmax1 * self.var.fpost_upp) + (tmax2 - tmax1)), tmax2, out=np.copy(arr_zeros), where=tmax2!=0))[cond42]
+        cond43 = (cond4 & np.logical_not(cond41 | cond42))
+        self.var.Fpost[cond43] = (self.var.fpost_upp * np.divide(((tmax2 * self.var.fpost_dwn) + (tmax1 - tmax2)), tmax2, out=np.copy(arr_zeros), where=tmax2!=0))[cond43]
+        
     def dynamic(self):        
         """Function to simulate build up of harvest index"""
         
@@ -33,19 +149,19 @@ class HarvestIndex(object):
         cond11 = (cond1 & ((self.var.CropType == 2) | (self.var.CropType == 3)))
 
         # Determine adjustment for water stress before anthesis
-        HI_adj_pre_anthesis(self.var.GrowingSeasonIndex, self.var.CropType, self.var.PreAdj, self.var.Fpre, self.var.YieldForm, self.var.HIt, self.var.B, self.var.B_NS, self.var.dHI_pre, self.var.CC)
-
+        self.HI_adj_pre_anthesis()
+        
         # Adjustment only for fruit/grain crops
         HImax = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))  # TODO: is this in the right place?
         cond112 = (cond11 & (self.var.CropType == 3))
         Ks = np.minimum(self.var.Ksw_Pol, self.var.Kst_PolC, self.var.Kst_PolH)
-        HI_adj_pollination(self.var.GrowingSeasonIndex, self.var.CropType, self.var.Fpol, self.var.YieldForm, self.var.HIt, self.var.FloweringCD, self.var.CC, self.var.CCmin, Ks, self.var.exc)        
+        self.HI_adj_pollination()
         HImax[cond112] = (self.var.Fpol * self.var.HI0)[cond112]
         cond113 = (cond11 & np.logical_not(cond112))
         HImax[cond113] = self.var.HI0[cond113]
                                
         # Determine adjustments for post-anthesis water stress
-        harvest_index_adj_post_anthesis(self.var.GrowingSeasonIndex, self.var.CropType, self.var.Fpost, self.var.Fpre, self.var.sCor1, self.var.sCor2, self.var.fpost_upp, self.var.fpost_dwn, self.var.HIt, self.var.a_HI, self.var.b_HI, self.var.HIstartCD, self.var.HIendCD, self.var.YieldForm, self.var.YldFormCD, self.var.DAP, self.var.CC, self.var.CanopyDevEndCD, self.var.DelayedCDs, self.var.Ksw_Exp, self.var.Ksw_Sto)
+        self.HI_adj_post_anthesis()
 
         # Limit HI to maximum allowable increase due to pre- and post-anthesis
         # water stress combinations

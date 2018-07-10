@@ -5,8 +5,6 @@
 
 import numpy as np
 
-from crop_growth_funs import *
-
 import logging
 logger = logging.getLogger(__name__)
 
@@ -17,26 +15,23 @@ class Germination(object):
 
     def initial(self):
         pass
-
-    def water_content_affecting_germination(self):
-
-        dims = self.var.th_fc_comp.shape
-        nc, nr, nlat, nlon = dims[0], dims[1], dims[2], dims[3]
-
+    
+    def dynamic(self):
+        """Function to check if crop has germinated"""
         # Here we force zGerm to have a maximum value equal to the depth of the
         # deepest soil compartment
         zgerm = np.copy(self.var.zGerm)
-        zgerm[zgerm > np.sum(self.var.dz, axis=0)] = np.sum(dz, axis=0)
+        zgerm[zgerm > np.sum(self.var.dz, axis=0)] = np.sum(self.var.dz, axis=0)
 
         # Add rotation, lat, lon dimensions to dz and dzsum
-        dz = self.var.dz[:,None,None,None] * np.ones((nr, nlat, nlon))
-        dzsum = self.var.dzsum[:,None,None,None] * np.ones((nr, nlat, nlon))
+        dz = self.var.dz[:,None,None,None] * np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
+        dzsum = self.var.dzsum[:,None,None,None] * np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
 
         # Find compartments covered by top soil layer affecting germination
         comp_sto = (np.round(dzsum * 1000) <= np.round(zgerm * 1000))  # round to nearest mm
 
         # Calculate water content in top soil layer
-        arr_zeros = np.zeros((nc, nr, nlat, nlon))
+        arr_zeros = np.zeros((self.var.nComp, self.var.nRotation, self.var.nLat, self.var.nLon))
         Wr_comp   = np.copy(arr_zeros)
         WrFC_comp = np.copy(arr_zeros)
         WrWP_comp = np.copy(arr_zeros)
@@ -59,17 +54,6 @@ class Germination(object):
         # Calculate proportional water content
         WrTAW = WrFC - WrWP
         WcProp = 1 - np.divide((WrFC - Wr), WrTAW, out=np.zeros_like(WrTAW), where=WrTAW!=0)
-        return WcProp
-    
-    def dynamic(self):
-        """Function to check if crop has germinated"""
-        WcProp = water_content_affecting_germination(
-            self.var.th,
-            self.var.th_fc_comp,
-            self.var.th_wp_comp,
-            self.var.dz,
-            self.var.dzsum,
-            self.var.zGerm)
         
         # Check if water content is above germination threshold
         cond4 = (self.var.GrowingSeasonIndex & (WcProp >= self.var.GermThr) & (np.logical_not(self.var.Germination)))
