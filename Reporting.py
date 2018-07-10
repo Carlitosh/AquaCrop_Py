@@ -102,8 +102,6 @@ class Reporting(object):
         # recap all variables
         self.post_processing()
 
-        # print np.max(self.th)
-        
         # time stamp for reporting
         timeStamp = datetime.datetime(self._modelTime.year,\
                                       self._modelTime.month,\

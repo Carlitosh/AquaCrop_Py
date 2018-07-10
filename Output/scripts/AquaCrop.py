@@ -11,6 +11,7 @@ import gc
 import pcraster as pcr
 import VirtualOS as vos
 
+from Model import Model
 from BiomassAccumulation import *
 from CanopyCover import *
 from CapillaryRise import *
@@ -43,35 +44,18 @@ from WaterStress import *
 
 import logging
 logger = logging.getLogger(__name__)
+        
+class AquaCrop(Model):
 
-class AquaCrop(object):
-
-    def __init__(self, configuration, modelTime, initialState = None):
-
-        self._configuration = configuration
-        self._modelTime = modelTime
-
-        # clone map, land mask
-        pcr.setclone(configuration.cloneMap)
-        self.cloneMap = self._configuration.cloneMap
-        self.landmask = vos.readPCRmapClone(configuration.globalOptions['landmask'],
-                                            configuration.cloneMap,
-                                            configuration.tmpDir,
-                                            configuration.globalOptions['inputDir'],
-                                            True)
-        attr = vos.getMapAttributesALL(self.cloneMap)
-        self.nLat = int(attr['rows'])
-        self.nLon = int(attr['cols'])
+    def initial(self):
         
         self.meteo_module = Meteo(self)
         self.groundwater_module = Groundwater(self)
         self.carbon_dioxide_module = CarbonDioxide(self)
-
         self.crop_parameters_module = CropParameters(self)
         self.field_mgmt_parameters_module = FieldMgmtParameters(self)
         self.irrigation_mgmt_parameters_module = IrrigationMgmtParameters(self)
         self.soil_parameters_module = SoilAndTopoParameters(self)
-        
         self.initial_condition_module = InitialCondition(self)
         self.check_groundwater_table_module = CheckGroundwaterTable(self)
         self.pre_irrigation_module = PreIrrigation(self)
@@ -99,12 +83,10 @@ class AquaCrop(object):
         self.meteo_module.initial()
         self.groundwater_module.initial()
         self.carbon_dioxide_module.initial()
-
         self.crop_parameters_module.initial()
         self.field_mgmt_parameters_module.initial()
         self.irrigation_mgmt_parameters_module.initial()
         self.soil_parameters_module.initial()
-        
         self.initial_condition_module.initial()
         self.check_groundwater_table_module.initial()
         self.pre_irrigation_module.initial()
@@ -128,61 +110,9 @@ class AquaCrop(object):
         self.harvest_index_module.initial()
         self.crop_yield_module.initial()
         
-    @property
-    def configuration(self):
-        return self._configuration
-
-    # def dumpState(self, outputDirectory, specific_date_string = None):
-
-    #     if specific_date_string is None:
-    #         specific_date_string = str(self._modelTime.fulldate)
-
-    #     state = self.getState()
-    #     groundwater_state = state['groundwater']
-    #     for var in groundwater_state.iterItems():
-    #         fn = self.outNCDir+"/"+str(var)+specific_date_string+".npy"
-    #         np.save(fn, groundwater_state[var])
-        
-    #     soil_water_state = state['soil_water']
-    #     for var in soil_water_state.iterItems():
-    #         fn = self.outNCDir+"/"+str(var)+specific_date_string+".npy"
-    #         np.save(fn, soil_water_state[var])
-        
-    #     crop_state = state['crop']
-    #     for var in crop_state.iterItems():
-    #         fn = self.outNCDir+"/"+str(var)+specific_date_string+".npy"
-    #         np.save(fn, crop_state[var])
-        
-    # def resume(self):
-    #     pass
-
-    # def setState(self):
-    #     logger.error("cannot set state")
-
-    # def getState(self):
-    #     result = {}
-    #     result['groundwater'] = self.groundwater.getState()
-    #     result['soilwater'] = self.soilwater.getState()
-    #     result['landcover'] = self.landcover.getState()
-    #     return result
-
-    def getPseudoState(self):
-        pass
-
-    def getAllState(self):
-        pass
-
-    # def read_forcings(self):
-    #     """Function to read model forcing data for current time step
-    #     """
-    #     logger.info("Reading forcings for time %s", self._modelTime)
-    #     self.meteo.read_forcings(self._modelTime)
-    #     self.groundwater.read_forcings(self._modelTime)
-    #     self.CO2.read_forcings(self._modelTime)
-
-    def update(self):
+    def dynamic(self):
         """Function to update model state for current time step"""
-
+        
         logger.info("Reading forcings for time %s", self._modelTime)
         self.meteo_module.dynamic()
         self.groundwater_module.dynamic()

@@ -11,7 +11,7 @@ from pcraster.framework import DynamicFramework
 
 from Configuration import Configuration
 from CurrTimeStep import ModelTime
-from Reporting import Reporting
+from Reporting import *
 # from spinUp import SpinUp
 
 from AquaCrop import AquaCrop
@@ -21,11 +21,11 @@ logger = logging.getLogger(__name__)
 
 class DeterministicRunner(DynamicModel):
 
-    def __init__(self, configuration, modelTime, initialState = None):
-        DynamicModel.__init__(self)
-        self.modelTime = modelTime
-        self.model = AquaCrop(configuration, modelTime, initialState)
-        self.reporting = Reporting(configuration, self.model, modelTime)
+    # def __init__(self, configuration, modelTime, initialState = None):
+    #     DynamicModel.__init__(self)
+    #     self.modelTime = modelTime
+    #     self.model = AquaCrop(configuration, modelTime, initialState)
+    #     self.reporting = Reporting_AquaCrop(configuration, self.model, modelTime)
 
     def initial(self):
         pass
@@ -36,10 +36,25 @@ class DeterministicRunner(DynamicModel):
         self.modelTime.update(self.currentTimeStep())
 
         # update model
-        self.model.update()
+        self.model.dynamic()
 
         # do any reporting
         self.reporting.report()
+
+class run_AquaCrop(DeterministicRunner):
+    def __init__(self, configuration, modelTime, initialState = None):
+        DynamicModel.__init__(self)
+        self.modelTime = modelTime
+        self.model = AquaCrop(configuration, modelTime, initialState)
+        self.model.initial()
+        self.reporting = Reporting(configuration, self.model, modelTime)
+
+class run_FAO56(DeterministicRunner):
+    def __init__(self, configuration, modelTime, initialState = None):
+        DynamicModel.__init__(self)
+        self.modelTime = modelTime
+        self.model = FAO56(configuration, modelTime, initialState)
+        self.reporting = Reporting_FAO56(configuration, self.model, modelTime)
 
 def main():
 
@@ -49,6 +64,7 @@ def main():
     # get the full path of the configuration/ini file provided
     # as system argument
     iniFileName = os.path.abspath(sys.argv[1])
+    model = sys.argv[2]
 
     # TODO: debug option
     debug_mode = False
@@ -69,7 +85,12 @@ def main():
     currTimeStep.update(1)      # this essentially allows us to call read_forcings in AquaCrop.__init__() method
     
     logger.info('Transient simulation run has started')
-    deterministic_runner = DeterministicRunner(configuration, currTimeStep, initial_state)
+    deterministic_runner = None
+    if (model == 'aquacrop'):
+        deterministic_runner = run_AquaCrop(configuration, currTimeStep, initial_state)
+
+    # TODO: error checking
+    
     dynamic_framework = DynamicFramework(deterministic_runner, currTimeStep.nrOfTimeSteps)
     dynamic_framework.setQuiet(True)
     dynamic_framework.run()

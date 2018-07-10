@@ -24,12 +24,6 @@ class Inflow(object):
         """Function to calculate capillary rise in the presence of a 
         shallow groundwater table
         """
-        # self.var.th, self.var.GwIn = groundwater_inflow(
-        #     self.var.th, self.var.th_s_comp,
-        #     self.var.WTinSoil,
-        #     self.var.zGW,
-        #     self.var.dz,
-        #     self.var.dzsum)
         dz = self.var.dz[:,None,None,None] * np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))[None,:,:,:]
         dzsum = self.var.dzsum[:,None,None,None] * np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))[None,:,:,:]
 

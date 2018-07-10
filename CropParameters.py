@@ -51,8 +51,7 @@ class CropParameters(object):
             nm = '_' + param
             vars(self.var)[nm] = arr_zeros
             
-        self.var.CropSequence = np.zeros((self.var.nCrop, self.var.nRotation, self.var.nLat, self.var.nLon))
-
+        # self.var.CropSequence = np.zeros((self.var.nCrop, self.var.nRotation, self.var.nLat, self.var.nLon))
         self.read()
         self.compute_variables()
         
@@ -76,8 +75,6 @@ class CropParameters(object):
             CropSequence[:,:,None,None]
             * np.ones((self.var.nLat, self.var.nLon))[None,None,:,:])
         self.var.CropSequence = CropSequence.astype(bool)
-        # self.var.nCrop = self.var.CropSequence.shape[0]
-        # self.var.nRotation = self.var.CropSequence.shape[1]
         
     def compute_variables(self):
         """Function to compute additional crop variables required to run 
@@ -598,32 +595,3 @@ class CropParameters(object):
             param = getattr(self.var, '_' + nm)
             param = param[:,None,:,:] * np.ones((self.var.nRotation))[None,:,None,None]
             vars(self.var)[nm] = param[self.var.CropIndex,I,J,K] * self.var.GrowingSeasonIndex
-
-        # TEMPORARY
-        # # Update growing season index
-        # self.var.GrowingSeasonIndex *= np.logical_not(self.var.CropDead | self.var.CropMature)
-
-        # TODO: everything below this point should be put in InitialCondition class
-        
-        # # GrowingSeasonDayOne is a logical array showing rotations for which
-        # # today is the start of a growing season
-        # self.var.GrowingSeasonDayOne = currTimeStep.doy == self.PlantingDate
-        # self.reset_initial_conditions(currTimeStep)  # TODO elsewhere
-        # self.var.GrowingSeasonIndex *= np.logical_not(self.var.CropDead | self.var.CropMature)
-
-        # # Update counters
-        # # Increment days after planting
-        # self.var.DAP[self.var.GrowingSeasonIndex] += 1
-        # self.var.DAP[np.logical_not(self.var.GrowingSeasonIndex)] = 0
-
-        # cond = (self.var.GrowingSeasonIndex & (self.var.DAP > self.var.MaxCanopyCD))
-        # self.var.AgeDays_NS[cond] = (self.var.DAP - self.var.MaxCanopyCD)[cond]
-        
-        # # Increment growing degree days
-        # self.growing_degree_day(currTimeStep, meteo)
-        # self.var.GDDcum[self.var.GrowingSeasonIndex] += self.var.GDD[self.var.GrowingSeasonIndex]
-        # self.var.GDDcum[np.logical_not(self.var.GrowingSeasonIndex)] = 0
-
-        # # Adjust growth stage
-        # self.growth_stage()
-                
