@@ -31,7 +31,8 @@ class Irrigation(object):
         rootdepth = np.maximum(self.var.Zmin, self.var.Zroot)
         AbvFc = ((self.var.thRZ_Act - self.var.thRZ_Fc) * 1000 * rootdepth)
         AbvFc[np.logical_not(cond1)] = 0
-        WCadj = self.var.Tpot + self.var.Epot - self.var.precipitation + self.var.Runoff - AbvFc
+        WCadj = self.var.ETpot - self.var.precipitation + self.var.Runoff - AbvFc
+        # WCadj = self.var.Tpot + self.var.Epot - self.var.precipitation + self.var.Runoff - AbvFc
 
         # Determine irrigation depth (mm/day) to be applied
         cond2 = (self.var.GrowingSeasonIndex & (self.var.IrrMethod == 0))

@@ -186,10 +186,12 @@ class Configuration(object):
             self.soilOptions[item] = vos.getFullPath(self.soilOptions[item], self.globalOptions['inputDir'])
 
         # crop parameter input file
-        item = 'cropParameterNC'
-        if self.cropOptions[item] != "None":
-            self.cropOptions[item] = vos.getFullPath(self.cropOptions[item], self.globalOptions['inputDir'])
-            
+        cropInputFiles = ['cropParameterNC','PotYieldNC']
+        for item in cropInputFiles:
+            if item in self.cropOptions:
+                if self.cropOptions[item] != "None":
+                    self.cropOptions[item] = vos.getFullPath(self.cropOptions[item], self.globalOptions['inputDir'])
+
         # irrigation management input file
         irrMgmtInputFiles = ['irrMgmtParameterNC']
         for item in irrMgmtInputFiles:

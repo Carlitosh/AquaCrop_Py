@@ -12,15 +12,105 @@ import datetime as datetime
 import calendar as calendar
 
 class CropParameters(object):
-
+    
     def __init__(self, CropParameters_variable):
         self.var = CropParameters_variable
-
-    def initial(self):
-
         self.var.nCrop = int(self.var._configuration.cropOptions['nCrop'])
         self.var.nRotation = int(self.var._configuration.cropOptions['nRotation'])
         self.var.cropParameterFileNC = str(self.var._configuration.cropOptions['cropParameterNC'])
+        self.var.crop_parameters_to_read = []
+        self.var.crop_parameters_to_compute = []
+
+    def read(self):
+        """Function to read crop input parameters"""
+        if len(self.var.crop_parameters_to_read) > 0:
+            for param in self.var.crop_parameters_to_read:
+                nm = '_' + param
+                vars(self.var)[nm] = vos.netcdf2PCRobjCloneWithoutTime(
+                    self.var.cropParameterFileNC,
+                    param,
+                    cloneMapFileName=self.var.cloneMap)
+
+    def read_crop_sequence(self):
+        """Function to read crop sequence information"""        
+        # Matrix showing specific crop rotations
+        CropSequence = vos.netcdf2PCRobjCloneWithoutTime(
+            self.var.cropParameterFileNC,
+            'CropSequence',
+            cloneMapFileName=self.var.cloneMap)
+
+        CropSequence = (
+            CropSequence[:,:,None,None]
+            * np.ones((self.var.nLat, self.var.nLon))[None,None,:,:])
+        self.var.CropSequence = CropSequence.astype(bool)
+
+    def adjust_planting_and_harvesting_date(self):
+        pd = np.copy(self.var._PlantingDate)
+        hd = np.copy(self.var._HarvestDate)
+        st = self.var._modelTime.currTime
+        sd = self.var._modelTime.currTime.timetuple().tm_yday
+
+        # adjust values for leap year (objective is to preserve date)
+        isLeapYear1 = calendar.isleap(st.year)
+        isLeapYear2 = calendar.isleap(st.year + 1)
+        pd[(isLeapYear1 & (pd >= 60))] += 1  # TODO: check these
+        hd[(isLeapYear1 & (hd >= 60) & (hd > pd))] += 1
+        hd[(isLeapYear2 & (hd >= 60) & (hd < pd))] += 1
+
+        self.var._PlantingDate = np.copy(pd)
+        self.var._HarvestDate = np.copy(hd)
+        
+        # if harvest day is less than planting day, harvest will take place
+        # in following year (leap year already accounted for, so add 365)
+        hd[hd < pd] += 365
+        self.var._PlantingDateAdj = pd
+        self.var._HarvestDateAdj = hd
+
+    def update_growing_season(self):
+        cond1 = ((self.var._PlantingDateAdj <= self.var._modelTime.doy) & (self.var._modelTime.doy <= self.var._HarvestDateAdj))
+        hd_arr = (np.datetime64(str(datetime.datetime(self.var._modelTime.year, 1, 1))) + np.array(self.var._HarvestDateAdj - 1, dtype='timedelta64[D]'))
+        cond3 = hd_arr <= np.datetime64(str(self.var._modelTime.endTime))        
+        self.var.GrowingSeason = ((cond1 & cond3))
+
+    def select_crop_parameters(self):
+        """Function to select parameters for currently grown crops"""
+        
+        # Add a rotation dimension to GrowingSeason array and multiply it
+        # by CropSequence, with the resulting array showing which crop (if any)
+        # is currently grown in each rotation considered.
+        GrowingSeason = self.var.GrowingSeason[:,None,:,:] * np.ones((self.var.nRotation))[None,:,None,None]
+        GrowingSeason *= self.var.CropSequence  # crop,rotation,lat,lon
+        
+        # Lastly, check whether the crop has died or reached maturity, then
+        # see which rotations have crops currently growing
+        self.var.GrowingSeasonIndex = np.any(GrowingSeason, axis=0)
+        
+        # Get index of crops currently grown
+        CropIndex = (np.arange(0, self.var.nCrop)[:,None,None,None] * np.ones((self.var.nRotation, self.var.nLon, self.var.nLat))[None,:,:,:])
+        CropIndex *= GrowingSeason
+        self.var.CropIndex = np.max(CropIndex, axis=0).astype(int)
+        
+        # A CropIndex value of 0 currently means either that the crop is not
+        # currently grown, or that the first crop (corresponding to index 0)
+        # is grown. This confusion is handled in the next section by multiplying
+        # the parameter value by GrowingSeason, such that it has a value of
+        # zero if no crops are growing.
+
+        # Select crop parameters for current day
+        I,J,K = np.ogrid[:self.var.nRotation,:self.var.nLat,:self.var.nLon]
+        for nm in self.var.crop_parameter_names:
+            param = getattr(self.var, '_' + nm)
+            param = param[:,None,:,:] * np.ones((self.var.nRotation))[None,:,None,None]
+            vars(self.var)[nm] = param[self.var.CropIndex,I,J,K] * self.var.GrowingSeasonIndex
+        
+class AQCropParameters(CropParameters):
+
+    def initial(self):
+
+        # TODO: move these to main model class?
+        # self.var.nCrop = int(self.var._configuration.cropOptions['nCrop'])
+        # self.var.nRotation = int(self.var._configuration.cropOptions['nRotation'])
+        # self.var.cropParameterFileNC = str(self.var._configuration.cropOptions['cropParameterNC'])
         self.var.CalendarType = int(self.var._configuration.cropOptions['CalendarType'])
         self.var.SwitchGDD = bool(int(self.var._configuration.cropOptions['SwitchGDD']))
         self.var.GDDmethod = int(self.var._configuration.cropOptions['GDDmethod'])
@@ -43,7 +133,8 @@ class CropParameters(object):
             'CC0','SxTop','SxBot','fCO2','tLinSwitch','dHILinear','HIGC',
             'CanopyDevEnd','CanopyDevEndCD','Canopy10Pct','Canopy10PctCD','MaxCanopy',
             'MaxCanopyCD','HIstartCD','HIend','HIendCD','YldFormCD',
-            'FloweringEnd','Flowering','FloweringCD','CGC','CDC']  # TODO: CGC and CDC are in both list - try removing them here?
+            'FloweringEnd','Flowering','FloweringCD','CGC','CDC',
+            'PlantingDateAdj','HarvestDateAdj']  # TODO: CGC and CDC are in both list - try removing them here?
 
         self.var.crop_parameter_names = self.var.crop_parameters_to_read + self.var.crop_parameters_to_compute
         arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
@@ -53,30 +144,10 @@ class CropParameters(object):
             
         # self.var.CropSequence = np.zeros((self.var.nCrop, self.var.nRotation, self.var.nLat, self.var.nLon))
         self.read()
-        self.compute_variables()
-        
-    def read(self):
-        """Function to read crop input parameters"""
-        
-        for param in self.var.crop_parameters_to_read:
-            nm = '_' + param
-            vars(self.var)[nm] = vos.netcdf2PCRobjCloneWithoutTime(
-                self.var.cropParameterFileNC,
-                param,
-                cloneMapFileName=self.var.cloneMap)
+        self.read_crop_sequence()
+        self.compute_crop_parameters()
 
-        # Matrix showing specific crop rotations
-        CropSequence = vos.netcdf2PCRobjCloneWithoutTime(
-            self.var.cropParameterFileNC,
-            'CropSequence',
-            cloneMapFileName=self.var.cloneMap)
-
-        CropSequence = (
-            CropSequence[:,:,None,None]
-            * np.ones((self.var.nLat, self.var.nLon))[None,None,:,:])
-        self.var.CropSequence = CropSequence.astype(bool)
-        
-    def compute_variables(self):
+    def compute_crop_parameters(self):
         """Function to compute additional crop variables required to run 
         AquaCrop"""
         
@@ -124,13 +195,13 @@ class CropParameters(object):
         self.var._SxBot[cond25] = SS1[cond25]
 
         # Crop calender
-        self.AOS_ComputeCropCalendar()
+        self.compute_crop_calendar()
 
         # Harvest index growth coefficient
-        self.AOS_CalculateHIGC()
+        self.calculate_HIGC()
 
         # Days to linear HI switch point
-        self.AOS_CalculateHILinear()
+        self.calculate_HI_linear()
 
     def compute_water_productivity_adjustment_factor(self):
         """Function to calculate water productivity adjustment factor 
@@ -157,7 +228,7 @@ class CropParameters(object):
         ftype = np.clip(ftype, 0, 1)
         self.var._fCO2 = 1 + ftype * (fCO2 - 1)
         
-    def AOS_CalculateHILinear(self):
+    def calculate_HI_linear(self):
         """Function to calculate time to switch to linear harvest index 
         build-up, and associated linear rate of build-up. Only for 
         fruit/grain crops
@@ -187,7 +258,7 @@ class CropParameters(object):
         HIest[np.logical_not(cond1)] = 0
         self.var._dHILinear = ((self.var._HI0 - HIest) / (tmax - self.var._tLinSwitch))  # dHILin will be set to nan in the same cells as tSwitch
                     
-    def AOS_CalculateHIGC(self):
+    def calculate_HIGC(self):
         """Function to calculate harvest index growth coefficient"""
         # Total yield formation days
         tHI = np.copy(self.var._YldFormCD)
@@ -204,7 +275,7 @@ class CropParameters(object):
             
         self.var._HIGC[HIest >= self.var._HI0] -= 0.001
 
-    def AOS_ComputeCropCalendar(self):
+    def compute_crop_calendar(self):
        
         # "Time from sowing to end of vegetative growth period"
         cond1 = (self.var._Determinant == 1)
@@ -424,34 +495,15 @@ class CropParameters(object):
                 # "2 Duration of flowering in calendar days"
                 self.var._FloweringCD[cond1] = (FloweringEnd - self.var._HIstartCD)[cond1]
 
-    def update_pars(self):
+    def update_crop_parameters(self):
         """Function to update certain crop parameters for current 
-        time step
+        time step (equivalent to lines 97-163 in 
+        compute_crop_calendar)
         """
-        pd = np.copy(self.var._PlantingDate)
-        hd = np.copy(self.var._HarvestDate)
-        st = self.var._modelTime.currTime
+        pd = np.copy(self.var._PlantingDateAdj)
+        hd = np.copy(self.var._HarvestDateAdj)
         sd = self.var._modelTime.currTime.timetuple().tm_yday
 
-        # adjust values for leap year (objective is to preserve date)
-        isLeapYear1 = calendar.isleap(st.year)
-        isLeapYear2 = calendar.isleap(st.year + 1)
-        pd[(isLeapYear1 & (pd >= 60))] += 1  # TODO: check these
-        hd[(isLeapYear1 & (hd >= 60) & (hd > pd))] += 1
-        hd[(isLeapYear2 & (hd >= 60) & (hd < pd))] += 1
-
-        cond1 = ((pd <= self.var._modelTime.doy) & (self.var._modelTime.doy <= hd))
-        cond2 = ((pd > hd) & ((pd <= self.var._modelTime.doy) | (self.var._modelTime.doy <= hd)))
-
-        # if harvest day is less than planting day, harvest will take place
-        # in following year (leap year already accounted for, so add 365)
-        hd[hd < pd] += 365
-        hd_arr = (np.datetime64(str(datetime.datetime(self.var._modelTime.year, 1, 1))) + np.array(hd - 1, dtype='timedelta64[D]'))
-        cond3 = hd_arr <= np.datetime64(str(self.var._modelTime.endTime))        
-        # td = np.array(hd - pd, dtype='timedelta64[D]')
-        # cond3 = ((np.datetime64(str(self.var._modelTime.currTime)) + td) <= np.datetime64(str(self.var._modelTime.endTime)))
-        self.var.GrowingSeason = ((cond1 & cond3) | (cond2 & cond3))
-        
         # Update certain crop parameters if using GDD mode
         if (self.var.CalendarType == 2):
 
@@ -479,10 +531,8 @@ class CropParameters(object):
                                                  LatitudeLongitude = True)
 
                 # broadcast to crop dimension
-                tmax = tmax[:,None,:,:] * np.ones((self.var._PlantingDate.shape[0]))[None,:,None,None]
-                tmin = tmin[:,None,:,:] * np.ones((self.var._PlantingDate.shape[0]))[None,:,None,None]
-                # tmax = tmax[:,None,:,:] * np.ones((self.var.nCrop))[None,:,None,None]
-                # tmin = tmin[:,None,:,:] * np.ones((self.var.nCrop))[None,:,None,None]
+                tmax = tmax[:,None,:,:] * np.ones((self.var.nCrop))[None,:,None,None]
+                tmin = tmin[:,None,:,:] * np.ones((self.var.nCrop))[None,:,None,None]
 
                 # for convenience
                 tupp = self.var._Tupp[None,:,:,:] * np.ones((tmin.shape[0]))[:,None,None,None]
@@ -555,43 +605,75 @@ class CropParameters(object):
                 self.var._FloweringCD[cond11] = (FloweringEnd - self.var._HIstartCD)[cond11]
 
                 # Harvest index growth coefficient
-                self.AOS_CalculateHIGC()
+                self.calculate_HIGC()
 
                 # Days to linear HI switch point
-                self.AOS_CalculateHILinear()
-                
+                self.calculate_HI_linear()
+
     def dynamic(self):
         """Function to update parameters for current crop grown as well 
         as counters pertaining to crop growth
         """
         # Update crop parameters for currently grown crops
         self.compute_water_productivity_adjustment_factor()
-        self.update_pars()
+        self.adjust_planting_and_harvesting_date()
+        self.update_growing_season()
+        self.update_crop_parameters()
+        self.select_crop_parameters()
+        
+class FAO56CropParameters(CropParameters):
 
-        # Add a rotation dimension to GrowingSeason array and multiply it
-        # by CropSequence, with the resulting array showing which crop (if any)
-        # is currently grown in each rotation considered.
-        GrowingSeason = self.var.GrowingSeason[:,None,:,:] * np.ones((self.var.nRotation))[None,:,None,None]
-        GrowingSeason *= self.var.CropSequence  # crop,rotation,lat,lon
+    def initial(self):
         
-        # Lastly, check whether the crop has died or reached maturity, then
-        # see which rotations have crops currently growing
-        self.var.GrowingSeasonIndex = np.any(GrowingSeason, axis=0)
-        
-        # Get index of crops currently grown
-        CropIndex = (np.arange(0, self.var.nCrop)[:,None,None,None] * np.ones((self.var.nRotation, self.var.nLon, self.var.nLat))[None,:,:,:])
-        CropIndex *= GrowingSeason
-        self.var.CropIndex = np.max(CropIndex, axis=0).astype(int)
-        
-        # A CropIndex value of 0 currently means either that the crop is not
-        # currently grown, or that the first crop (corresponding to index 0)
-        # is grown. This confusion is handled in the next section by multiplying
-        # the parameter value by GrowingSeason, such that it has a value of
-        # zero if no crops are growing.
+        # Declare variables
+        self.var.crop_parameters_to_read = [
+            'PlantingDate','HarvestDate',
+            'L_ini','L_dev','L_mid','L_late','Kc_ini','Kc_mid','Kc_end','p_std',#'Z',
+            'Zmin','Zmax','Ky']
 
-        # Select crop parameters for current day
-        I,J,K = np.ogrid[:self.var.nRotation,:self.var.nLat,:self.var.nLon]
-        for nm in self.var.crop_parameter_names:
-            param = getattr(self.var, '_' + nm)
-            param = param[:,None,:,:] * np.ones((self.var.nRotation))[None,:,None,None]
-            vars(self.var)[nm] = param[self.var.CropIndex,I,J,K] * self.var.GrowingSeasonIndex
+        self.var.crop_parameters_to_compute = [
+            'L_ini_day','L_dev_day','L_mid_day','L_late_day',
+            'PlantingDateAdj','HarvestDateAdj']
+
+        # initialise parameters
+        self.var.crop_parameter_names = self.var.crop_parameters_to_read + self.var.crop_parameters_to_compute
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
+        for param in self.var.crop_parameter_names:
+            nm = '_' + param
+            vars(self.var)[nm] = arr_zeros
+
+        # potential yield
+        self.var.crop_parameter_names += ['Yx']
+        self.var.PotYieldFileNC = self.var._configuration.cropOptions['PotYieldNC']
+        self.var.PotYieldVarName = 'Yx' 
+        if 'PotYieldVariableName' in self.var._configuration.cropOptions:
+            self.var.PotYieldVarName = self.var._configuration.cropOptions['PotYieldVariableName']
+        # self.var.co2_set_per_year  = False
+        # self.var.Y = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        
+        # self.var.CropSequence = np.zeros((self.var.nCrop, self.var.nRotation, self.var.nLat, self.var.nLon))
+        self.read()
+        self.read_crop_sequence()
+
+    def compute_growth_stage_length(self):
+        nday = self.var._HarvestDateAdj - self.var._PlantingDateAdj
+        self.var._L_ini_day = np.round(self.var._L_ini * nday)
+        self.var._L_dev_day = np.round(self.var._L_dev * nday)
+        self.var._L_mid_day = np.round(self.var._L_mid * nday)
+        self.var._L_late_day = np.round(self.var._L_late * nday)  # TODO
+
+    def read_potential_crop_yield(self):
+        date = '%04i-%02i-%02i' %(self.var._modelTime.year, 1, 1)
+        self.var._Yx = vos.netcdf2PCRobjClone(self.var.PotYieldFileNC,
+                                              self.var.PotYieldVarName,
+                                              date,
+                                              useDoy = None,
+                                              cloneMapFileName = self.var.cloneMap,
+                                              LatitudeLongitude = True)
+        
+    def dynamic(self):
+        self.adjust_planting_and_harvesting_date()
+        self.compute_growth_stage_length()
+        self.update_growing_season()
+        self.read_potential_crop_yield()
+        self.select_crop_parameters()

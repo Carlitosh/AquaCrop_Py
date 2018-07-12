@@ -40,6 +40,7 @@ from SoilAndTopoParameters import *
 from SoilEvaporation import *
 from TemperatureStress import *
 from Transpiration import *
+from Evapotranspiration import *
 from WaterStress import *
 
 import logging
@@ -52,32 +53,33 @@ class AquaCrop(Model):
         self.meteo_module = Meteo(self)
         self.groundwater_module = Groundwater(self)
         self.carbon_dioxide_module = CarbonDioxide(self)
-        self.crop_parameters_module = CropParameters(self)
+        self.crop_parameters_module = AQCropParameters(self)
         self.field_mgmt_parameters_module = FieldMgmtParameters(self)
         self.irrigation_mgmt_parameters_module = IrrigationMgmtParameters(self)
         self.soil_parameters_module = SoilAndTopoParameters(self)
-        self.initial_condition_module = InitialCondition(self)
+        self.initial_condition_module = AquaCropInitialCondition(self)
         self.check_groundwater_table_module = CheckGroundwaterTable(self)
         self.pre_irrigation_module = PreIrrigation(self)
         self.drainage_module = Drainage(self)
         self.rainfall_partition_module = RainfallPartition(self)
-        self.root_zone_water_module = RootZoneWater(self)
+        self.root_zone_water_module = AquaCropRootZoneWater(self)
         self.irrigation_module = Irrigation(self)
         self.infiltration_module = Infiltration(self)
         self.capillary_rise_module = CapillaryRise(self)
         self.germination_module = Germination(self)
-        self.growth_stage_module = GrowthStage(self)
+        self.growth_stage_module = AquaCropGrowthStage(self)
         self.root_development_module = RootDevelopment(self)
         self.water_stress_module = WaterStress(self)
         self.canopy_cover_module = CanopyCover(self)
         self.soil_evaporation_module = SoilEvaporation(self)
         self.transpiration_module = Transpiration(self)
+        self.evapotranspiration_module = AquaCropEvapotranspiration(self)
         self.inflow_module = Inflow(self)
         self.HI_ref_current_day_module = HIrefCurrentDay(self)
         self.biomass_accumulation_module = BiomassAccumulation(self)
         self.temperature_stress_module = TemperatureStress(self)
         self.harvest_index_module = HarvestIndex(self)
-        self.crop_yield_module = CropYield(self)
+        self.crop_yield_module = AQCropYield(self)
 
         # initialize modules
         self.meteo_module.initial()
@@ -103,6 +105,7 @@ class AquaCrop(Model):
         self.canopy_cover_module.initial()
         self.soil_evaporation_module.initial()
         self.transpiration_module.initial()
+        self.evapotranspiration_module.initial()
         self.inflow_module.initial()
         self.HI_ref_current_day_module.initial()
         self.biomass_accumulation_module.initial()
@@ -148,6 +151,7 @@ class AquaCrop(Model):
         self.water_stress_module.dynamic(beta=True)
 
         self.transpiration_module.dynamic()
+        self.evapotranspiration_module.dynamic()
         self.inflow_module.dynamic()
 
         self.HI_ref_current_day_module.dynamic()

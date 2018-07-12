@@ -41,27 +41,19 @@ class Reporting(object):
             pass
         
         if self.outDailyTotNC[0] != "None":
-            for var in self.outDailyTotNC:
-                
+            for var in self.outDailyTotNC:                
                 logger.info("Creating the netcdf file for daily reporting for variable %s.", str(var))
-
                 short_name = varDicts.netcdf_short_name[var]
                 unit       = varDicts.netcdf_unit[var]      
                 long_name  = varDicts.netcdf_long_name[var]
                 if long_name == None: long_name = short_name  
-
                 dims       = varDicts.netcdf_dimensions[var]
-                # includeDepthDimension = False
-                # if 'depth' in dims:
-                #     includeDepthDimension = True
 
                 # creating netCDF files:
                 self.netcdfObj.createNetCDF(self.outNCDir+"/"+str(var)+"_dailyTot_output.nc",
                                             short_name,
                                             unit,
                                             dims,
-                                            # includeDepthDimension,
-                                            # includeRotationDimension,
                                             long_name)
         
         # list of variables that will be reported:
@@ -71,32 +63,10 @@ class Reporting(object):
         """Function to process model variables to output variables. In 
         most cases this simply involves copying model attributes
         """
-        self.precipitation = self._model.precipitation
-        self.th = self._model.th
-        self.Wr = self._model.Wr
-        self.zGW = self._model.zGW
-        self.SurfaceStorage = self._model.SurfaceStorage
-        self.Irr = self._model.Irr
-        self.Infl = self._model.Infl
-        self.Runoff = self._model.Runoff
-        self.DeepPerc = self._model.DeepPerc
-        self.CrTot = self._model.CrTot
-        self.GwIn = self._model.GwIn
-        self.EsAct = self._model.EsAct
-        self.Epot = self._model.Epot
-        self.TrAct = self._model.TrAct
-        self.Tpot = self._model.Tpot
-        self.GDD = self._model.GDD
-        self.GDDcum = self._model.GDDcum
-        self.Zroot = self._model.Zroot
-        self.CC = self._model.CC
-        self.CC_NS = self._model.CC_NS
-        self.B = self._model.B
-        self.B_NS = self._model.B_NS
-        self.HI = self._model.HI
-        self.HIadj = self._model.HIadj
-        self.Y = self._model.Y
-
+        if self.outDailyTotNC[0] != "None":
+            for var in self.outDailyTotNC:
+                vars(self)[var] = vars(self._model)[var]
+            
     def report(self):
 
         # recap all variables

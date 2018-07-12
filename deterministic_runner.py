@@ -15,6 +15,7 @@ from Reporting import *
 # from spinUp import SpinUp
 
 from AquaCrop import AquaCrop
+from FAO56 import FAO56
 
 import logging
 logger = logging.getLogger(__name__)
@@ -54,7 +55,8 @@ class run_FAO56(DeterministicRunner):
         DynamicModel.__init__(self)
         self.modelTime = modelTime
         self.model = FAO56(configuration, modelTime, initialState)
-        self.reporting = Reporting_FAO56(configuration, self.model, modelTime)
+        self.model.initial()
+        self.reporting = Reporting(configuration, self.model, modelTime)
 
 def main():
 
@@ -64,7 +66,7 @@ def main():
     # get the full path of the configuration/ini file provided
     # as system argument
     iniFileName = os.path.abspath(sys.argv[1])
-    model = sys.argv[2]
+    model = sys.argv[2].lower()
 
     # TODO: debug option
     debug_mode = False
@@ -88,8 +90,9 @@ def main():
     deterministic_runner = None
     if (model == 'aquacrop'):
         deterministic_runner = run_AquaCrop(configuration, currTimeStep, initial_state)
-
-    # TODO: error checking
+    elif model == 'fao56':
+        deterministic_runner = run_FAO56(configuration, currTimeStep, initial_state)
+    # TODO: error handling
     
     dynamic_framework = DynamicFramework(deterministic_runner, currTimeStep.nrOfTimeSteps)
     dynamic_framework.setQuiet(True)
@@ -98,5 +101,3 @@ def main():
 if __name__ == '__main__':
     # disclaimer.print_disclaimer(with_logger = True)
     sys.exit(main())
-    
-    

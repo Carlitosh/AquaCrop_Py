@@ -76,7 +76,6 @@ class Transpiration(object):
         cond11 = (self.var.GrowingSeasonIndex & np.logical_not(cond10))
         TrPot[cond11] = self.var.TrPot0[cond11]
         self.var.TrAct0[cond11] = 0
-        # return TrPot, self.var.TrAct0, self.var.AerDaysComp
         
     def dynamic(self):
         """Function to calculate crop transpiration on current day"""

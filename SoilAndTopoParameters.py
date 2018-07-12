@@ -25,6 +25,10 @@ class SoilAndTopoParameters(object):
         self.var.dz = np.array(map(np.float64, self.var.dz))
         self.var.dzsum = np.cumsum(self.var.dz)
 
+        # for convenience
+        self.var.dz_xy = self.var.dz[:,None,None,None] * np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
+        self.var.dzsum_xy = self.var.dzsum[:,None,None,None] * np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
+        
         # read parameters
         self.var.soilAndTopoFileNC = self.var._configuration.soilOptions['soilAndTopoNC']
         self.read()
