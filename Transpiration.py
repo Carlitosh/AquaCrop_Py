@@ -14,11 +14,26 @@ class Transpiration(object):
 
     def initial(self):
         arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        arr_ones = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
         self.var.Ksa_Aer = np.copy(arr_zeros)
         self.var.TrPot0 = np.copy(arr_zeros)
         self.var.TrPot_NS = np.copy(arr_zeros)
         self.var.TrAct = np.copy(arr_zeros)
         self.var.TrAct0 = np.copy(arr_zeros)
+        self.var.AerDays = np.copy(arr_zeros)
+        self.var.AerDaysComp  = np.zeros((self.var.nComp, self.var.nRotation, self.var.nLat, self.var.nLon))
+        self.var.Tpot = np.copy(arr_zeros)        
+        self.var.TrRatio = np.copy(arr_ones)
+        self.var.DaySubmerged = np.copy(arr_zeros)
+
+    def reset_initial_conditions(self):
+        cond = self.var.GrowingSeasonDayOne
+        cond_comp = np.broadcast_to(cond, self.var.AerDaysComp.shape)
+        self.var.AerDays[cond] = 0
+        self.var.AerDaysComp[cond_comp] = 0        
+        self.var.Tpot[cond] = 0
+        self.var.TrRatio[cond] = 1
+        self.var.DaySubmerged[cond] = 0
         
     def aeration_stress(self):
         """Function to calculate aeration stress coefficient"""
@@ -79,6 +94,10 @@ class Transpiration(object):
         
     def dynamic(self):
         """Function to calculate crop transpiration on current day"""
+
+        # reset initial conditions
+        if np.any(self.var.GrowingSeasonDayOne):
+            self.reset_initial_conditions()
 
         # Add rotation dimension to ET0
         et0 = self.var.referencePotET[None,:,:] * np.ones((self.var.nRotation))[:,None,None]

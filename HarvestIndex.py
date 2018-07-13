@@ -13,7 +13,30 @@ class HarvestIndex(object):
         self.var = HarvestIndex_variable
 
     def initial(self):
-        pass
+        arr_ones = np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
+        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        self.var.Fpre = np.copy(arr_ones)
+        self.var.Fpost = np.copy(arr_ones)
+        self.var.fpost_dwn = np.copy(arr_ones)
+        self.var.fpost_upp = np.copy(arr_ones)
+        self.var.Fpol = np.copy(arr_zeros)
+        self.var.sCor1 = np.copy(arr_zeros)
+        self.var.sCor2 = np.copy(arr_zeros)
+        self.var.HI = np.copy(arr_zeros)
+        self.var.HIadj = np.copy(arr_zeros)
+        self.var.PreAdj = np.copy(arr_zeros.astype(bool))
+        
+    def reset_initial_conditions(self):
+        self.var.Fpre[self.var.GrowingSeasonDayOne] = 1
+        self.var.Fpost[self.var.GrowingSeasonDayOne] = 1
+        self.var.fpost_dwn[self.var.GrowingSeasonDayOne] = 1
+        self.var.fpost_upp[self.var.GrowingSeasonDayOne] = 1
+        self.var.Fpol[self.var.GrowingSeasonDayOne] = 0
+        self.var.sCor1[self.var.GrowingSeasonDayOne] = 0
+        self.var.sCor2[self.var.GrowingSeasonDayOne] = 0
+        self.var.HI[self.var.GrowingSeasonDayOne] = 0
+        self.var.HIadj[self.var.GrowingSeasonDayOne] = 0
+        self.var.PreAdj[self.var.GrowingSeasonDayOne] = False
 
     def HI_adj_pollination(self):
         """Function to calculate adjustment to harvest index for 
@@ -135,7 +158,10 @@ class HarvestIndex(object):
         
     def dynamic(self):        
         """Function to simulate build up of harvest index"""
-        
+
+        if np.any(self.var.GrowingSeasonDayOne):
+            self.reset_initial_conditions()
+            
         # Get reference harvest index on current day
         HIi = np.copy(self.var.HIref)
 

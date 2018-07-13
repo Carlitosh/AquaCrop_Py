@@ -15,8 +15,12 @@ class GrowthStage(object):
 class AquaCropGrowthStage(GrowthStage):
 
     def initial(self):
-        pass
+        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        self.var.GrowthStage = np.copy(arr_zeros)
 
+    def reset_initial_conditions(self):
+        self.var.GrowthStage[self.var.GrowingSeasonDayOne] = 0
+        
     def dynamic(self):
 
         if self.var.CalendarType == 1:
@@ -39,9 +43,15 @@ class AquaCropGrowthStage(GrowthStage):
 class FAO56GrowthStage(GrowthStage):
 
     def initial(self):
-        pass
+        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        self.var.GrowthStage = np.copy(arr_zeros)
+
+    def reset_initial_conditions(self):
+        self.var.GrowthStage[self.var.GrowingSeasonDayOne] = 0
 
     def dynamic(self):
+        if np.any(self.var.GrowingSeasonDayOne):
+            self.reset_initial_conditions()
 
         L_day = np.stack((self.var.L_ini_day,
                           self.var.L_dev_day,

@@ -14,10 +14,25 @@ class Germination(object):
         self.var = Germination_variable
 
     def initial(self):
-        pass
-    
+        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        self.var.DelayedGDDs = np.copy(arr_zeros)
+        self.var.DelayedCDs  = np.copy(arr_zeros)
+        self.var.Germination = np.copy(arr_zeros.astype(bool))
+        self.var.AgeDays     = np.copy(arr_zeros)
+        self.var.AgeDays_NS  = np.copy(arr_zeros)
+
+    def reset_initial_conditions(self):
+        self.var.DelayedGDDs[self.var.GrowingSeasonDayOne] = 0
+        self.var.DelayedCDs[self.var.GrowingSeasonDayOne] = 0
+        self.var.Germination[self.var.GrowingSeasonDayOne] = False
+        self.var.AgeDays[self.var.GrowingSeasonDayOne] = 0
+        self.var.AgeDays_NS[self.var.GrowingSeasonDayOne] = 0
+        
     def dynamic(self):
         """Function to check if crop has germinated"""
+        if np.any(self.var.GrowingSeasonDayOne):
+            self.reset_initial_conditions()
+            
         # Here we force zGerm to have a maximum value equal to the depth of the
         # deepest soil compartment
         zgerm = np.copy(self.var.zGerm)
@@ -68,6 +83,8 @@ class Germination(object):
         DAPadj = (self.var.DAP - self.var.DelayedCDs)
         cond6 = (DAPadj > self.var.MaxCanopyCD) & self.var.GrowingSeasonIndex
         self.var.AgeDays[cond6] = (DAPadj - self.var.MaxCanopyCD)[cond6]
+        cond7 = (self.var.DAP > self.var.MaxCanopyCD) & self.var.GrowingSeasonIndex  # NB not originally in this function
+        self.var.AgeDays_NS[cond7] = (self.var.DAP - self.var.MaxCanopyCD)[cond7]
         
         self.var.Germination[np.logical_not(self.var.GrowingSeasonIndex)] = False
         self.var.DelayedCDs[np.logical_not(self.var.GrowingSeasonIndex)] = 0

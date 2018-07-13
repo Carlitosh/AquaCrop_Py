@@ -125,8 +125,9 @@ class AquaCrop(Model):
         self.irrigation_mgmt_parameters_module.dynamic()
         # self.field_mgmt_parameters_module.dynamic()
         # self.soil_parameters_module.dynamic()
-
+        
         self.initial_condition_module.dynamic()
+
         self.check_groundwater_table_module.dynamic()
         self.pre_irrigation_module.dynamic()
         self.drainage_module.dynamic()

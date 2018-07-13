@@ -15,9 +15,21 @@ class Infiltration(object):
         self.var = Infiltration_variable
 
     def initial(self):        
+        # Surface storage between bunds
+        cond1 = (self.var.Bunds == 0) & (self.var.zBund > 0.001)
+        SurfaceStorage = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        SurfaceStorage[cond1] = self.var.BundWater[cond1]
+        SurfaceStorage = np.clip(SurfaceStorage, None, self.var.zBund)
+        self.var.SurfaceStorage = np.copy(SurfaceStorage)
+        self.var.SurfaceStorageIni = np.copy(SurfaceStorage)
+
+    def reset_initial_conditions(self):
         pass
-    
+        
     def dynamic(self):
+        if np.any(self.var.GrowingSeasonDayOne):
+            self.reset_initial_conditions()
+            
         dims = self.var.ksat_comp.shape
         nc, nr, nlon, nlat = dims[0], dims[1], dims[2], dims[3]
         ToStore = np.zeros((nr, nlat, nlon))

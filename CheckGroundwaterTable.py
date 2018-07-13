@@ -18,12 +18,19 @@ class CheckGroundwaterTable(object):
 
     def initial(self):
         arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
-        self.th_fc_adj = self.var.th_fc[self.var.layerIndex,:]
-    
+        self.var.th_fc_adj = self.var.th_fc[self.var.layerIndex,:]
+        self.var.WTinSoil = np.copy(arr_zeros.astype(bool))
+
+    def reset_initial_conditions(self):
+        self.var.WTinSoil[self.var.GrowingSeasonDayOne] = False
+        
     def dynamic(self):
+
+        # reset initial conditions
+        if np.any(self.var.GrowingSeasonDayOne):
+            self.reset_initial_conditions()
         
         if self.var.WaterTable:
-
             # Copy depth to groundwater, and add rotation dimension for convenience
             self.var.zGW = self.var.zGW[None,:,:] * np.ones((self.var.nRotation))[:,None,None]
 

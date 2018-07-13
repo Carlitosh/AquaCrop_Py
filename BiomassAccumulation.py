@@ -14,11 +14,20 @@ class BiomassAccumulation(object):
         self.var = BiomassAccumulation_variable
 
     def initial(self):
-        pass
-    
+        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        self.var.B = np.copy(arr_zeros)
+        self.var.B_NS = np.copy(arr_zeros)
+
+    def reset_initial_conditions(self):
+        self.var.B[self.var.GrowingSeasonDayOne] = 0
+        self.var.B_NS[self.var.GrowingSeasonDayOne] = 0
+        
     def dynamic(self):
         """Function to calculate biomass accumulation"""
 
+        if np.any(self.var.GrowingSeasonDayOne):
+            self.reset_initial_conditions()
+            
         arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
         
         et0 = self.var.referencePotET[None,:,:] * np.ones((self.var.nRotation))[:,None,None]

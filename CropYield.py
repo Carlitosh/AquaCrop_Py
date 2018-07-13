@@ -15,10 +15,18 @@ class CropYield(object):
 
 class AQCropYield(CropYield):
     def initial(self):
-        self.var.Y = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        self.var.CropMature = np.copy(arr_zeros).astype(bool)
+        self.var.Y = np.copy(arr_zeros)
+
+    def reset_initial_conditions(self):
+        self.var.CropMature[self.var.GrowingSeasonDayOne] = False
         
     def dynamic(self):
         """Function to calculate crop yield"""
+        if np.any(self.var.GrowingSeasonDayOne):
+            self.reset_initial_conditions()
+            
         cond1 = self.var.GrowingSeasonIndex
         self.var.Y[cond1] = ((self.var.B / 100) * self.var.HIadj)[cond1]
         cond11 = (cond1 & (((self.var.CalendarType == 1) & ((self.var.DAP - self.var.DelayedCDs) >= self.var.Maturity)) | ((self.var.CalendarType == 2) & ((self.var.GDDcum - self.var.DelayedGDDs) >= self.var.Maturity))))

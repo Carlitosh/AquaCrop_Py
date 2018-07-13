@@ -15,9 +15,13 @@ class HIrefCurrentDay(object):
 
     def initial(self):
         arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
-        self.var.YieldForm = arr_zeros
-        self.var.HIref = arr_zeros
-        self.var.HIt = arr_zeros
+        self.var.YieldForm = np.copy(arr_zeros)
+        self.var.HIref = np.copy(arr_zeros)
+        self.var.HIt = np.copy(arr_zeros)
+        self.var.PctLagPhase = np.copy(arr_zeros)
+
+    def reset_initial_conditions(self):
+        self.var.PctLagPhase[self.var.GrowingSeasonDayOne] = 0
         
     def dynamic(self):
         """Function to calculate reference (no adjustment for stress 

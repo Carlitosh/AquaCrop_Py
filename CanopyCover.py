@@ -15,12 +15,38 @@ class CanopyCover(object):
         self.var = CanopyCover_variable
 
     def initial(self):
-        pass
-        # arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
-        # # self.var.CCprev = arr_zeros
-        # # self.var.CCxAct_NS = arr_zeros
-        # # self.var.CCxW_NS = arr_zeros
+        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        self.var.tEarlySen = np.copy(arr_zeros)
+        self.var.CC = np.copy(arr_zeros)
+        self.var.CCadj = np.copy(arr_zeros)
+        self.var.CC_NS = np.copy(arr_zeros)
+        self.var.CCadj_NS = np.copy(arr_zeros)
+        self.var.CCxAct = np.copy(arr_zeros)
+        self.var.CCxAct_NS = np.copy(arr_zeros)
+        self.var.CCxW = np.copy(arr_zeros)
+        self.var.CCxW_NS = np.copy(arr_zeros)
+        self.var.CCxEarlySen = np.copy(arr_zeros)
+        self.var.CCprev = np.copy(arr_zeros)
+        self.var.PrematSenes = np.copy(arr_zeros.astype(bool))        
+        self.var.CropDead = np.copy(arr_zeros.astype(bool))        
+        self.var.CC0adj = np.copy(arr_zeros)
 
+    def reset_initial_conditions(self):
+        self.var.tEarlySen[self.var.GrowingSeasonDayOne] = 0
+        self.var.CC[self.var.GrowingSeasonDayOne] = 0
+        self.var.CCadj[self.var.GrowingSeasonDayOne] = 0
+        self.var.CC_NS[self.var.GrowingSeasonDayOne] = 0
+        self.var.CCadj_NS[self.var.GrowingSeasonDayOne] = 0
+        self.var.CCxAct[self.var.GrowingSeasonDayOne] = 0
+        self.var.CCxAct_NS[self.var.GrowingSeasonDayOne] = 0
+        self.var.CCxW[self.var.GrowingSeasonDayOne] = 0
+        self.var.CCxW_NS[self.var.GrowingSeasonDayOne] = 0
+        self.var.CCxEarlySen[self.var.GrowingSeasonDayOne] = 0
+        self.var.CCprev[self.var.GrowingSeasonDayOne] = 0
+        self.var.PrematSenes[self.var.GrowingSeasonDayOne] = False
+        self.var.CropDead[self.var.GrowingSeasonDayOne] = False
+        self.var.CC0adj[self.var.GrowingSeasonDayOne] = self.var.CC0[self.var.GrowingSeasonDayOne]
+        
     def canopy_cover_development(self, CC0, CCx, CGC, CDC, dt, Mode):
         """Function to calculate canopy cover development by end of the 
         current simulation day
@@ -314,7 +340,10 @@ class CanopyCover(object):
         CDCadj = self.var.CDC * np.divide(CCxAdj, self.var.CCx, out=np.zeros_like(self.var.CCx), where=self.var.CCx!=0)
         return CCxAdj,CDCadj
         
-    def dynamic(self):    
+    def dynamic(self):
+        if np.any(self.var.GrowingSeasonDayOne):
+            self.reset_initial_conditions()            
+
         # Preallocate some variables
         CCxAdj = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
         CDCadj = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
@@ -382,8 +411,6 @@ class CanopyCover(object):
         # Potential (without water stress)
         self.var.CCadj_NS[self.var.GrowingSeasonIndex] = ((1.72 * self.var.CC_NS) - (self.var.CC_NS ** 2) + (0.3 * (self.var.CC_NS ** 3)))[self.var.GrowingSeasonIndex]
 
-        # TODO: I don't think it is necessary to set these variables to zero here
-        # No canopy outside growing season - set values to zero
         self.var.CC[np.logical_not(self.var.GrowingSeasonIndex)] = 0
         self.var.CCadj[np.logical_not(self.var.GrowingSeasonIndex)] = 0
         self.var.CC_NS[np.logical_not(self.var.GrowingSeasonIndex)] = 0

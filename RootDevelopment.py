@@ -13,8 +13,13 @@ class RootDevelopment(object):
         self.var = RootDevelopment_variable
 
     def initial(self):
-        pass
+        self.var.rCor = np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
+        self.var.Zroot = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
 
+    def reset_initial_conditions(self):
+        self.var.rCor[self.var.GrowingSeasonDayOne] = 1
+        self.var.Zroot[self.var.GrowingSeasonDayOne] = self.var.Zmin[self.var.GrowingSeasonDayOne]
+        
     def potential_root_development(self, tAdj):
         dims = self.var.GrowingSeasonIndex.shape
         nr, nlat, nlon = dims[0], dims[1], dims[2]
@@ -40,6 +45,9 @@ class RootDevelopment(object):
     def dynamic(self):
         """Function to calculate root zone expansion"""
 
+        if np.any(self.var.GrowingSeasonDayOne):
+            self.reset_initial_conditions()
+            
         dims = self.var.GrowingSeasonIndex.shape
         nr, nlat, nlon = dims[0], dims[1], dims[2]
 

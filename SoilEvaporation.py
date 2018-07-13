@@ -16,15 +16,25 @@ class SoilEvaporation(object):
 
     def initial(self):
         arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
-        self.Wevap_Act = np.copy(arr_zeros)  # TODO: create Wevap class
-        self.Wevap_Sat = np.copy(arr_zeros)
-        self.Wevap_Fc = np.copy(arr_zeros)
-        self.Wevap_Wp = np.copy(arr_zeros)
-        self.Wevap_Dry = np.copy(arr_zeros)
+        self.var.Epot = np.copy(arr_zeros)
+        self.var.Stage2 = np.copy(arr_zeros.astype(bool))
+        self.var.EvapZ = np.copy(arr_zeros)
+        self.var.Wstage2 = np.copy(arr_zeros)
+        self.var.Wsurf = np.copy(arr_zeros)
+        self.var.Wevap_Act = np.copy(arr_zeros)
+        self.var.Wevap_Sat = np.copy(arr_zeros)
+        self.var.Wevap_Fc = np.copy(arr_zeros)
+        self.var.Wevap_Wp = np.copy(arr_zeros)
+        self.var.Wevap_Dry = np.copy(arr_zeros)
+
+    def reset_initial_conditions(self):
+        pass
 
     def evap_layer_water_content(self):
         """Function to get water contents in the evaporation layer"""
-
+        if np.any(self.var.GrowingSeasonDayOne):
+            self.reset_initial_conditions()
+        
         arr_ones = np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
         dz = self.var.dz[:,None,None,None] * arr_ones
         dzsum = self.var.dzsum[:,None,None,None] * arr_ones

@@ -17,10 +17,19 @@ class Irrigation(object):
     def initial(self):
         arr_zeros = np.zeros((self.var.nRotation, self.var.nLon, self.var.nLat))
         self.var.Irr = np.copy(arr_zeros)
+        self.var.IrrCum = np.copy(arr_zeros)
+        self.var.IrrNetCum = np.copy(arr_zeros)
+
+    def reset_initial_conditions(self):
+        self.var.IrrCum[self.var.GrowingSeasonDayOne] = 0
+        self.var.IrrNetCum[self.var.GrowingSeasonDayOne] = 0
         
     def dynamic(self):
         """Function to get irrigation depth for the current day"""
-
+        # reset initial conditions
+        if np.any(self.var.GrowingSeasonDayOne):
+            self.reset_initial_conditions()
+        
         SMT = np.concatenate((self.var.SMT1[None,:],
                               self.var.SMT2[None,:],
                               self.var.SMT3[None,:],
