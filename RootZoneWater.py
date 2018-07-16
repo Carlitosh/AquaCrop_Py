@@ -13,7 +13,7 @@ class RootZoneWater(object):
         self.var = RootZoneWater_variable
 
     def initial(self):
-        arr_zeros = np.zeros((self.var.nRotation, self.var.nLon, self.var.nLat))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLon, self.var.nLat))
         self.var.thRZ_Act = np.copy(arr_zeros)
         self.var.thRZ_Sat = np.copy(arr_zeros)
         self.var.thRZ_Fc = np.copy(arr_zeros)
@@ -44,9 +44,6 @@ class RootZoneWater(object):
         """Function to calculate actual and total available water in the 
         root zone at current time step
         """
-        # arr_ones = np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
-        # dz = self.var.dz[:,None,None,None] * arr_ones
-        # dzsum = self.var.dzsum[:,None,None,None] * arr_ones
         self.fraction_of_compartment_in_root_zone()
 
         # Water storages in root zone (mm) - initially compute value in each

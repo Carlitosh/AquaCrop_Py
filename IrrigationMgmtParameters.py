@@ -19,15 +19,15 @@ class IrrigationMgmtParameters(object):
     def initial(self):
         self.var.irrMgmtParameterFileNC = self.var._configuration.irrMgmtOptions['irrMgmtParameterNC']
         self.var.parameter_names = ['IrrMethod','IrrInterval','SMT1','SMT2','SMT3','SMT4','MaxIrr','AppEff','NetIrrSMT','WetSurf']
-        for var in self.var.parameter_names:
-            nm = '_' + var
-            vars(self.var)[nm] = vos.netcdf2PCRobjCloneWithoutTime(
+        for param in self.var.parameter_names:
+            # nm = '_' + var
+            vars(self.var)[param] = vos.netcdf2PCRobjCloneWithoutTime(
                 self.var.irrMgmtParameterFileNC,
-                var,
+                param,
                 cloneMapFileName=self.var.cloneMap)
 
         # check if an irrigation schedule file is required
-        if np.sum(self.var._IrrMethod == 3) > 0:
+        if np.sum(self.var.IrrMethod == 3) > 0:
             if self.var._configuration.irrMgmtOptions['irrScheduleNC'] != "None":
                 self.var._configuration.irrMgmtOptions['irrScheduleNC'] = vos.getFullPath(self.var._configuration.irrMgmtOptions[item], self.var._configuration.globalOptions['inputDir'])
                 self.var.irrScheduleFileNC = self.var._configuration.irrMgmtOptions['irrScheduleNC']
@@ -38,6 +38,7 @@ class IrrigationMgmtParameters(object):
             self.var.irrScheduleFileNC = None
 
     def dynamic(self):
-        I,J,K = np.ogrid[:self.var.nRotation,:self.var.nLat,:self.var.nLon]
-        for var in self.var.parameter_names:
-            vars(self.var)[var] = getattr(self.var, '_' + var)[self.var.CropIndex,I,J,K]
+        pass
+        # I,J,K = np.ogrid[:self.var.nRotation,:self.var.nLat,:self.var.nLon]
+        # for var in self.var.parameter_names:
+        #     vars(self.var)[var] = getattr(self.var, '_' + var)[self.var.CropIndex,I,J,K]

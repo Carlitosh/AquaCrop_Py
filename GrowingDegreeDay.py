@@ -15,14 +15,17 @@ class GrowingDegreeDay(object):
         self.var = GrowingDegreeDay_variable
 
     def initial(self):
-        self.var.GDDcum = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        self.var.GDDcum = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
+        # self.var.GDDcum = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
 
     def reset_initial_conditions(self):
         self.var.GDDcum[self.var.GrowingSeasonDayOne] = 0
 
     def growing_degree_day(self):
-        tmax = self.var.tmax[None,:,:] * np.ones((self.var.nRotation))[:,None,None]
-        tmin = self.var.tmin[None,:,:] * np.ones((self.var.nRotation))[:,None,None]
+        tmax = self.var.tmax[None,:,:] * np.ones((self.var.nCrop))[:,None,None]
+        tmin = self.var.tmin[None,:,:] * np.ones((self.var.nCrop))[:,None,None]
+        # tmax = self.var.tmax[None,:,:] * np.ones((self.var.nRotation))[:,None,None]
+        # tmin = self.var.tmin[None,:,:] * np.ones((self.var.nRotation))[:,None,None]
         if self.var.GDDmethod == 1:
             Tmean = ((tmax + tmin) / 2)
             Tmean = np.clip(Tmean, self.var.Tbase, self.var.Tupp)

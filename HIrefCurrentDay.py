@@ -14,7 +14,7 @@ class HIrefCurrentDay(object):
         self.var = HIrefCurrentDay_variable
 
     def initial(self):
-        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         self.var.YieldForm = np.copy(arr_zeros)
         self.var.HIref = np.copy(arr_zeros)
         self.var.HIt = np.copy(arr_zeros)

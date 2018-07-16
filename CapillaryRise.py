@@ -15,7 +15,7 @@ class CapillaryRise(object):
         self.var = CapillaryRise_variable
 
     def initial(self):
-        arr_zeros = np.zeros((self.var.nRotation, self.var.nLon, self.var.nLat))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLon, self.var.nLat))
         self.var.CrTot  = np.copy(arr_zeros)
 
     def maximum_capillary_rise(ksat, aCR, bCR, zGW, z):
@@ -103,7 +103,7 @@ class CapillaryRise(object):
             # Find top of next soil layer that is not within modelled soil profile
             zTopLayer = np.cumsum(self.var.zLayer[np.arange(0, (self.var.layerIndex[-1] + 1))])
             layeri = self.var.layerIndex[-1]  # layer number of bottom compartment
-            LimCR = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+            LimCR = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
 
             # TODO: should this be nlayer, rather than nlayer-1
             while np.any(zTopLayer < self.var.zGW) & (layeri < (self.var.nLayer - 1)):

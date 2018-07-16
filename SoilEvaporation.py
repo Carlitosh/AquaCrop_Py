@@ -15,7 +15,7 @@ class SoilEvaporation(object):
         self.var = SoilEvaporation_variable
 
     def initial(self):
-        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         self.var.Epot = np.copy(arr_zeros)
         self.var.Stage2 = np.copy(arr_zeros.astype(bool))
         self.var.EvapZ = np.copy(arr_zeros)
@@ -35,7 +35,7 @@ class SoilEvaporation(object):
         if np.any(self.var.GrowingSeasonDayOne):
             self.reset_initial_conditions()
         
-        arr_ones = np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
+        arr_ones = np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))
         dz = self.var.dz[:,None,None,None] * arr_ones
         dzsum = self.var.dzsum[:,None,None,None] * arr_ones
 
@@ -64,7 +64,7 @@ class SoilEvaporation(object):
 
         # No canopy cover outside of growing season so potential soil
         # evaporation only depends on reference evapotranspiration
-        et0 = self.var.referencePotET[None,:,:] * np.ones((self.var.nRotation))[:,None,None]
+        et0 = self.var.referencePotET[None,:,:] * np.ones((self.var.nCrop))[:,None,None]
         EsPot = (self.var.Kex * et0)
 
         # Calculate maximum potential soil evaporation and potential soil
@@ -74,7 +74,7 @@ class SoilEvaporation(object):
 
         # Adjust potential soil evaporation for effects of withered canopy
         cond3 = (self.var.GrowingSeasonIndex & (tAdj > self.var.Senescence) & (self.var.CCxAct > 0))
-        mult = np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
+        mult = np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))
         cond31 = (cond3 & (self.var.CC > (self.var.CCxAct / 2)))
         cond311 = (cond31 & (self.var.CC > self.var.CCxAct))
         mult[cond311] = 0
@@ -85,7 +85,7 @@ class SoilEvaporation(object):
 
         EsPot[cond3] = (EsPot * (1 - self.var.CCxAct * (self.var.fwcc / 100) * mult))[cond3]
         CCxActAdj = ((1.72 * self.var.CCxAct) + (self.var.CCxAct ** 2) - 0.3 * (self.var.CCxAct ** 3))
-        EsPotMin = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        EsPotMin = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         EsPotMin[cond3] = (self.var.Kex * (1 - CCxActAdj) * et0)[cond3]
         EsPotMin = np.clip(EsPotMin, 0, None)
 
@@ -120,8 +120,8 @@ class SoilEvaporation(object):
         return EsPotMul
 
     def extract_water(self, ToExtract, ToExtractStg):
-        arr_ones = np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
-        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        arr_ones = np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         dz = self.var.dz[:,None,None,None] * arr_ones
         dzsum = self.var.dzsum[:,None,None,None] * arr_ones
 
@@ -177,8 +177,8 @@ class SoilEvaporation(object):
     def dynamic(self):
         
         # Add rotation dimension to self.var.vars
-        et0 = self.var.referencePotET[None,:,:] * np.ones((self.var.nRotation))[:,None,None]
-        prec = self.var.precipitation[None,:,:] * np.ones((self.var.nRotation))[:,None,None]
+        et0 = self.var.referencePotET[None,:,:] * np.ones((self.var.nCrop))[:,None,None]
+        prec = self.var.precipitation[None,:,:] * np.ones((self.var.nCrop))[:,None,None]
 
         # Prepare stage 2 evaporation (REW gone), if day one of simulation
         cond1 = (self.var._modelTime.timeStepPCR == 1)
@@ -227,11 +227,11 @@ class SoilEvaporation(object):
         EsPot = np.minimum(EsPotIrr, EsPotMul)
 
         # Initialise actual evaporation counter
-        self.var.EsAct = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        self.var.EsAct = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
 
         # Surface evaporation        
         # EsActSurf = surface_evaporation(self.var.SurfaceStorage, EsPot)
-        EsActSurf = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        EsActSurf = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         cond9 = (self.var.SurfaceStorage > 0)
         cond91 = (cond9 & (self.var.SurfaceStorage > EsPot))
         EsActSurf[cond91] = EsPot[cond91]
@@ -247,8 +247,8 @@ class SoilEvaporation(object):
         self.var.EvapZ[cond] = self.var.EvapZmin[cond]
         
         # Stage 1 evaporation
-        dz = self.var.dz[:,None,None,None] * np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))[None,:,:,:]
-        dzsum = self.var.dzsum[:,None,None,None] * np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))[None,:,:,:]
+        dz = self.var.dz[:,None,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))[None,:,:,:]
+        dzsum = self.var.dzsum[:,None,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))[None,:,:,:]
 
         # Determine total water to be extracted
         ToExtract = EsPot - self.var.EsAct

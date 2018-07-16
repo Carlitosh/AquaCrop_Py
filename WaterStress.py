@@ -13,7 +13,7 @@ class WaterStress(object):
         self.var = WaterStress_variable
 
     def initial(self):
-        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         self.var.Ksw_Exp = np.copy(arr_zeros)
         self.var.Ksw_Sto = np.copy(arr_zeros)
         self.var.Ksw_Sen = np.copy(arr_zeros)
@@ -26,7 +26,7 @@ class WaterStress(object):
         p_lo = np.concatenate((self.var.p_lo1[None,:], self.var.p_lo2[None,:], self.var.p_lo3[None,:], self.var.p_lo4[None,:]), axis=0)
         fshape_w = np.concatenate((self.var.fshape_w1[None,:], self.var.fshape_w2[None,:], self.var.fshape_w3[None,:], self.var.fshape_w4[None,:]), axis=0)
 
-        et0 = (self.var.referencePotET[None,:,:] * np.ones((self.var.nRotation))[:,None,None])
+        et0 = (self.var.referencePotET[None,:,:] * np.ones((self.var.nCrop))[:,None,None])
         
         dims = et0.shape
         nr, nlat, nlon = dims[0], dims[1], dims[2]

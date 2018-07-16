@@ -13,8 +13,8 @@ class RootDevelopment(object):
         self.var = RootDevelopment_variable
 
     def initial(self):
-        self.var.rCor = np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
-        self.var.Zroot = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        self.var.rCor = np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))
+        self.var.Zroot = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
 
     def reset_initial_conditions(self):
         self.var.rCor[self.var.GrowingSeasonDayOne] = 1

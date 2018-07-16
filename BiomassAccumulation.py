@@ -14,7 +14,7 @@ class BiomassAccumulation(object):
         self.var = BiomassAccumulation_variable
 
     def initial(self):
-        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         self.var.B = np.copy(arr_zeros)
         self.var.B_NS = np.copy(arr_zeros)
 
@@ -28,9 +28,9 @@ class BiomassAccumulation(object):
         if np.any(self.var.GrowingSeasonDayOne):
             self.reset_initial_conditions()
             
-        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         
-        et0 = self.var.referencePotET[None,:,:] * np.ones((self.var.nRotation))[:,None,None]
+        et0 = self.var.referencePotET[None,:,:] * np.ones((self.var.nCrop))[:,None,None]
         self.var.temperature_stress_module.dynamic()
 
         fswitch = np.copy(arr_zeros)

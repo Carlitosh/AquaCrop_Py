@@ -15,11 +15,11 @@ class Drainage(object):
         self.var = Drainage_variable
 
     def initial(self):
-        self.var.FluxOut = np.zeros((self.var.nComp, self.var.nRotation, self.var.nLat, self.var.nLon))
-        self.var.DeepPerc = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        self.var.FluxOut = np.zeros((self.var.nComp, self.var.nCrop, self.var.nLat, self.var.nLon))
+        self.var.DeepPerc = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
 
     def compute_dthdt(self, th, th_s, th_fc, th_fc_adj, tau):
-        dthdt = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        dthdt = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         cond1 = th <= th_fc_adj
         dthdt[cond1] = 0
         cond2 = np.logical_not(cond1) & (th >= th_s)

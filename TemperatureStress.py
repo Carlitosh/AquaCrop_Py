@@ -13,7 +13,7 @@ class TemperatureStress(object):
         self.var = TemperatureStress_variable
 
     def initial(self):
-        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         self.var.Kst_Bio = np.copy(arr_zeros)
         self.var.Kst_PolH = np.copy(arr_zeros)
         self.var.Kst_PolC = np.copy(arr_zeros)
@@ -45,7 +45,7 @@ class TemperatureStress(object):
         """Function to calculate effects of heat stress on 
         pollination
         """
-        tmax = self.var.tmax[None,:,:] * np.ones((self.var.nRotation))[:,None,None]
+        tmax = self.var.tmax[None,:,:] * np.ones((self.var.nCrop))[:,None,None]
         cond3 = (self.var.PolHeatStress == 0)
         self.var.Kst_PolH[cond3] = 1
         cond4 = (self.var.PolHeatStress == 1)
@@ -67,7 +67,7 @@ class TemperatureStress(object):
         """Function to calculate effects of cold stress on 
         pollination
         """
-        tmin = self.var.tmin[None,:,:] * np.ones((self.var.nRotation))[:,None,None]
+        tmin = self.var.tmin[None,:,:] * np.ones((self.var.nCrop))[:,None,None]
         cond5 = (self.var.PolColdStress == 0)
         self.var.Kst_PolC[cond5] = 1
         cond6 = (self.var.PolColdStress == 1)

@@ -15,7 +15,7 @@ class CropYield(object):
 
 class AQCropYield(CropYield):
     def initial(self):
-        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         self.var.CropMature = np.copy(arr_zeros).astype(bool)
         self.var.Y = np.copy(arr_zeros)
 
@@ -36,7 +36,7 @@ class AQCropYield(CropYield):
 class FAO56CropYield(CropYield):
     
     def initial(self):
-        self.var.Y = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        self.var.Y = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
 
     def dynamic(self):
 

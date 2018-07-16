@@ -28,7 +28,7 @@ class np2netCDF():
         # Retrieve latitudes and longitudes from clone map
         self.latitudes  = np.unique(pcr.pcr2numpy(pcr.ycoordinate(cloneMap), vos.MV))[::-1]
         self.longitudes = np.unique(pcr.pcr2numpy(pcr.xcoordinate(cloneMap), vos.MV))
-        self.rotations  = np.arange(1, model.nRotation + 1)
+        self.crops  = np.arange(1, model.nCrop + 1)
         self.depths = np.arange(1, model.nComp + 1)
         
         # Let users decide what their preference regarding latitude order
@@ -85,18 +85,18 @@ class np2netCDF():
         rootgrp = nc.Dataset(ncFileName,'w',format= self.format)
 
         # Create dimensions - time is unlimited, others are fixed
-        if 'rotation' in varDims: rootgrp.createDimension('rotation',len(self.rotations))
+        if 'crop' in varDims: rootgrp.createDimension('crop',len(self.crops))
         if 'time' in varDims:     rootgrp.createDimension('time',None)
         if 'depth' in varDims:    rootgrp.createDimension('depth', len(self.depths))
         if 'lat' in varDims:      rootgrp.createDimension('lat',len(self.latitudes))
         if 'lon' in varDims:      rootgrp.createDimension('lon',len(self.longitudes))
 
         # define variables (i4 = 32-bit integer, f4 = 32-bit floating point)
-        if 'rotation' in varDims:
-            rotation = rootgrp.createVariable('rotation','i4',('rotation',))
-            rotation.standard_name = 'rotation'
-            rotation.long_name = 'rotation'
-            rotation[:] = self.rotations
+        if 'crop' in varDims:
+            crop = rootgrp.createVariable('crop','i4',('crop',))
+            crop.standard_name = 'crop'
+            crop.long_name = 'crop'
+            crop[:] = self.crops
 
         if 'time' in varDims:
             date_time = rootgrp.createVariable('time','f4',('time',))
@@ -163,7 +163,7 @@ class np2netCDF():
         if 'depth' in dims:
             rootgrp.variables[shortVarName][:,posCnt,:,:,:] = varField
         else:
-            if 'rotation' in dims:
+            if 'crop' in dims:
                 rootgrp.variables[shortVarName][:,posCnt,:,:] = varField
             else:
                 rootgrp.variables[shortVarName][posCnt,:,:] = varField

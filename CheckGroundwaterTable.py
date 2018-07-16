@@ -17,7 +17,7 @@ class CheckGroundwaterTable(object):
         self.var = CheckGroundwaterTable_variable
 
     def initial(self):
-        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         self.var.th_fc_adj = self.var.th_fc[self.var.layerIndex,:]
         self.var.WTinSoil = np.copy(arr_zeros.astype(bool))
 
@@ -31,26 +31,26 @@ class CheckGroundwaterTable(object):
             self.reset_initial_conditions()
         
         if self.var.WaterTable:
-            # Copy depth to groundwater, and add rotation dimension for convenience
-            self.var.zGW = self.var.zGW[None,:,:] * np.ones((self.var.nRotation))[:,None,None]
+            # Copy depth to groundwater, and add crop dimension for convenience
+            self.var.zGW = self.var.zGW[None,:,:] * np.ones((self.var.nCrop))[:,None,None]
 
             # get the mid point of each compartment
             zBot = np.cumsum(self.var.dz)
             zTop = zBot - self.var.dz
             zMid = (zTop + zBot) / 2
-            zMid = zMid[:,None,None,None] * np.ones((self.var.nRotation,self.var.nLat,self.var.nLon))[None,:,:,:]
+            zMid = zMid[:,None,None,None] * np.ones((self.var.nCrop,self.var.nLat,self.var.nLon))[None,:,:,:]
 
             # Check if water table is within modelled soil profile
             WTinSoilComp = (zMid >= self.var.zGW)
             self.var.th[WTinSoilComp] = self.var.th_s_comp[WTinSoilComp]
 
             # Flatten WTinSoilComp to provide an array with dimensions
-            # (nrotation, nLat, nLon), indicating rotations where the water
+            # (ncrop, nLat, nLon), indicating crops where the water
             # table is in the soil profile
             self.var.WTinSoil = np.sum(WTinSoilComp, axis=0).astype(bool)
 
             # get Xmax
-            Xmax = np.zeros((self.var.nComp,self.var.nRotation,self.var.nLat,self.var.nLon))
+            Xmax = np.zeros((self.var.nComp,self.var.nCrop,self.var.nLat,self.var.nLon))
             cond1 = self.var.th_fc_comp <= 0.1
             cond2 = self.var.th_fc_comp >= 0.3
             cond3 = np.logical_not(cond1 | cond2) # i.e. 0.1 < fc < 0.3
@@ -63,7 +63,7 @@ class CheckGroundwaterTable(object):
 
             # Index of the compartment to which each element belongs (shallow ->
             # deep, i.e. 1 is the shallowest)
-            compartment = (np.arange(1, self.var.nComp + 1)[:,None,None,None] * np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))[None,:,:,:])
+            compartment = (np.arange(1, self.var.nComp + 1)[:,None,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))[None,:,:,:])
 
             # Index of the lowest compartment (i.e. the maximum value) for which
             # cond4 is met, cast to all compartments (achieved by multiplying
@@ -93,6 +93,6 @@ class CheckGroundwaterTable(object):
             self.var.th_fc_adj[cond7] = self.var.th_fc_comp[cond7] + dFC[cond7]
 
         else:
-            self.var.zGW = np.ones((self.var.nRotation, self.var.nLat, self.var.nLon)) * -999
-            self.var.WTinSoil = np.full((self.var.nRotation, self.var.nLat, self.var.nLon), False)
+            self.var.zGW = np.ones((self.var.nCrop, self.var.nLat, self.var.nLon)) * -999
+            self.var.WTinSoil = np.full((self.var.nCrop, self.var.nLat, self.var.nLon), False)
             self.var.th_fc_adj = np.copy(self.var.th_fc_comp)

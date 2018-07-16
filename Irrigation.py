@@ -15,7 +15,7 @@ class Irrigation(object):
         self.var = Irrigation_variable
 
     def initial(self):
-        arr_zeros = np.zeros((self.var.nRotation, self.var.nLon, self.var.nLat))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLon, self.var.nLat))
         self.var.Irr = np.copy(arr_zeros)
         self.var.IrrCum = np.copy(arr_zeros)
         self.var.IrrNetCum = np.copy(arr_zeros)
@@ -51,7 +51,7 @@ class Irrigation(object):
         # target for the current growth stage and determine threshold to
         # initiate irrigation
         cond3 = (self.var.GrowingSeasonIndex & np.logical_not(cond2) & (self.var.IrrMethod == 1))
-        I,J,K = np.ogrid[:self.var.nRotation,:self.var.nLat,:self.var.nLon]
+        I,J,K = np.ogrid[:self.var.nCrop,:self.var.nLat,:self.var.nLon]
         growth_stage_index = self.var.GrowthStage.astype(int) - 1
         SMT = SMT[growth_stage_index,I,J,K]
         IrrThr = np.round(((1 - SMT / 100) * self.var.TAW), 3)
@@ -78,7 +78,7 @@ class Irrigation(object):
         self.var.Irr[cond7] = 0
 
         # If irrigation is based on a pre-defined schedule then the irrigation
-        # requirement for each rotation is read from a netCDF file. Note that if
+        # requirement for each crop is read from a netCDF file. Note that if
         # the option 'irrScheduleFileNC' is None, then nothing will be imported
         # and the irrigation requirement will be zero
         cond8 = (self.var.GrowingSeasonIndex & (self.var.IrrMethod == 3))

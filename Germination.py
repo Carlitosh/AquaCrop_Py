@@ -14,7 +14,7 @@ class Germination(object):
         self.var = Germination_variable
 
     def initial(self):
-        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         self.var.DelayedGDDs = np.copy(arr_zeros)
         self.var.DelayedCDs  = np.copy(arr_zeros)
         self.var.Germination = np.copy(arr_zeros.astype(bool))
@@ -38,32 +38,28 @@ class Germination(object):
         zgerm = np.copy(self.var.zGerm)
         zgerm[zgerm > np.sum(self.var.dz, axis=0)] = np.sum(self.var.dz, axis=0)
 
-        # Add rotation, lat, lon dimensions to dz and dzsum
-        dz = self.var.dz[:,None,None,None] * np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
-        dzsum = self.var.dzsum[:,None,None,None] * np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
-
         # Find compartments covered by top soil layer affecting germination
-        comp_sto = (np.round(dzsum * 1000) <= np.round(zgerm * 1000))  # round to nearest mm
+        comp_sto = (np.round(self.var.dzsum_xy * 1000) <= np.round(zgerm * 1000))  # round to nearest mm
 
         # Calculate water content in top soil layer
-        arr_zeros = np.zeros((self.var.nComp, self.var.nRotation, self.var.nLat, self.var.nLon))
+        arr_zeros = np.zeros((self.var.nComp, self.var.nCrop, self.var.nLat, self.var.nLon))
         Wr_comp   = np.copy(arr_zeros)
         WrFC_comp = np.copy(arr_zeros)
         WrWP_comp = np.copy(arr_zeros)
 
         # Determine fraction of compartment covered by top soil layer
-        factor = 1. - np.round(((dzsum - zgerm) / dz), 3)
+        factor = 1. - np.round(((self.var.dzsum_xy - zgerm) / self.var.dz_xy), 3)
         factor = np.clip(factor, 0, 1) * comp_sto
 
         # Increment water storages (mm)
-        Wr_comp = np.round((factor * 1000 * self.var.th * dz))
+        Wr_comp = np.round((factor * 1000 * self.var.th * self.var.dz_xy))
         Wr_comp = np.clip(Wr_comp, 0, None)
         Wr = np.sum(Wr_comp, axis=0)
 
-        WrFC_comp = np.round((factor * 1000 * self.var.th_fc_comp * dz))
+        WrFC_comp = np.round((factor * 1000 * self.var.th_fc_comp * self.var.dz_xy))
         WrFC = np.sum(WrFC_comp, axis=0)
 
-        WrWP_comp = np.round((factor * 1000 * self.var.th_wp_comp * dz))
+        WrWP_comp = np.round((factor * 1000 * self.var.th_wp_comp * self.var.dz_xy))
         WrWP = np.sum(WrWP_comp, axis=0)
 
         # Calculate proportional water content

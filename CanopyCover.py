@@ -15,7 +15,7 @@ class CanopyCover(object):
         self.var = CanopyCover_variable
 
     def initial(self):
-        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         self.var.tEarlySen = np.copy(arr_zeros)
         self.var.CC = np.copy(arr_zeros)
         self.var.CCadj = np.copy(arr_zeros)
@@ -51,7 +51,7 @@ class CanopyCover(object):
         """Function to calculate canopy cover development by end of the 
         current simulation day
         """
-        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         if Mode == 'Growth':
             CC = (CC0 * np.exp(CGC * dt))
             cond1 = (CC > (CCx / 2.))
@@ -69,7 +69,7 @@ class CanopyCover(object):
         """Function to find required time to reach CC at end of previous 
         day, given current CGC or CDC
         """
-        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         if Mode == 'CGC':
             CGCx = np.copy(arr_zeros)
             cond1 = (self.var.CCprev <= (CCx / 2))
@@ -245,7 +245,7 @@ class CanopyCover(object):
 
     def update_CC_after_senescence(self, tCCadj, dtCC):
 
-        CCsen = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        CCsen = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         cond7 = (self.var.GrowingSeasonIndex & (tCCadj >= self.var.Emergence))
 
         # Check for early canopy senescence starting/continuing due to severe
@@ -345,9 +345,9 @@ class CanopyCover(object):
             self.reset_initial_conditions()            
 
         # Preallocate some variables
-        CCxAdj = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
-        CDCadj = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
-        CCsen = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        CCxAdj = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
+        CDCadj = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
+        CCsen = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
 
         # Store initial condition
         self.var.CCprev = np.copy(self.var.CC)
@@ -355,7 +355,7 @@ class CanopyCover(object):
         # Get canopy cover growth over time
         if self.var.CalendarType == 1:
             tCC = np.copy(self.var.DAP)
-            dtCC = np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
+            dtCC = np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))
             tCCadj = self.var.DAP - self.var.DelayedCDs
         elif self.var.CalendarType == 2:
             tCC = np.copy(self.var.GDDcum)

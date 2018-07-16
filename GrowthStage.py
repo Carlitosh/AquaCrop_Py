@@ -15,7 +15,7 @@ class GrowthStage(object):
 class AquaCropGrowthStage(GrowthStage):
 
     def initial(self):
-        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         self.var.GrowthStage = np.copy(arr_zeros)
 
     def reset_initial_conditions(self):
@@ -43,7 +43,7 @@ class AquaCropGrowthStage(GrowthStage):
 class FAO56GrowthStage(GrowthStage):
 
     def initial(self):
-        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         self.var.GrowthStage = np.copy(arr_zeros)
 
     def reset_initial_conditions(self):

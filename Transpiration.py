@@ -13,15 +13,15 @@ class Transpiration(object):
         self.var = Transpiration_variable
 
     def initial(self):
-        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
-        arr_ones = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
+        arr_ones = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         self.var.Ksa_Aer = np.copy(arr_zeros)
         self.var.TrPot0 = np.copy(arr_zeros)
         self.var.TrPot_NS = np.copy(arr_zeros)
         self.var.TrAct = np.copy(arr_zeros)
         self.var.TrAct0 = np.copy(arr_zeros)
         self.var.AerDays = np.copy(arr_zeros)
-        self.var.AerDaysComp  = np.zeros((self.var.nComp, self.var.nRotation, self.var.nLat, self.var.nLon))
+        self.var.AerDaysComp  = np.zeros((self.var.nComp, self.var.nCrop, self.var.nLat, self.var.nLon))
         self.var.Tpot = np.copy(arr_zeros)        
         self.var.TrRatio = np.copy(arr_ones)
         self.var.DaySubmerged = np.copy(arr_zeros)
@@ -42,7 +42,7 @@ class Transpiration(object):
         cond1 = (self.var.thRZ_Act > self.var.thRZ_Aer)
 
         # Calculate aeration stress coefficient
-        self.var.Ksa_Aer = np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
+        self.var.Ksa_Aer = np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))
         cond11 = (cond1 & (self.var.AerDays < self.var.LagAer))
         x1 = (self.var.thRZ_Sat - self.var.thRZ_Act)
         x2 = (self.var.thRZ_Sat - self.var.thRZ_Aer)
@@ -100,7 +100,7 @@ class Transpiration(object):
             self.reset_initial_conditions()
 
         # Add rotation dimension to ET0
-        et0 = self.var.referencePotET[None,:,:] * np.ones((self.var.nRotation))[:,None,None]
+        et0 = self.var.referencePotET[None,:,:] * np.ones((self.var.nCrop))[:,None,None]
         
         # potential transpiration
         # #######################
@@ -109,7 +109,7 @@ class Transpiration(object):
         Kcb = np.copy(self.var.Kcb)
         cond2 = (self.var.GrowingSeasonIndex & (self.var.AgeDays_NS > 5))
         Kcb[cond2] = (self.var.Kcb - ((self.var.AgeDays_NS - 5) * (self.var.fage / 100)) * self.var.CCxW_NS)[cond2]
-        conc = self.var.conc[None,:,:] * np.ones((self.var.nRotation))[:,None,None]
+        conc = self.var.conc[None,:,:] * np.ones((self.var.nCrop))[:,None,None]
         co2_mult = (1 - 0.05 * ((conc -self.var.RefConc) / (550 - self.var.RefConc)))
         cond4 = (self.var.GrowingSeasonIndex & (conc > self.var.RefConc))
         Kcb[cond4] *= co2_mult[cond4]
@@ -132,7 +132,7 @@ class Transpiration(object):
         # ###########################
         
         # Potential transpiration counter
-        TrPot = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        TrPot = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         self.surface_transpiration(TrPot)
         
         # Update potential root zone transpiration for water stress
@@ -147,12 +147,12 @@ class Transpiration(object):
         # Maximum sink term
         # #################
 
-        SxComp = np.zeros((self.var.nComp, self.var.nRotation, self.var.nLat, self.var.nLon))
+        SxComp = np.zeros((self.var.nComp, self.var.nCrop, self.var.nLat, self.var.nLon))
 
         rootdepth = np.maximum(self.var.Zmin, self.var.Zroot)
         rootdepth = np.round(rootdepth * 100) / 100
-        dz = self.var.dz[:,None,None,None] * np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))[None,:,:,:]
-        dzsum = self.var.dzsum[:,None,None,None] * np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))[None,:,:,:]
+        dz = self.var.dz[:,None,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))[None,:,:,:]
+        dzsum = self.var.dzsum[:,None,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))[None,:,:,:]
         comp_sto = (np.round((dzsum - dz) * 1000) < np.round(rootdepth * 1000))
 
         # Fraction of compartment covered by root zone (zero in compartments
@@ -195,7 +195,7 @@ class Transpiration(object):
 
                 # Determine TAW for compartment
                 thTAW = self.var.th_fc_comp[comp,:] - self.var.th_wp_comp[comp,:]
-                p_up_sto = np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
+                p_up_sto = np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))
                 cond141 = (cond14 & (self.var.ETadj == 1))
                 p_up_sto[cond141] = (self.var.p_up2 + (0.04 * (5. - et0)) * (np.log10(10. - 9. * self.var.p_up2)))[cond141]
 
@@ -204,7 +204,7 @@ class Transpiration(object):
                 thCrit = (self.var.th_fc_comp[comp,:] - (thTAW * p_up_sto))
 
                 # Check for soil water stress
-                KsComp = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+                KsComp = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
 
                 # No stress
                 cond142 = (cond14 & (self.var.th[comp,:] >= thCrit))
@@ -224,14 +224,14 @@ class Transpiration(object):
                 KsComp[(cond14 & np.logical_not(cond142 | cond143))] = 0
 
                 # Adjust compartment stress factor for aeration stress
-                AerComp = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+                AerComp = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
 
                 # Full aeration stress - no transpiration possible from
                 # compartment
                 cond144 = (cond14 & (self.var.DaySubmerged >= self.var.LagAer))
                 cond145 = (cond14 & (self.var.th[comp,:] > (self.var.th_s_comp[comp,:] - (self.var.Aer / 100))) & np.logical_not(cond144))
                 self.var.AerDaysComp[comp,:][cond145] += 1
-                fAer = np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
+                fAer = np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))
                 cond1451 = (cond145 & (self.var.AerDaysComp[comp,:] >= self.var.LagAer))
                 self.var.AerDaysComp[comp,:][cond1451] = self.var.LagAer[cond1451]
                 fAer[cond1451] = 0
@@ -252,7 +252,7 @@ class Transpiration(object):
 
                 # Extract water
                 ThToExtract = ((ToExtract / 1000) / dz[comp])
-                Sink = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+                Sink = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
 
                 # Don't reduce compartment sink for stomatal water stress if in
                 # net irrigation mode. Stress only occurs due to deficient

@@ -18,14 +18,14 @@ class Evapotranspiration(object):
 class AquaCropEvapotranspiration(Evapotranspiration):
     
     def initial(self):
-        self.var.ETpot = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        self.var.ETpot = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
 
     def dynamic(self):
         self.var.ETpot = self.var.Epot + self.var.Tpot
 
 class FAO56Evapotranspiration(Evapotranspiration):
     def initial(self):
-        self.var.ETpot = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        self.var.ETpot = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
 
     def dynamic(self):
         """Update Evapotranspiration for current day"""
@@ -40,7 +40,7 @@ class FAO56Evapotranspiration(Evapotranspiration):
         cond2 = self.var.GrowthStage == 2
         cond3 = self.var.GrowthStage == 3
         cond4 = self.var.GrowthStage == 4
-        Kc = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        Kc = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         Kc[cond1] = self.var.Kc_ini[cond1]
         ini_to_mid_gradient = (self.var.Kc_mid - self.var.Kc_ini) / self.var.L_dev_day
         Kc[cond2] = (self.var.Kc_ini + (ini_to_mid_gradient * (self.var.DAP - L_day[0,:])))[cond2]
@@ -50,7 +50,7 @@ class FAO56Evapotranspiration(Evapotranspiration):
         Kc[np.logical_not(self.var.GrowingSeasonIndex)] = 0.5  # Global Crop Water Model
 
         # Calculate maximum crop evapotranspiration
-        self.var.ETpot = np.broadcast_to(self.var.referencePotET, (self.var.nRotation, self.var.nLat, self.var.nLon)) * Kc
+        self.var.ETpot = np.broadcast_to(self.var.referencePotET, (self.var.nCrop, self.var.nLat, self.var.nLon)) * Kc
 
         # Compute actual evapotranspiration
         p = self.var.p_std + 0.04 * (5 - self.var.ETpot)  # Equation 31, root zone depletion factor

@@ -13,8 +13,8 @@ class HarvestIndex(object):
         self.var = HarvestIndex_variable
 
     def initial(self):
-        arr_ones = np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
-        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        arr_ones = np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         self.var.Fpre = np.copy(arr_ones)
         self.var.Fpost = np.copy(arr_ones)
         self.var.fpost_dwn = np.copy(arr_ones)
@@ -44,7 +44,7 @@ class HarvestIndex(object):
         """
         # dims = self.var.GrowingSeasonIndex.shape
         # nr, nlat, nlon = dims[0], dims[1], dims[2]
-        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         FracFlow = np.copy(arr_zeros)
         t1 = np.copy(arr_zeros)
         t2 = np.copy(arr_zeros)
@@ -77,7 +77,7 @@ class HarvestIndex(object):
         FracFlow[cond13] = F[cond13]
 
         # Calculate pollination adjustment for current day
-        dFpol = arr_zeros##np.zeros((self.nRotation, self.nLat, self.nLon))
+        dFpol = arr_zeros##np.zeros((self.nCrop, self.nLat, self.nLon))
         cond2 = (cond0 & (self.var.CC >= self.var.CCmin))
         Ks = np.minimum(self.var.Ksw_Pol, self.var.Kst_PolC, self.var.Kst_PolH)
         dFpol[cond2] = (Ks * FracFlow * (1 + (self.var.exc / 100)))[cond2]
@@ -125,7 +125,7 @@ class HarvestIndex(object):
         """Function to calculate adjustment to harvest index for 
         post-anthesis water stress
         """
-        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         cond0 = (self.var.GrowingSeasonIndex & self.var.YieldForm & (self.var.HIt > 0) & ((self.var.CropType == 2) | (self.var.CropType == 3)))
 
         # 1 Adjustment for leaf expansion
@@ -168,7 +168,7 @@ class HarvestIndex(object):
         # Calculate harvest index
         # #######################
         
-        HIadj = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        HIadj = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         cond1 = (self.var.GrowingSeasonIndex & self.var.YieldForm & (self.var.HIt >= 0))
 
         # Root/tuber or fruit/grain crops
@@ -178,7 +178,7 @@ class HarvestIndex(object):
         self.HI_adj_pre_anthesis()
         
         # Adjustment only for fruit/grain crops
-        HImax = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))  # TODO: is this in the right place?
+        HImax = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))  # TODO: is this in the right place?
         cond112 = (cond11 & (self.var.CropType == 3))
         Ks = np.minimum(self.var.Ksw_Pol, self.var.Kst_PolC, self.var.Kst_PolH)
         self.HI_adj_pollination()
@@ -191,7 +191,7 @@ class HarvestIndex(object):
 
         # Limit HI to maximum allowable increase due to pre- and post-anthesis
         # water stress combinations
-        HImult = np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
+        HImult = np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))
         HImult[cond11] = (self.var.Fpre * self.var.Fpost)[cond11]
         cond115 = (cond11 & (HImult > (1 + (self.var.dHI0 / 100))))
         HImult[cond115] = (1 + (self.var.dHI0 / 100))[cond115]

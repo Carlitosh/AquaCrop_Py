@@ -26,8 +26,10 @@ class SoilAndTopoParameters(object):
         self.var.dzsum = np.cumsum(self.var.dz)
 
         # for convenience
-        self.var.dz_xy = self.var.dz[:,None,None,None] * np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
-        self.var.dzsum_xy = self.var.dzsum[:,None,None,None] * np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
+        self.var.dz_xy = self.var.dz[:,None,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))
+        self.var.dzsum_xy = self.var.dzsum[:,None,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))
+        # self.var.dz_xy = self.var.dz[:,None,None,None] * np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
+        # self.var.dzsum_xy = self.var.dzsum[:,None,None,None] * np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
         
         # read parameters
         self.var.soilAndTopoFileNC = self.var._configuration.soilOptions['soilAndTopoNC']
@@ -48,7 +50,7 @@ class SoilAndTopoParameters(object):
             d = vos.netcdf2PCRobjCloneWithoutTime(self.var.soilAndTopoFileNC,
                                                   var,
                                                   cloneMapFileName=self.var.cloneMap)
-            vars(self.var)[var] = d
+            vars(self.var)[var] = d[None,:,:] * np.ones((self.var.nCrop))[:,None,None]
         
         # map layers to compartments - the result is a 1D array with length
         # equal to nComp where the value of each element is the index of the
@@ -92,8 +94,10 @@ class SoilAndTopoParameters(object):
     def compute_capillary_rise_parameters(self):
         # Function adapted from AOS_ComputeVariables.m, lines 60-127
 
-        self.var.aCR = np.zeros((self.var.nLayer, self.var.nRotation, self.var.nLat, self.var.nLon))
-        self.var.bCR = np.zeros((self.var.nLayer, self.var.nRotation, self.var.nLat, self.var.nLon))
+        self.var.aCR = np.zeros((self.var.nLayer, self.var.nCrop, self.var.nLat, self.var.nLon))
+        self.var.bCR = np.zeros((self.var.nLayer, self.var.nCrop, self.var.nLat, self.var.nLon))
+        # self.var.aCR = np.zeros((self.var.nLayer, self.var.nRotation, self.var.nLat, self.var.nLon))
+        # self.var.bCR = np.zeros((self.var.nLayer, self.var.nRotation, self.var.nLat, self.var.nLon))
 
         # "Sandy soil class"
         cond1 = (self.var.th_wp >= 0.04) & (self.var.th_wp <= 0.15) & (self.var.th_fc >= 0.09) & (self.var.th_fc <= 0.28) & (self.var.th_s >= 0.32) & (self.var.th_s <= 0.51)

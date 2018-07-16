@@ -86,8 +86,8 @@ class AquaCropInitialCondition(InitialCondition):
             cond1 = np.broadcast_to(cond1, self.var.th.shape)
             th = np.copy(self.var.th)
             th[np.logical_not(cond1)] = np.nan
-            th_ave = np.nanmean(th, axis=1)  # average along rotation|crop dimension
-            th_ave = th_ave[:,None,:,:] * np.ones((self.var.nRotation))[None,:,None,None]
+            th_ave = np.nanmean(th, axis=1)  # average along crop dimension
+            th_ave = th_ave[:,None,:,:] * np.ones((self.var.nCrop))[None,:,None,None]
             cond2 = np.broadcast_to(self.var.GrowingSeasonDayOne, self.var.th.shape)
             self.var.th[cond2] = th_ave[cond2]
             
@@ -95,8 +95,8 @@ class FAO56InitialCondition(InitialCondition):
     
     def initial(self):
 
-        arr_zeros = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
-        arr_ones = np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
+        arr_ones = np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))
 
         # # Groundwater
         # self.var.WTinSoil = np.copy(arr_zeros.astype(bool))
@@ -107,7 +107,7 @@ class FAO56InitialCondition(InitialCondition):
 
         # Transpiration/Soil evaporation (TODO)
         # self.var.AerDays = np.copy(arr_zeros)
-        # self.var.AerDaysComp  = np.zeros((self.var.nComp, self.var.nRotation, self.var.nLat, self.var.nLon))
+        # self.var.AerDaysComp  = np.zeros((self.var.nComp, self.var.nCrop, self.var.nLat, self.var.nLon))
         # self.var.Tpot = np.copy(arr_zeros)        
         # self.var.TrRatio      = np.copy(arr_ones)
         # self.var.ETpotCum = np.copy(arr_zeros)
