@@ -259,7 +259,7 @@ class FAO56InitialCondition(InitialCondition):
 
     def dynamic(self):
 
-        # GrowingSeasonDayOne is a logical array showing rotations for which
+        # GrowingSeasonDayOne is a logical array showing crops for which
         # today is the start of a growing season
         self.var.GrowingSeasonDayOne = self.var._modelTime.doy == self.var.PlantingDate
         self.reset_initial_conditions()

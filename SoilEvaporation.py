@@ -176,7 +176,7 @@ class SoilEvaporation(object):
             
     def dynamic(self):
         
-        # Add rotation dimension to self.var.vars
+        # Add crop dimension to self.var.vars
         et0 = self.var.referencePotET[None,:,:] * np.ones((self.var.nCrop))[:,None,None]
         prec = self.var.precipitation[None,:,:] * np.ones((self.var.nCrop))[:,None,None]
 

@@ -15,7 +15,7 @@ class RainfallPartition(object):
         self.var = RainfallPartition_variable
 
     def initial(self):
-        arr_zeros = np.zeros((self.var.nCrop, self.var.nLon, self.var.nLat))        
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))        
         self.var.Runoff = np.copy(arr_zeros)
         self.var.Infl = np.copy(arr_zeros)
         
@@ -25,8 +25,6 @@ class RainfallPartition(object):
         """
         # Add crop dimension to precipitation
         P = self.var.precipitation[None,:,:] * np.ones((self.var.nCrop))[:,None,None]
-
-        arr_ones = np.ones((self.var.nCrop, self.var.nLon, self.var.nLat))[None,:,:,:]
         zcn = self.var.zCN[None,:,:,:] * np.ones((self.var.nComp))[:,None,None,None]
 
         cond1 = ((self.var.Bunds == 0) | (self.var.zBund < 0.001))
@@ -42,11 +40,12 @@ class RainfallPartition(object):
         comp_sto[cond111] = True
 
         # Calulcate weighting factors by compartment
-        self.var.dzsum_xy[self.var.dzsum_xy > zcn] = zcn[self.var.dzsum_xy > zcn]
-        wx = (1.016 * (1 - np.exp(-4.16 * (self.var.dzsum_xy / zcn))))
+        dzsum = np.copy(self.var.dzsum_xy)
+        dzsum[dzsum > zcn] = zcn[dzsum > zcn]
+        wx = (1.016 * (1 - np.exp(-4.16 * (dzsum / zcn))))
 
         # xx is wx for the overlying layer, with the top layer equal to zero
-        xx = np.concatenate((np.zeros((1, self.var.nCrop, self.var.nLon, self.var.nLat)), wx[:-1,:]), axis=0)
+        xx = np.concatenate((np.zeros((1, self.var.nCrop, self.var.nLat, self.var.nLon)), wx[:-1,:]), axis=0)
         wrel = np.clip((wx - xx), 0, 1)
 
         # Calculate relative wetness of topsoil

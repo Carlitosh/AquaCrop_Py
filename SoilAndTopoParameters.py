@@ -28,8 +28,6 @@ class SoilAndTopoParameters(object):
         # for convenience
         self.var.dz_xy = self.var.dz[:,None,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))
         self.var.dzsum_xy = self.var.dzsum[:,None,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))
-        # self.var.dz_xy = self.var.dz[:,None,None,None] * np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
-        # self.var.dzsum_xy = self.var.dzsum[:,None,None,None] * np.ones((self.var.nRotation, self.var.nLat, self.var.nLon))
         
         # read parameters
         self.var.soilAndTopoFileNC = self.var._configuration.soilOptions['soilAndTopoNC']
@@ -85,7 +83,7 @@ class SoilAndTopoParameters(object):
         self.var.CNbot = np.round(1.4 * (np.exp(-14 * np.log(10))) + (0.507 * self.var.CN) - (0.00374 * self.var.CN ** 2) + (0.0000867 * self.var.CN ** 3))
         self.var.CNtop = np.round(5.6 * (np.exp(-14 * np.log(10))) + (2.33 * self.var.CN) - (0.0209 * self.var.CN ** 2) + (0.000076 * self.var.CN ** 3))
 
-        # transform certain soil properties to (ncomp, nrotation, nlat, nlon)
+        # transform certain soil properties to (ncomp, ncrop, nlat, nlon)
         soil_params = ['th_s','th_fc','th_wp','th_dry','ksat','tau','fshape_cr']
         for nm in soil_params:
             newnm = nm + '_comp'
@@ -96,8 +94,6 @@ class SoilAndTopoParameters(object):
 
         self.var.aCR = np.zeros((self.var.nLayer, self.var.nCrop, self.var.nLat, self.var.nLon))
         self.var.bCR = np.zeros((self.var.nLayer, self.var.nCrop, self.var.nLat, self.var.nLon))
-        # self.var.aCR = np.zeros((self.var.nLayer, self.var.nRotation, self.var.nLat, self.var.nLon))
-        # self.var.bCR = np.zeros((self.var.nLayer, self.var.nRotation, self.var.nLat, self.var.nLon))
 
         # "Sandy soil class"
         cond1 = (self.var.th_wp >= 0.04) & (self.var.th_wp <= 0.15) & (self.var.th_fc >= 0.09) & (self.var.th_fc <= 0.28) & (self.var.th_s >= 0.32) & (self.var.th_s <= 0.51)

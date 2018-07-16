@@ -99,7 +99,7 @@ class Transpiration(object):
         if np.any(self.var.GrowingSeasonDayOne):
             self.reset_initial_conditions()
 
-        # Add rotation dimension to ET0
+        # Add crop dimension to ET0
         et0 = self.var.referencePotET[None,:,:] * np.ones((self.var.nCrop))[:,None,None]
         
         # potential transpiration
