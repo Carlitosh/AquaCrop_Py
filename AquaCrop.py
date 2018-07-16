@@ -59,7 +59,7 @@ class AquaCrop(Model):
         self.irrigation_mgmt_parameters_module = IrrigationMgmtParameters(self)
         self.soil_parameters_module = SoilAndTopoParameters(self)
         
-        self.initial_condition_module = AquaCropInitialCondition(self)
+        self.initial_condition_module = InitialCondition(self)
         self.gdd_module = GrowingDegreeDay(self)
         
         self.check_groundwater_table_module = CheckGroundwaterTable(self)

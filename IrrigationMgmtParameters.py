@@ -39,6 +39,3 @@ class IrrigationMgmtParameters(object):
 
     def dynamic(self):
         pass
-        # I,J,K = np.ogrid[:self.var.nRotation,:self.var.nLat,:self.var.nLon]
-        # for var in self.var.parameter_names:
-        #     vars(self.var)[var] = getattr(self.var, '_' + var)[self.var.CropIndex,I,J,K]

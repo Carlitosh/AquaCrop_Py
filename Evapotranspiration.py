@@ -25,7 +25,10 @@ class AquaCropEvapotranspiration(Evapotranspiration):
 
 class FAO56Evapotranspiration(Evapotranspiration):
     def initial(self):
-        self.var.ETpot = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
+        self.var.ETpot = np.copy(arr_zeros)
+        self.var.ETpotCum = np.copy(arr_zeros)
+        self.var.ETactCum = np.copy(arr_zeros)
 
     def dynamic(self):
         """Update Evapotranspiration for current day"""
@@ -75,7 +78,3 @@ class FAO56Evapotranspiration(Evapotranspiration):
         # Accumulate ETpot and ETact
         self.var.ETpotCum += self.var.ETpot
         self.var.ETactCum += self.var.ETact
-
-        # print self.var.precipitation[0,0]
-        # print self.var.ETpotCum[0,0,0]
-        # print self.var.ETactCum[0,0,0]

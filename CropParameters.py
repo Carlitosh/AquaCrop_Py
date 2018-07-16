@@ -590,6 +590,8 @@ class AQCropParameters(CropParameters):
 class FAO56CropParameters(CropParameters):
 
     def initial(self):
+
+        super(FAO56CropParameters, self).initial()
         
         # Declare variables
         self.var.crop_parameters_to_read = [
@@ -605,8 +607,8 @@ class FAO56CropParameters(CropParameters):
         self.var.crop_parameter_names = self.var.crop_parameters_to_read + self.var.crop_parameters_to_compute
         arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         for param in self.var.crop_parameter_names:
-            nm = '_' + param
-            vars(self.var)[nm] = arr_zeros
+            # nm = '_' + param
+            vars(self.var)[param] = arr_zeros
 
         # potential yield
         self.var.crop_parameter_names += ['Yx']
@@ -615,16 +617,20 @@ class FAO56CropParameters(CropParameters):
         if 'PotYieldVariableName' in self.var._configuration.cropOptions:
             self.var.PotYieldVarName = self.var._configuration.cropOptions['PotYieldVariableName']
         # self.var.co2_set_per_year  = False
+
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
+        self.var.CropDead = arr_zeros.astype(bool)
+        self.var.CropMature = arr_zeros.astype(bool)
         
-        self.read()
-        self.read_crop_sequence()
+        self.read() 
+        # self.read_crop_sequence()
 
     def compute_growth_stage_length(self):
-        nday = self.var._HarvestDateAdj - self.var._PlantingDateAdj
-        self.var._L_ini_day = np.round(self.var._L_ini * nday)
-        self.var._L_dev_day = np.round(self.var._L_dev * nday)
-        self.var._L_mid_day = np.round(self.var._L_mid * nday)
-        self.var._L_late_day = np.round(self.var._L_late * nday)  # TODO
+        nday = self.var.HarvestDateAdj - self.var.PlantingDateAdj
+        self.var.L_ini_day = np.round(self.var.L_ini * nday)
+        self.var.L_dev_day = np.round(self.var.L_dev * nday)
+        self.var.L_mid_day = np.round(self.var.L_mid * nday)
+        self.var.L_late_day = np.round(self.var.L_late * nday)  # TODO
 
     def read_potential_crop_yield(self):
         date = '%04i-%02i-%02i' %(self.var._modelTime.year, 1, 1)
@@ -640,4 +646,4 @@ class FAO56CropParameters(CropParameters):
         self.compute_growth_stage_length()
         self.update_growing_season()
         self.read_potential_crop_yield()
-        self.select_crop_parameters()
+        # self.select_crop_parameters()
