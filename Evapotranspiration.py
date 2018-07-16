@@ -15,7 +15,7 @@ class Evapotranspiration(object):
     def __init__(self, Evapotranspiration_variable):
         self.var = Evapotranspiration_variable
 
-class AquaCropEvapotranspiration(Evapotranspiration):
+class AQEvapotranspiration(Evapotranspiration):
     
     def initial(self):
         self.var.ETpot = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
@@ -56,7 +56,9 @@ class FAO56Evapotranspiration(Evapotranspiration):
         self.var.ETpot = np.broadcast_to(self.var.referencePotET, (self.var.nCrop, self.var.nLat, self.var.nLon)) * Kc
 
         # Compute actual evapotranspiration
-        p = self.var.p_std + 0.04 * (5 - self.var.ETpot)  # Equation 31, root zone depletion factor
+        p_std = np.copy(self.var.p_std)
+        p_std[np.logical_not(self.var.GrowingSeasonIndex)] = 0.55  # Global Crop Water Model
+        p = p_std + 0.04 * (5 - self.var.ETpot)  # Equation 31, root zone depletion factor
         Ks = (self.var.TAW - self.var.Dr) / ((1 - p) * self.var.TAW)  # Equation 30, water stress coefficient
         Ks = np.clip(Ks, 0, 1)
         self.var.ETact = self.var.ETpot * Ks  # Equation 29

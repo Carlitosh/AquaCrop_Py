@@ -89,4 +89,3 @@ class InitialCondition(object):
             th_ave = th_ave[:,None,:,:] * np.ones((self.var.nCrop))[None,:,None,None]
             cond2 = np.broadcast_to(self.var.GrowingSeasonDayOne, self.var.th.shape)
             self.var.th[cond2] = th_ave[cond2]
-            

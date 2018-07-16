@@ -78,13 +78,13 @@ class RootZoneWater(object):
         self.var.Dr = np.clip((WrFC - Wr), 0, None)
         self.var.Wr = np.copy(Wr)
 
-class AquaCropRootZoneWater(RootZoneWater):
+class AQRootZoneWater(RootZoneWater):
     def initial(self):
-        super(AquaCropRootZoneWater, self).initial()
+        super(AQRootZoneWater, self).initial()
         self.var.thRZ_Aer = np.zeros_like(self.var.thRZ_Act)
 
     def dynamic(self):
-        super(AquaCropRootZoneWater, self).dynamic()
+        super(AQRootZoneWater, self).dynamic()
         WrAer_comp = self.var.RootFact * 1000 * (self.var.th_s_comp - (self.var.Aer / 100)) * self.var.dz_xy
         WrAer = np.sum(WrAer_comp, axis=0)
         self.var.thRZ_Aer = np.divide(WrAer, self.var.RootDepth * 1000, out=np.zeros_like(WrAer), where=self.var.RootDepth!=0)

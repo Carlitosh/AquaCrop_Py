@@ -70,7 +70,7 @@ class FAO56(Model):
         self.capillary_rise_module = CapillaryRise(self)
         # self.germination_module = Germination(self)
         self.growth_stage_module = FAO56GrowthStage(self)
-        self.root_development_module = RootDevelopment(self)
+        self.root_development_module = FAO56RootDevelopment(self)
         # self.water_stress_module = WaterStress(self)
         # self.canopy_cover_module = CanopyCover(self)
         # self.soil_evaporation_module = SoilEvaporation(self)

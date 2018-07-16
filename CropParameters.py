@@ -333,8 +333,6 @@ class AQCropParameters(CropParameters):
             # broadcast to crop dimension
             tmax = tmax[:,None,:,:] * np.ones((self.var.PlantingDate.shape[0]))[None,:,None,None]
             tmin = tmin[:,None,:,:] * np.ones((self.var.PlantingDate.shape[0]))[None,:,None,None]
-            # tmax = tmax[:,None,:,:] * np.ones((self.var.nCrop))[None,:,None,None]
-            # tmin = tmin[:,None,:,:] * np.ones((self.var.nCrop))[None,:,None,None]
 
             # for convenience
             tupp = self.var.Tupp[None,:,:,:] * np.ones((tmin.shape[0]))[:,None,None,None]
@@ -585,7 +583,6 @@ class AQCropParameters(CropParameters):
         self.adjust_planting_and_harvesting_date()
         self.update_growing_season()
         self.update_crop_parameters()
-        # self.select_crop_parameters()
         
 class FAO56CropParameters(CropParameters):
 
@@ -596,7 +593,7 @@ class FAO56CropParameters(CropParameters):
         # Declare variables
         self.var.crop_parameters_to_read = [
             'PlantingDate','HarvestDate',
-            'L_ini','L_dev','L_mid','L_late','Kc_ini','Kc_mid','Kc_end','p_std',#'Z',
+            'L_ini','L_dev','L_mid','L_late','Kc_ini','Kc_mid','Kc_end','p_std',
             'Zmin','Zmax','Ky']
 
         self.var.crop_parameters_to_compute = [
@@ -607,7 +604,6 @@ class FAO56CropParameters(CropParameters):
         self.var.crop_parameter_names = self.var.crop_parameters_to_read + self.var.crop_parameters_to_compute
         arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         for param in self.var.crop_parameter_names:
-            # nm = '_' + param
             vars(self.var)[param] = arr_zeros
 
         # potential yield
@@ -623,7 +619,6 @@ class FAO56CropParameters(CropParameters):
         self.var.CropMature = arr_zeros.astype(bool)
         
         self.read() 
-        # self.read_crop_sequence()
 
     def compute_growth_stage_length(self):
         nday = self.var.HarvestDateAdj - self.var.PlantingDateAdj
@@ -640,10 +635,9 @@ class FAO56CropParameters(CropParameters):
                                               useDoy = None,
                                               cloneMapFileName = self.var.cloneMap,
                                               LatitudeLongitude = True)
-        
+
     def dynamic(self):
         self.adjust_planting_and_harvesting_date()
         self.compute_growth_stage_length()
         self.update_growing_season()
         self.read_potential_crop_yield()
-        # self.select_crop_parameters()

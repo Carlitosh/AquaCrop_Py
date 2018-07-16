@@ -12,6 +12,7 @@ class RootDevelopment(object):
     def __init__(self, RootDevelopment_variable):
         self.var = RootDevelopment_variable
 
+class AQRootDevelopment(RootDevelopment):
     def initial(self):
         self.var.rCor = np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))
         self.var.Zroot = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
@@ -108,3 +109,11 @@ class RootDevelopment(object):
 
         # No root system outside of growing season
         self.var.Zroot[np.logical_not(self.var.GrowingSeasonIndex)] = 0
+
+class FAO56RootDevelopment(RootDevelopment):
+    def initial(self):
+        self.var.Zroot = self.var.Zmin
+
+    def dynamic(self):
+        self.var.Zroot[self.var.GrowingSeasonIndex] = self.var.Zmin[self.var.GrowingSeasonIndex]
+        self.var.Zroot[np.logical_not(self.var.GrowingSeasonIndex)] = 1.  # Global Crop Water Model

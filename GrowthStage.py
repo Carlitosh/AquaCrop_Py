@@ -12,7 +12,7 @@ class GrowthStage(object):
     def __init__(self, GrowthStage_variable):
         self.var = GrowthStage_variable
 
-class AquaCropGrowthStage(GrowthStage):
+class AQGrowthStage(GrowthStage):
 
     def initial(self):
         arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
