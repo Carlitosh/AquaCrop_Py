@@ -71,7 +71,8 @@ class CropParameters(object):
         hd_arr = (np.datetime64(str(datetime.datetime(self.var._modelTime.year, 1, 1))) + np.array(self.var._HarvestDateAdj - 1, dtype='timedelta64[D]'))
         cond3 = hd_arr <= np.datetime64(str(self.var._modelTime.endTime))        
         self.var.GrowingSeason = ((cond1 & cond3))
-
+        # TODO: when rotation dimension is removed, compute GrowingSeasonDayOne here, and delete GrowingSeason class
+        
     def select_crop_parameters(self):
         """Function to select parameters for currently grown crops"""
         

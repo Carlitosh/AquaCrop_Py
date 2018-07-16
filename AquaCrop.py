@@ -23,6 +23,8 @@ from Drainage import *
 from FieldMgmtParameters import *
 from Germination import *
 from Groundwater import *
+from GrowingDegreeDay import *
+from GrowingSeason import *
 from GrowthStage import *
 from HarvestIndex import *
 from HIrefCurrentDay import *
@@ -57,7 +59,11 @@ class AquaCrop(Model):
         self.field_mgmt_parameters_module = FieldMgmtParameters(self)
         self.irrigation_mgmt_parameters_module = IrrigationMgmtParameters(self)
         self.soil_parameters_module = SoilAndTopoParameters(self)
+        
         self.initial_condition_module = AquaCropInitialCondition(self)
+        self.growing_season_module = GrowingSeason(self)
+        self.gdd_module = GrowingDegreeDay(self)
+        
         self.check_groundwater_table_module = CheckGroundwaterTable(self)
         self.pre_irrigation_module = PreIrrigation(self)
         self.drainage_module = Drainage(self)
@@ -89,7 +95,12 @@ class AquaCrop(Model):
         self.field_mgmt_parameters_module.initial()
         self.irrigation_mgmt_parameters_module.initial()
         self.soil_parameters_module.initial()
+
+        # self.initial_condition_module.initial()
+        self.growing_season_module.initial()
+        self.gdd_module.initial()
         self.initial_condition_module.initial()
+        
         self.check_groundwater_table_module.initial()
         self.pre_irrigation_module.initial()
         self.drainage_module.initial()
@@ -126,6 +137,11 @@ class AquaCrop(Model):
         # self.field_mgmt_parameters_module.dynamic()
         # self.soil_parameters_module.dynamic()
         
+        # self.initial_condition_module.dynamic()
+        self.growing_season_module.dynamic()
+        self.gdd_module.dynamic()
+        self.growth_stage_module.dynamic()
+
         self.initial_condition_module.dynamic()
 
         self.check_groundwater_table_module.dynamic()
