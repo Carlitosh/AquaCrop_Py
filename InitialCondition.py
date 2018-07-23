@@ -51,7 +51,9 @@ class InitialCondition(object):
         #     self.th = th[self.soil_pars.layerIndex,:]
         # elif init_cond_interp_method is 'Depth':
         #     pass                # TODO
-        self.var.th = th
+        th = th[self.var.layerIndex,:,:]
+        th = np.broadcast_to(th, (self.var.nCrop, self.var.nComp, self.var.nLat, self.var.nLon))
+        self.var.th = np.copy(th)        
 
     # def getState(self):
     #     result = {}
@@ -82,10 +84,10 @@ class InitialCondition(object):
         # condition
         if np.any(self.var.GrowingSeasonDayOne):
             cond1 = np.logical_not(self.var.GrowingSeasonIndex) | self.var.GrowingSeasonDayOne
-            cond1 = np.broadcast_to(cond1, self.var.th.shape)
+            cond1 = np.broadcast_to(cond1[:,None,:,:], self.var.th.shape)
             th = np.copy(self.var.th)
             th[np.logical_not(cond1)] = np.nan
-            th_ave = np.nanmean(th, axis=1)  # average along crop dimension
-            th_ave = th_ave[:,None,:,:] * np.ones((self.var.nCrop))[None,:,None,None]
-            cond2 = np.broadcast_to(self.var.GrowingSeasonDayOne, self.var.th.shape)
+            th_ave = np.nanmean(th, axis=0)  # average along crop dimension
+            th_ave = th_ave[None,:,:,:] * np.ones((self.var.nCrop))[:,None,None,None]
+            cond2 = np.broadcast_to(self.var.GrowingSeasonDayOne[:,None,:,:], self.var.th.shape)
             self.var.th[cond2] = th_ave[cond2]

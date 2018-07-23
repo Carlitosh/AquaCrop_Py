@@ -30,10 +30,10 @@ class Infiltration(object):
         if np.any(self.var.GrowingSeasonDayOne):
             self.reset_initial_conditions()
             
-        dims = self.var.ksat_comp.shape
-        nc, nr, nlon, nlat = dims[0], dims[1], dims[2], dims[3]
-        ToStore = np.zeros((nr, nlat, nlon))
-        RunoffIni = np.zeros((nr, nlat, nlon))
+        # dims = self.var.ksat_comp.shape
+        # nc, nr, nlon, nlat = dims[0], dims[1], dims[2], dims[3]
+        ToStore = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
+        RunoffIni = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         InflTot = self.var.Infl + self.var.SurfaceStorage
         thnew = np.copy(self.var.th)
 
@@ -42,11 +42,12 @@ class Infiltration(object):
 
         # Infiltration limited by saturated hydraulic conductivity of surface
         # soil layer; additional water ponds on surface
+        ksat_top = self.var.ksat_comp[:,0,...]
         cond1 = (self.var.Bunds == 1) & (self.var.zBund > 0.001)
         cond11 = (cond1 & (InflTot > 0))
-        cond111 = (cond11 & (InflTot > self.var.ksat_comp[0,:]))
-        ToStore[cond111] = self.var.ksat_comp[0,:][cond111]
-        self.var.SurfaceStorage[cond111] = (InflTot - self.var.ksat_comp[0,:])[cond111]
+        cond111 = (cond11 & (InflTot > ksat_top))
+        ToStore[cond111] = ksat_top[cond111]
+        self.var.SurfaceStorage[cond111] = (InflTot - ksat_top)[cond111]
 
         # Otherwise all water infiltrates and surface storage becomes zero
         cond112 = (cond11 & np.logical_not(cond111))
@@ -71,9 +72,9 @@ class Infiltration(object):
         # and infiltration according to saturated conductivity of surface
         # layer
         cond2 = (self.var.Bunds == 0)
-        cond21 = (cond2 & (self.var.Infl > self.var.ksat_comp[0,:]))
-        ToStore[cond21] = self.var.ksat_comp[0,:][cond21]
-        RunoffIni[cond21] = (self.var.Infl - self.var.ksat_comp[0,:])[cond21]
+        cond21 = (cond2 & (self.var.Infl > ksat_top))
+        ToStore[cond21] = ksat_top[cond21]
+        RunoffIni[cond21] = (self.var.Infl - ksat_top[0,:])[cond21]
         cond22 = (cond2 & np.logical_not(cond21))
         ToStore[cond22] = self.var.Infl[cond22]
         RunoffIni[cond22] = 0
@@ -82,65 +83,65 @@ class Infiltration(object):
 
         # Initialize counters
         comp = 0
-        Runoff = np.zeros((nr, nlat, nlon))
+        Runoff = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         cond3_ini = (ToStore > 0)
 
-        while (np.any(ToStore > 0) & (comp < nc)):
+        while (np.any(ToStore > 0) & (comp < self.var.nComp)):
 
             # Update condition
             cond3 = (ToStore > 0)
 
             # Calculate saturated drainage ability, drainage factor and
             # required drainage ability
-            dthdtS = self.var.tau_comp[comp,:] * (self.var.th_s_comp[comp,:] - self.var.th_fc_comp[comp,:])
-            factor = self.var.ksat_comp[comp,:] / (dthdtS * 1000 * self.var.dz[comp])
+            dthdtS = self.var.tau_comp[:,comp,...] * (self.var.th_s_comp[:,comp,...] - self.var.th_fc_comp[:,comp,...])
+            factor = self.var.ksat_comp[:,comp,...] / (dthdtS * 1000 * self.var.dz[comp])
             dthdt0 = ToStore / (1000 * self.var.dz[comp])
 
             # Initialize water content for current layer
-            theta0 = np.zeros((nr, nlat, nlon))
+            theta0 = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
 
             # Check drainage ability
             cond31 = (cond3 & (dthdt0 < dthdtS))
 
             # Calculate water content needed to meet drainage dthdt0
             cond311 = (cond31 & (dthdt0 <= 0))
-            theta0[cond311] = self.var.th_fc_adj[comp,:][cond311]
+            theta0[cond311] = self.var.th_fc_adj[:,comp,...][cond311]
             cond312 = (cond31 & np.logical_not(cond311))
-            A = (1 + ((dthdt0 * (np.exp(self.var.th_s_comp[comp,:] - self.var.th_fc_comp[comp,:]) - 1)) / (self.var.tau_comp[comp,:] * (self.var.th_s_comp[comp,:] - self.var.th_fc_comp[comp,:]))))
-            theta0[cond312] = (self.var.th_fc_comp[comp,:] + np.log(A))[cond312]
+            A = (1 + ((dthdt0 * (np.exp(self.var.th_s_comp[:,comp,...] - self.var.th_fc_comp[:,comp,...]) - 1)) / (self.var.tau_comp[:,comp,...] * (self.var.th_s_comp[:,comp,...] - self.var.th_fc_comp[:,comp,...]))))
+            theta0[cond312] = (self.var.th_fc_comp[:,comp,...] + np.log(A))[cond312]
 
             # Limit thX to between saturation and field capacity
-            cond313 = (cond31 & (theta0 > self.var.th_s_comp[comp,:]))
-            theta0[cond313] = self.var.th_s_comp[comp,:][cond313]
-            cond314 = (cond31 & np.logical_not(cond313) & (theta0 < self.var.th_fc_adj[comp,:]))
-            theta0[cond314] = self.var.th_fc_adj[comp,:][cond314]
+            cond313 = (cond31 & (theta0 > self.var.th_s_comp[:,comp,...]))
+            theta0[cond313] = self.var.th_s_comp[:,comp,...][cond313]
+            cond314 = (cond31 & np.logical_not(cond313) & (theta0 < self.var.th_fc_adj[:,comp,...]))
+            theta0[cond314] = self.var.th_fc_adj[:,comp,...][cond314]
             dthdt0[cond314] = 0
 
             # Limit water content and drainage to saturation
             cond32 = (cond3 & np.logical_not(cond31))
-            theta0[cond32] = self.var.th_s_comp[comp,:][cond32]
+            theta0[cond32] = self.var.th_s_comp[:,comp,...][cond32]
             dthdt0[cond32] = dthdtS[cond32]
 
             # Calculate maximum water flow through compartment and total
             # drainage
             drainmax = factor * dthdt0 * 1000 * self.var.dz[comp]
-            drainage = drainmax + self.var.FluxOut[comp,:]
+            drainage = drainmax + self.var.FluxOut[:,comp,...]
 
             # Limit drainage to saturated hydraulic conductivity
-            cond33 = (cond3 & (drainage > self.var.ksat_comp[comp,:]))
-            drainmax[cond33] = (self.var.ksat_comp[comp,:] - self.var.FluxOut[comp,:])[cond33]
+            cond33 = (cond3 & (drainage > self.var.ksat_comp[:,comp,...]))
+            drainmax[cond33] = (self.var.ksat_comp[:,comp,...] - self.var.FluxOut[:,comp,...])[cond33]
 
             # Line 117 of AOS_Infiltration.m
             # Calculate difference between threshold and current water contents
-            diff = theta0 - self.var.th[comp,:]
+            diff = theta0 - self.var.th[:,comp,...]
 
             cond34 = (cond3 & (diff > 0))
-            thnew[comp,:][cond34] += (ToStore / (1000 * self.var.dz[comp]))[cond34]
+            thnew[:,comp,...][cond34] += (ToStore / (1000 * self.var.dz[comp]))[cond34]
 
             # Remaining water that can infiltrate to compartments below
-            cond341 = (cond34 & (thnew[comp,:] > theta0))
-            ToStore[cond341] = ((thnew[comp,:] - theta0) * 1000 * self.var.dz[comp])[cond341]
-            thnew[comp,:][cond341] = theta0[cond341]
+            cond341 = (cond34 & (thnew[:,comp,...] > theta0))
+            ToStore[cond341] = ((thnew[:,comp,...] - theta0) * 1000 * self.var.dz[comp])[cond341]
+            thnew[:,comp,...][cond341] = theta0[cond341]
 
             # Otherwise all infiltrating water has been stored
             cond342 = (cond34 & np.logical_not(cond341))
@@ -148,7 +149,7 @@ class Infiltration(object):
 
             # Update outflow from current compartment (drainage + infiltration
             # flows)
-            self.var.FluxOut[comp,:][cond3] += ToStore[cond3]
+            self.var.FluxOut[:,comp,...][cond3] += ToStore[cond3]
 
             # Calculate backup of water into compartments above, and update
             # water to store
@@ -167,13 +168,13 @@ class Infiltration(object):
                 precomp -= 1
 
                 # Update outflow from compartment
-                self.var.FluxOut[precomp,:][cond35] = (self.var.FluxOut[precomp,:] - excess)[cond35]
+                self.var.FluxOut[:,precomp,...][cond35] = (self.var.FluxOut[:,precomp,...] - excess)[cond35]
 
                 # Update water content and limit to saturation
-                thnew[precomp,:][cond35] += (excess / (1000 * self.var.dz[precomp]))[cond35]
-                cond351 = (cond35 & (thnew[precomp,:] > self.var.th_s_comp[precomp,:]))
-                excess[cond351] = ((thnew[precomp,:] - self.var.th_s_comp[precomp,:]) * 1000 * self.var.dz[precomp])[cond351]
-                thnew[precomp,:][cond351] = self.var.th_s_comp[precomp,:][cond351]
+                thnew[:,precomp,...][cond35] += (excess / (1000 * self.var.dz[precomp]))[cond35]
+                cond351 = (cond35 & (thnew[:,precomp,...] > self.var.th_s_comp[:,precomp,...]))
+                excess[cond351] = ((thnew[:,precomp,...] - self.var.th_s_comp[:,precomp,...]) * 1000 * self.var.dz[precomp])[cond351]
+                thnew[:,precomp,...][cond351] = self.var.th_s_comp[:,precomp,...][cond351]
                 cond352 = (cond35 & np.logical_not(cond351))
                 excess[cond352] = 0
 

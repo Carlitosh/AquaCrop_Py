@@ -21,7 +21,7 @@ class Transpiration(object):
         self.var.TrAct = np.copy(arr_zeros)
         self.var.TrAct0 = np.copy(arr_zeros)
         self.var.AerDays = np.copy(arr_zeros)
-        self.var.AerDaysComp  = np.zeros((self.var.nComp, self.var.nCrop, self.var.nLat, self.var.nLon))
+        self.var.AerDaysComp  = np.zeros((self.var.nCrop, self.var.nComp, self.var.nLat, self.var.nLon))
         self.var.Tpot = np.copy(arr_zeros)        
         self.var.TrRatio = np.copy(arr_ones)
         self.var.DaySubmerged = np.copy(arr_zeros)
@@ -147,17 +147,18 @@ class Transpiration(object):
         # Maximum sink term
         # #################
 
-        SxComp = np.zeros((self.var.nComp, self.var.nCrop, self.var.nLat, self.var.nLon))
+        SxComp = np.zeros((self.var.nCrop, self.var.nComp, self.var.nLat, self.var.nLon))
 
         rootdepth = np.maximum(self.var.Zmin, self.var.Zroot)
         rootdepth = np.round(rootdepth * 100) / 100
-        dz = self.var.dz[:,None,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))[None,:,:,:]
-        dzsum = self.var.dzsum[:,None,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))[None,:,:,:]
-        comp_sto = (np.round((dzsum - dz) * 1000) < np.round(rootdepth * 1000))
+        rootdepth_comp = np.broadcast_to(rootdepth[:,None,:,:], self.var.th.shape)
+        # dz = self.var.dz[:,None,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))[None,:,:,:]
+        # dzsum = self.var.dzsum[:,None,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))[None,:,:,:]
+        comp_sto = (np.round((self.var.dzsum_xy - self.var.dz_xy) * 1000) < np.round(rootdepth_comp * 1000))
 
         # Fraction of compartment covered by root zone (zero in compartments
         # NOT covered by the root zone)
-        RootFact = 1 - ((dzsum - rootdepth) / dz)
+        RootFact = 1 - ((self.var.dzsum_xy - rootdepth_comp) / self.var.dz_xy)
         RootFact = np.clip(RootFact, 0, 1) * comp_sto
 
         # Net irrigation mode
@@ -170,15 +171,15 @@ class Transpiration(object):
 
         if (np.any(cond13)):
             comp = 0
-            comp_sto_sum = np.sum(comp_sto, axis=0)
+            comp_sto_sum = np.sum(comp_sto, axis=1)
             SxCompBot = np.copy(self.var.SxTop)
             while np.any(comp < comp_sto_sum):
                 SxCompTop = np.copy(SxCompBot)
-                cond131 = (cond13 & (dzsum[comp,:] <= rootdepth))
-                SxCompBot[cond131] = (self.var.SxBot * self.var.rCor + ((self.var.SxTop - self.var.SxBot * self.var.rCor) * ((rootdepth - dzsum[comp,:]) / rootdepth)))[cond131]
+                cond131 = (cond13 & (self.var.dzsum_xy[:,comp,...] <= rootdepth))
+                SxCompBot[cond131] = (self.var.SxBot * self.var.rCor + ((self.var.SxTop - self.var.SxBot * self.var.rCor) * ((rootdepth - self.var.dzsum_xy[:,comp,...]) / rootdepth)))[cond131]
                 cond132 = (cond13 & np.logical_not(cond131))
                 SxCompBot[cond132] = (self.var.SxBot * self.var.rCor)[cond132]
-                SxComp[comp,:][cond13] = ((SxCompTop + SxCompBot) / 2)[cond13]
+                SxComp[:,comp,...][cond13] = ((SxCompTop + SxCompBot) / 2)[cond13]
                 comp += 1
 
         SxComp *= comp_sto
@@ -188,31 +189,31 @@ class Transpiration(object):
         cond14_ini = (self.var.GrowingSeasonIndex & (ToExtract > 0))
         if (np.any(cond14_ini)):
             comp = 0
-            comp_sto_sum = np.sum(comp_sto, axis=0)
+            comp_sto_sum = np.sum(comp_sto, axis=1)
             while np.any((comp < comp_sto_sum) & (ToExtract > 0)):
 
-                cond14 = (self.var.GrowingSeasonIndex & (comp_sto[comp,:]) & (ToExtract > 0))
+                cond14 = (self.var.GrowingSeasonIndex & (comp_sto[:,comp,...]) & (ToExtract > 0))
 
                 # Determine TAW for compartment
-                thTAW = self.var.th_fc_comp[comp,:] - self.var.th_wp_comp[comp,:]
+                thTAW = self.var.th_fc_comp[:,comp,...] - self.var.th_wp_comp[:,comp,...]
                 p_up_sto = np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))
                 cond141 = (cond14 & (self.var.ETadj == 1))
                 p_up_sto[cond141] = (self.var.p_up2 + (0.04 * (5. - et0)) * (np.log10(10. - 9. * self.var.p_up2)))[cond141]
 
                 # Determine critical water content at which stomatal closure
                 # will occur in compartment
-                thCrit = (self.var.th_fc_comp[comp,:] - (thTAW * p_up_sto))
+                thCrit = (self.var.th_fc_comp[:,comp,...] - (thTAW * p_up_sto))
 
                 # Check for soil water stress
                 KsComp = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
 
                 # No stress
-                cond142 = (cond14 & (self.var.th[comp,:] >= thCrit))
+                cond142 = (cond14 & (self.var.th[:,comp,...] >= thCrit))
                 KsComp[cond142] = 1.
 
                 # Transpiration from compartment is affected by water stress
-                cond143 = (cond14 & (self.var.th[comp,:] > self.var.th_wp_comp[comp,:]) & np.logical_not(cond142))
-                Wrel = ((self.var.th_fc_comp[comp,:] - self.var.th[comp,:]) / (self.var.th_fc_comp[comp,:] - self.var.th_wp_comp[comp,:]))
+                cond143 = (cond14 & (self.var.th[:,comp,...] > self.var.th_wp_comp[:,comp,...]) & np.logical_not(cond142))
+                Wrel = ((self.var.th_fc_comp[:,comp,...] - self.var.th[:,comp,...]) / (self.var.th_fc_comp[:,comp,...] - self.var.th_wp_comp[:,comp,...]))
                 pRel = ((Wrel - self.var.p_up2) / (self.var.p_lo2 - self.var.p_up2))
                 KsComp[cond143] = (1 - ((np.exp(pRel * self.var.fshape_w2) - 1) / (np.exp(self.var.fshape_w2) - 1)))[cond143]
                 KsComp = np.clip(KsComp, 0, 1)
@@ -229,18 +230,18 @@ class Transpiration(object):
                 # Full aeration stress - no transpiration possible from
                 # compartment
                 cond144 = (cond14 & (self.var.DaySubmerged >= self.var.LagAer))
-                cond145 = (cond14 & (self.var.th[comp,:] > (self.var.th_s_comp[comp,:] - (self.var.Aer / 100))) & np.logical_not(cond144))
-                self.var.AerDaysComp[comp,:][cond145] += 1
+                cond145 = (cond14 & (self.var.th[:,comp,...] > (self.var.th_s_comp[:,comp,...] - (self.var.Aer / 100))) & np.logical_not(cond144))
+                self.var.AerDaysComp[:,comp,...][cond145] += 1
                 fAer = np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))
-                cond1451 = (cond145 & (self.var.AerDaysComp[comp,:] >= self.var.LagAer))
-                self.var.AerDaysComp[comp,:][cond1451] = self.var.LagAer[cond1451]
+                cond1451 = (cond145 & (self.var.AerDaysComp[:,comp,...] >= self.var.LagAer))
+                self.var.AerDaysComp[:,comp,...][cond1451] = self.var.LagAer[cond1451]
                 fAer[cond1451] = 0
 
                 # Calculate aeration stress factor
-                AerComp[cond145] = ((self.var.th_s_comp[comp,:] - self.var.th[comp,:]) / (self.var.th_s_comp[comp,:] - (self.var.th_s_comp[comp,:] - (self.var.Aer / 100))))[cond145]
+                AerComp[cond145] = ((self.var.th_s_comp[:,comp,...] - self.var.th[:,comp,...]) / (self.var.th_s_comp[:,comp,...] - (self.var.th_s_comp[:,comp,...] - (self.var.Aer / 100))))[cond145]
                 AerComp = np.clip(AerComp, 0, None)
-                AerComp_divd = (fAer + (self.var.AerDaysComp[comp,:] - 1) * AerComp)
-                AerComp_divs = (fAer + self.var.AerDaysComp[comp,:] - 1)
+                AerComp_divd = (fAer + (self.var.AerDaysComp[:,comp,...] - 1) * AerComp)
+                AerComp_divs = (fAer + self.var.AerDaysComp[:,comp,...] - 1)
                 AerComp[cond145] = np.divide(AerComp_divd, AerComp_divs, out=np.zeros_like(AerComp_divs), where=AerComp_divs!=0)[cond145]
 
                 # Otherwise there is no aeration stress as number of submerged
@@ -248,44 +249,44 @@ class Transpiration(object):
                 # stress
                 cond146 = (cond14 & np.logical_not(cond144 | cond145))
                 AerComp[cond146] = 1
-                self.var.AerDaysComp[comp,:][cond146] = 0
+                self.var.AerDaysComp[:,comp,...][cond146] = 0
 
                 # Extract water
-                ThToExtract = ((ToExtract / 1000) / dz[comp])
+                ThToExtract = ((ToExtract / 1000) / self.var.dz[comp])
                 Sink = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
 
                 # Don't reduce compartment sink for stomatal water stress if in
                 # net irrigation mode. Stress only occurs due to deficient
                 # aeration conditions
                 cond147 = (cond14 & self.var.IrrMethod == 4)
-                Sink[cond147] = (AerComp * SxComp[comp,:] * RootFact[comp,:])[cond147]
+                Sink[cond147] = (AerComp * SxComp[:,comp,...] * RootFact[:,comp,...])[cond147]
 
                 # Otherwise, reduce compartment sink for greatest of stomatal
                 # and aeration stress
                 cond148 = (cond14 & np.logical_not(cond147))
                 cond1481 = (cond148 & (KsComp == AerComp))
-                Sink[cond1481] = (KsComp * SxComp[comp,:] * RootFact[comp,:])[cond1481]
+                Sink[cond1481] = (KsComp * SxComp[:,comp,...] * RootFact[:,comp,...])[cond1481]
                 cond1482 = (cond148 & np.logical_not(cond1481))
-                Sink[cond1482] = (np.minimum(KsComp,AerComp) * SxComp[comp,:] * RootFact[comp,:])[cond1482]
+                Sink[cond1482] = (np.minimum(KsComp,AerComp) * SxComp[:,comp,...] * RootFact[:,comp,...])[cond1482]
 
                 # Limit extraction to demand
                 Sink = np.clip(Sink, None, ThToExtract)
 
                 # Limit extraction to avoid compartment water content dropping
                 # below air dry
-                cond149 = (cond14 & ((self.var.th[comp,:] - Sink) < self.var.th_dry_comp[comp,:]))
-                Sink[cond149] = (self.var.th[comp,:] - self.var.th_dry_comp[comp,:])[cond149]
+                cond149 = (cond14 & ((self.var.th[:,comp,...] - Sink) < self.var.th_dry_comp[:,comp,...]))
+                Sink[cond149] = (self.var.th[:,comp,...] - self.var.th_dry_comp[:,comp,...])[cond149]
                 Sink = np.clip(Sink, 0, None)
 
                 # Update water content in compartment
-                self.var.th[comp,:][cond14] -= Sink[cond14]
+                self.var.th[:,comp,...][cond14] -= Sink[cond14]
 
                 # Update amount of water to extract
-                ToExtract[cond14] -= (Sink * 1000 * dz[comp])[cond14]
+                ToExtract[cond14] -= (Sink * 1000 * self.var.dz[comp])[cond14]
 
                 # Update actual transpiration
                 # TrActComp[comp,:][cond14] += (Sink * 1000 * dz[comp])[cond14]
-                self.var.TrAct[cond14] += (Sink * 1000 * dz[comp])[cond14]
+                self.var.TrAct[cond14] += (Sink * 1000 * self.var.dz[comp])[cond14]
 
                 # Update compartment counter
                 comp += 1
@@ -303,9 +304,9 @@ class Transpiration(object):
 
         # Determine necessary change in water content in compartments to reach
         # critical water content
-        dWC = RootFact * (thCrit_comp - self.var.th * 1000 * dz)
-        self.var.th[cond151_comp] = (self.var.th + (dWC / (1000 * dz)))[cond151_comp]
-        self.var.IrrNet[cond151] = np.sum(dWC, axis=0)[cond151]
+        dWC = RootFact * (thCrit_comp - self.var.th * 1000 * self.var.dz_xy)
+        self.var.th[cond151_comp] = (self.var.th + (dWC / (1000 * self.var.dz_xy)))[cond151_comp]
+        self.var.IrrNet[cond151] = np.sum(dWC, axis=1)[cond151]
         
         # Update net irrigation counter for the growing season
         self.var.IrrNetCum += self.var.IrrNet

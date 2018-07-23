@@ -15,7 +15,7 @@ class CapillaryRise(object):
         self.var = CapillaryRise_variable
 
     def initial(self):
-        arr_zeros = np.zeros((self.var.nCrop, self.var.nLon, self.var.nLat))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         self.var.CrTot  = np.copy(arr_zeros)
 
     def maximum_capillary_rise(ksat, aCR, bCR, zGW, z):
@@ -30,9 +30,9 @@ class CapillaryRise(object):
           z    : depth to midpoint of the soil layer
 
         """
-        dims = ksat.shape
-        nr, nlat, nlon = dims[0], dims[1], dims[2]
-        MaxCR = np.zeros((nr, nlat, nlon))
+        # dims = ksat.shape
+        # nr, nlat, nlon = dims[0], dims[1], dims[2]
+        MaxCR = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         cond1 = ((ksat > 0) & (zGW > 0) & ((zGW - z) < 4))
         cond11 = (cond1 & (z >= zGW))
         MaxCR[cond11] = 99            
@@ -43,8 +43,8 @@ class CapillaryRise(object):
         return MaxCR
 
     def store_water_from_capillary_rise(th, th_fc, th_fc_adj, th_wp, fshape_cr, MaxCR, flux_out, zGW, zBot, dz):
-        dims = th.shape
-        nc, nlat, nlon = dims[0], dims[1], dims[2]
+        # dims = th.shape
+        # nc, nlat, nlon = dims[0], dims[1], dims[2]
         thnew = np.copy(th)
 
         cond1 = ((np.round(MaxCR * 1000) > 0) & (np.round(flux_out * 1000) == 0))
@@ -56,13 +56,14 @@ class CapillaryRise(object):
         Krel = relative_hydraulic_conductivity(th, th_fc, th_wp)
 
         # Check if room is available to store water from capillary rise
-        dth = np.zeros((nr, nlat, nlon))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
+        dth = np.copy(arr_zeros)
         dth[cond1] = (th_fc_adj - th)[cond1]                
         dth = np.round((dth * 1000) / 1000)
 
         # Store water if room is available
-        dthMax = np.zeros((nr, nlat, nlon))
-        CRcomp = np.zeros((nr, nlat, nlon))
+        dthMax = np.copy(arr_zeros)
+        CRcomp = np.copy(arr_zeros)
         cond15 = (cond1 & (dth > 0) & ((zBot - dz / 2) < zGW))
 
         dthMax[cond35] = (Krel * Df * MaxCR / (1000 * dz))[cond35]

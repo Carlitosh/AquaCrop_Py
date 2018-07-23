@@ -39,10 +39,10 @@ class Germination(object):
         zgerm[zgerm > np.sum(self.var.dz, axis=0)] = np.sum(self.var.dz, axis=0)
 
         # Find compartments covered by top soil layer affecting germination
-        comp_sto = (np.round(self.var.dzsum_xy * 1000) <= np.round(zgerm * 1000))  # round to nearest mm
+        comp_sto = (np.round(self.var.dzsum_xy * 1000) <= np.round(np.broadcast_to(zgerm[:,None,:,:], self.var.th.shape) * 1000))  # round to nearest mm
 
         # Calculate water content in top soil layer
-        arr_zeros = np.zeros((self.var.nComp, self.var.nCrop, self.var.nLat, self.var.nLon))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nComp, self.var.nLat, self.var.nLon))
         Wr_comp   = np.copy(arr_zeros)
         WrFC_comp = np.copy(arr_zeros)
         WrWP_comp = np.copy(arr_zeros)
@@ -54,13 +54,13 @@ class Germination(object):
         # Increment water storages (mm)
         Wr_comp = np.round((factor * 1000 * self.var.th * self.var.dz_xy))
         Wr_comp = np.clip(Wr_comp, 0, None)
-        Wr = np.sum(Wr_comp, axis=0)
+        Wr = np.sum(Wr_comp, axis=1)
 
         WrFC_comp = np.round((factor * 1000 * self.var.th_fc_comp * self.var.dz_xy))
-        WrFC = np.sum(WrFC_comp, axis=0)
+        WrFC = np.sum(WrFC_comp, axis=1)
 
         WrWP_comp = np.round((factor * 1000 * self.var.th_wp_comp * self.var.dz_xy))
-        WrWP = np.sum(WrWP_comp, axis=0)
+        WrWP = np.sum(WrWP_comp, axis=1)
 
         # Calculate proportional water content
         WrTAW = WrFC - WrWP

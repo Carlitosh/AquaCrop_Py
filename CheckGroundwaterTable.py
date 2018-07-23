@@ -38,7 +38,7 @@ class CheckGroundwaterTable(object):
             zBot = np.cumsum(self.var.dz)
             zTop = zBot - self.var.dz
             zMid = (zTop + zBot) / 2
-            zMid = zMid[:,None,None,None] * np.ones((self.var.nCrop,self.var.nLat,self.var.nLon))[None,:,:,:]
+            zMid = zMid[None,:,None,None] * np.ones((self.var.nCrop,self.var.nLat,self.var.nLon))[:,None,:,:]
 
             # Check if water table is within modelled soil profile
             WTinSoilComp = (zMid >= self.var.zGW)
@@ -47,10 +47,10 @@ class CheckGroundwaterTable(object):
             # Flatten WTinSoilComp to provide an array with dimensions
             # (ncrop, nLat, nLon), indicating crops where the water
             # table is in the soil profile
-            self.var.WTinSoil = np.sum(WTinSoilComp, axis=0).astype(bool)
+            self.var.WTinSoil = np.sum(WTinSoilComp, axis=1).astype(bool)
 
             # get Xmax
-            Xmax = np.zeros((self.var.nComp,self.var.nCrop,self.var.nLat,self.var.nLon))
+            Xmax = np.zeros((self.var.nCrop,self.var.nComp,self.var.nLat,self.var.nLon))
             cond1 = self.var.th_fc_comp <= 0.1
             cond2 = self.var.th_fc_comp >= 0.3
             cond3 = np.logical_not(cond1 | cond2) # i.e. 0.1 < fc < 0.3
@@ -63,14 +63,14 @@ class CheckGroundwaterTable(object):
 
             # Index of the compartment to which each element belongs (shallow ->
             # deep, i.e. 1 is the shallowest)
-            compartment = (np.arange(1, self.var.nComp + 1)[:,None,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))[None,:,:,:])
+            compartment = (np.arange(1, self.var.nComp + 1)[None,:,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))[:,None,:,:])
 
             # Index of the lowest compartment (i.e. the maximum value) for which
             # cond4 is met, cast to all compartments (achieved by multiplying
             # compartments by cond4 to set elements that do not equal the
             # condition to zero, but retain the compartment number of elements
             # that do meet the condition
-            cond4_max_compartment = (np.amax(compartment * cond4, axis=0)[None,:,:,:] * np.ones((self.var.nComp))[:,None,None,None])
+            cond4_max_compartment = (np.amax(compartment * cond4, axis=1)[:,None,:,:] * np.ones((self.var.nComp))[None,:,None,None])
 
             # Now, identify compartments that are shallower than the deepest
             # compartment for which cond4 is met

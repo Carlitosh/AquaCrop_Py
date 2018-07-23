@@ -15,7 +15,7 @@ class Irrigation(object):
         self.var = Irrigation_variable
 
     def initial(self):
-        arr_zeros = np.zeros((self.var.nCrop, self.var.nLon, self.var.nLat))
+        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         self.var.Irr = np.copy(arr_zeros)
         self.var.IrrCum = np.copy(arr_zeros)
         self.var.IrrNetCum = np.copy(arr_zeros)

@@ -161,7 +161,7 @@ class AquaCrop(Model):
         self.transpiration_module.dynamic()
         self.evapotranspiration_module.dynamic()
         self.inflow_module.dynamic()
-
+        
         self.HI_ref_current_day_module.dynamic()
         self.biomass_accumulation_module.dynamic()
 

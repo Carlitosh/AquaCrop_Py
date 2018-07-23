@@ -84,11 +84,11 @@ class Meteo(object):
                                       LatitudeLongitude = True)
         else:
             self.var.precipitation = vos.netcdf2PCRobjClone(self.var.preFileNC,\
-                                                        self.var.preVarName,\
-                                                        str(self.var._modelTime.fulldate),\
-                                                        useDoy = method_for_time_index,\
-                                                        cloneMapFileName = self.var.cloneMap,\
-                                                        LatitudeLongitude = True)
+                                                            self.var.preVarName,\
+                                                            str(self.var._modelTime.fulldate),\
+                                                            useDoy = method_for_time_index,\
+                                                            cloneMapFileName = self.var.cloneMap,\
+                                                            LatitudeLongitude = True)
 
         # TODO: decided where np.nan is an appropriate missing value
         self.var.precipitation  = self.var.preConst + self.var.preFactor * np.where(self.var.landmask, self.var.precipitation, np.nan)

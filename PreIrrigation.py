@@ -22,22 +22,26 @@ class PreIrrigation(object):
         
     def dynamic(self):
         # Expand dz and dzsum to crop, lat, lon
-        arr_ones = np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))[None,:,:,:]
-        dz = (self.var.dz[:,None,None,None] * arr_ones)
-        dzsum = (self.var.dzsum[:,None,None,None] * arr_ones)
+        arr_ones = np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))[:,None,:,:]
+        dz = (self.var.dz[None,:,None,None] * arr_ones)
+        dzsum = (self.var.dzsum[None,:,None,None] * arr_ones)
 
         # Calculate pre-irrigation requirement
         rootdepth = np.maximum(self.var.Zmin, self.var.Zroot)
         rootdepth = np.round(rootdepth * 100) / 100
-        thCrit = (self.var.th_wp_comp + ((self.var.NetIrrSMT / 100) * (self.var.th_fc_comp - self.var.th_wp_comp)))
+        netirrsmt = self.var.NetIrrSMT[:,None,:,:] * np.ones((self.var.nComp))[None,:,None,None]
+        thCrit = (self.var.th_wp_comp + ((netirrsmt / 100) * (self.var.th_fc_comp - self.var.th_wp_comp)))
 
         # Conditions for applying pre-irrigation
-        cond1 = ((self.var.IrrMethod == 4) & (self.var.DAP == 1) & ((dzsum - dz) < rootdepth) & (self.var.th < thCrit))
+        cond0 = ((self.var.IrrMethod == 4) & (self.var.DAP == 1))
+        cond1 = (np.broadcast_to(cond0[:,None,:,:], self.var.th.shape)
+                 & ((dzsum - dz) < np.broadcast_to(rootdepth[:,None,:,:], self.var.th.shape))
+                 & (self.var.th < thCrit))
 
         # Update pre-irrigation and root zone water content (mm)
         PreIrr_req = ((thCrit - self.var.th) * 1000 * dz)
         PreIrr_req[np.logical_not(cond1)] = 0
-        self.var.PreIrr = np.sum(PreIrr_req, axis=0)
+        self.var.PreIrr = np.sum(PreIrr_req, axis=1)
                 
     def add_pre_irrigation(self):
         self.var.IrrNet += self.var.PreIrr

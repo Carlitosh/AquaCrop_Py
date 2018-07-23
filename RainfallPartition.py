@@ -25,7 +25,7 @@ class RainfallPartition(object):
         """
         # Add crop dimension to precipitation
         P = self.var.precipitation[None,:,:] * np.ones((self.var.nCrop))[:,None,None]
-        zcn = self.var.zCN[None,:,:,:] * np.ones((self.var.nComp))[:,None,None,None]
+        zcn = self.var.zCN[:,None,:,:] * np.ones((self.var.nComp))[None,:,None,None]
 
         cond1 = ((self.var.Bunds == 0) | (self.var.zBund < 0.001))
 
@@ -35,7 +35,7 @@ class RainfallPartition(object):
         # Check which compartment cover depth of top soil used to adjust
         # curve number
         comp_sto = (np.round(self.var.dzsum_xy * 1000) <= np.round(zcn * 1000))
-        cond111 = np.all((comp_sto == False), axis=0)
+        cond111 = np.all((comp_sto == False), axis=1)
         cond111 = np.broadcast_to(cond111, comp_sto.shape)
         comp_sto[cond111] = True
 
@@ -45,7 +45,7 @@ class RainfallPartition(object):
         wx = (1.016 * (1 - np.exp(-4.16 * (dzsum / zcn))))
 
         # xx is wx for the overlying layer, with the top layer equal to zero
-        xx = np.concatenate((np.zeros((1, self.var.nCrop, self.var.nLat, self.var.nLon)), wx[:-1,:]), axis=0)
+        xx = np.concatenate((np.zeros((self.var.nCrop, 1, self.var.nLat, self.var.nLon)), wx[:,:-1,...]), axis=1)
         wrel = np.clip((wx - xx), 0, 1)
 
         # Calculate relative wetness of topsoil
@@ -54,7 +54,7 @@ class RainfallPartition(object):
         # Multiply by comp_sto to ensure that compartments not used for
         # curve number adjustment are set to zero
         wet_top_comp = wrel * ((self.var.th - self.var.th_wp_comp) / (self.var.th_fc_comp - self.var.th_wp_comp)) * comp_sto
-        wet_top = np.sum(wet_top_comp, axis=0)
+        wet_top = np.sum(wet_top_comp, axis=1)  # sum along compartment dimension
         wet_top = np.clip(wet_top, 0, 1)
 
         # Make adjustment to curve number

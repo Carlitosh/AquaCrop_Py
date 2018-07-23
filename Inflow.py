@@ -17,28 +17,26 @@ class Inflow(object):
         self.var = GroundwaterInflow_variable
 
     def initial(self):
-        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
-        self.GwIn = np.copy(arr_zeros)
+        self.GwIn = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         
     def dynamic(self):
         """Function to calculate capillary rise in the presence of a 
         shallow groundwater table
         """
-        dz = self.var.dz[:,None,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))[None,:,:,:]
-        dzsum = self.var.dzsum[:,None,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))[None,:,:,:]
 
         # Initialize groudwater inflow array
         GwIn = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
 
         # Water table in soil profile: calculate horizontal inflow; get
         # groundwater table elevation on current day
-        zBot = np.cumsum(dz, axis=0)
-        zTop = zBot - dz
+        zBot = np.cumsum(self.var.dz_xy, axis=0)
+        zTop = zBot - self.var.dz_xy
         zMid = (zTop + zBot) / 2
 
         # For compartments below water table, set to saturation
-        dth = np.zeros((self.var.nComp, self.var.nCrop, self.var.nLat, self.var.nLon))
-        cond1 = (self.var.WTinSoil & (zMid >= self.var.zGW))
+        dth = np.zeros((self.var.nCrop, self.var.nComp, self.var.nLat, self.var.nLon))
+        cond1 = (np.broadcast_to(self.var.WTinSoil[:,None,:,:], self.var.th.shape)
+                 & (zMid >= np.broadcast_to(self.var.zGW[:,None,:,:], self.var.th.shape)))
         cond11 = (cond1 & (self.var.th < self.var.th_s_comp))
 
         # Update water content
@@ -46,5 +44,5 @@ class Inflow(object):
         self.var.th[cond11] = self.var.th_s_comp[cond11]
 
         # Update groundwater inflow
-        GwIn_comp = dth * 1000 * dz
+        GwIn_comp = dth * 1000 * self.var.dz_xy
         self.var.GwIn = np.sum(GwIn_comp, axis=0)

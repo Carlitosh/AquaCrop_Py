@@ -45,10 +45,14 @@ class FAO56Evapotranspiration(Evapotranspiration):
         cond4 = self.var.GrowthStage == 4
         Kc = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         Kc[cond1] = self.var.Kc_ini[cond1]
-        ini_to_mid_gradient = (self.var.Kc_mid - self.var.Kc_ini) / self.var.L_dev_day
+
+        ini_to_mid_gradient = np.divide((self.var.Kc_mid - self.var.Kc_ini), self.var.L_dev_day, out=np.zeros_like(self.var.L_dev_day), where=self.var.L_dev_day!=0)
+
         Kc[cond2] = (self.var.Kc_ini + (ini_to_mid_gradient * (self.var.DAP - L_day[0,:])))[cond2]
         Kc[cond3] = self.var.Kc_mid[cond3]
-        mid_to_end_gradient = (self.var.Kc_end - self.var.Kc_mid) / self.var.L_late_day
+
+        mid_to_end_gradient = np.divide((self.var.Kc_end - self.var.Kc_mid), self.var.L_late_day, out=np.zeros_like(self.var.L_late_day), where=self.var.L_late_day!=0)
+        
         Kc[cond4] = (self.var.Kc_mid + (mid_to_end_gradient * (self.var.DAP - L_day[2,:])))[cond4]
         Kc[np.logical_not(self.var.GrowingSeasonIndex)] = 0.5  # Global Crop Water Model
 
@@ -69,11 +73,11 @@ class FAO56Evapotranspiration(Evapotranspiration):
         Wr_comp = self.var.RootFact * 1000 * self.var.th * self.var.dz_xy
         WrWP_comp = self.var.RootFact * 1000 * self.var.th_wp_comp * self.var.dz_xy        
         max_available_water = np.clip(Wr_comp - WrWP_comp, 0, None)
-        self.var.ETact = np.clip(self.var.ETact, 0, np.sum(max_available_water, axis=0))
+        self.var.ETact = np.clip(self.var.ETact, 0, np.sum(max_available_water, axis=1))
         
         # Extract water proportionally - TODO: this should be improved!!!
-        f = (max_available_water / np.broadcast_to(np.sum(max_available_water, axis=0), max_available_water.shape))
-        ToExtract = self.var.ETact * f
+        f = (max_available_water / np.broadcast_to(np.sum(max_available_water, axis=1)[:,None,:,:], max_available_water.shape))
+        ToExtract = np.broadcast_to(self.var.ETact[:,None,...], self.var.th.shape) * f
         ThToExtract = ((ToExtract / 1000) / self.var.dz_xy)
         self.var.th -= ThToExtract
 

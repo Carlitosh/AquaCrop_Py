@@ -26,8 +26,8 @@ class SoilAndTopoParameters(object):
         self.var.dzsum = np.cumsum(self.var.dz)
 
         # for convenience
-        self.var.dz_xy = self.var.dz[:,None,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))
-        self.var.dzsum_xy = self.var.dzsum[:,None,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))
+        self.var.dz_xy = self.var.dz[None,:,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))[:,None,:,:]
+        self.var.dzsum_xy = self.var.dzsum[None,:,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))[:,None,:,:]
         
         # read parameters
         self.var.soilAndTopoFileNC = self.var._configuration.soilOptions['soilAndTopoNC']
@@ -43,13 +43,24 @@ class SoilAndTopoParameters(object):
 
     def readSoil(self):
 
-        soilParams = ['ksat','th_s','th_fc','th_wp','CalcSHP','EvapZsurf','EvapZmin','EvapZmax','Kex','fevap','fWrelExp','fwcc','AdjREW','REW','AdjCN','CN','zCN','zGerm','zRes','fshape_cr']
-        for var in soilParams:
+        # These parameters have dimensions depth,lat,lon
+        soilParams1 = ['ksat', 'th_s', 'th_fc', 'th_wp']
+        for var in soilParams1:
             d = vos.netcdf2PCRobjCloneWithoutTime(self.var.soilAndTopoFileNC,
                                                   var,
                                                   cloneMapFileName=self.var.cloneMap)
-            vars(self.var)[var] = d[None,:,:] * np.ones((self.var.nCrop))[:,None,None]
-        
+            vars(self.var)[var] = np.broadcast_to(d, (self.var.nCrop, self.var.nLayer, self.var.nLat, self.var.nLon))
+
+        # These parameters have dimensions lat,lon
+        soilParams2 = ['CalcSHP', 'EvapZsurf','EvapZmin', 'EvapZmax', 'Kex',
+                       'fevap', 'fWrelExp', 'fwcc','AdjREW', 'REW', 'AdjCN',
+                       'CN', 'zCN', 'zGerm', 'zRes', 'fshape_cr']
+        for var in soilParams2:
+            d = vos.netcdf2PCRobjCloneWithoutTime(self.var.soilAndTopoFileNC,
+                                                  var,
+                                                  cloneMapFileName=self.var.cloneMap)
+            vars(self.var)[var] = np.broadcast_to(d, (self.var.nCrop, self.var.nLat, self.var.nLon))
+            
         # map layers to compartments - the result is a 1D array with length
         # equal to nComp where the value of each element is the index of the
         # corresponding layer. For the time being we use the layer in which
@@ -67,7 +78,7 @@ class SoilAndTopoParameters(object):
         zLayerBot = np.cumsum(self.var.zLayer)
         zLayerTop = zLayerBot - self.var.zLayer        
         self.var.layerIndex = np.sum(((zMid[:,None] * np.ones((self.var.nLayer))[None,:]) > zLayerTop), axis=1) - 1
-
+        
         # The following is adapted from AOS_ComputeVariables.m, lines 129-139
         # "Calculate drainage characteristic (tau)
         self.var.tau = 0.0866 * (self.var.ksat ** 0.35)
@@ -87,13 +98,13 @@ class SoilAndTopoParameters(object):
         soil_params = ['th_s','th_fc','th_wp','th_dry','ksat','tau','fshape_cr']
         for nm in soil_params:
             newnm = nm + '_comp'
-            vars(self.var)[newnm] = vars(self.var)[nm][self.var.layerIndex,:]
+            vars(self.var)[newnm] = vars(self.var)[nm][:,self.var.layerIndex,...]
         
     def compute_capillary_rise_parameters(self):
         # Function adapted from AOS_ComputeVariables.m, lines 60-127
 
-        self.var.aCR = np.zeros((self.var.nLayer, self.var.nCrop, self.var.nLat, self.var.nLon))
-        self.var.bCR = np.zeros((self.var.nLayer, self.var.nCrop, self.var.nLat, self.var.nLon))
+        self.var.aCR = np.zeros((self.var.nCrop, self.var.nLayer, self.var.nLat, self.var.nLon))
+        self.var.bCR = np.zeros((self.var.nCrop, self.var.nLayer, self.var.nLat, self.var.nLon))
 
         # "Sandy soil class"
         cond1 = (self.var.th_wp >= 0.04) & (self.var.th_wp <= 0.15) & (self.var.th_fc >= 0.09) & (self.var.th_fc <= 0.28) & (self.var.th_s >= 0.32) & (self.var.th_s <= 0.51)

@@ -219,25 +219,34 @@ def netcdf2PCRobjCloneWithoutTime(ncFile, varName,
         if colsClone != colsInput: sameClone = False
         if xULClone != xULInput: sameClone = False
         if yULClone != yULInput: sameClone = False
+        # print cellsizeClone,cellsizeInput
+        # print rowsClone,rowsInput
+        # print colsClone,colsInput
+        # print xULClone,xULInput
+        # print yULClone,yULInput
+        # print sameClone
 
     cropData = f.variables[varName][:,:]       # still original data
     factor = 1                                 # needed in regridData2FinerGrid
     if sameClone == False:
         # crop to cloneMap:
-        minX    = min(abs(f.variables['lon'][:] - (xULClone + 0.5*cellsizeInput))) # ; print(minX)
+        minX    = min(abs(f.variables['lon'][:] - (xULClone + 0.5*cellsizeInput)))
         xIdxSta = int(np.where(abs(f.variables['lon'][:] - (xULClone + 0.5*cellsizeInput)) == minX)[0])
         xIdxEnd = int(math.ceil(xIdxSta + colsClone /(cellsizeInput/cellsizeClone)))
-        minY    = min(abs(f.variables['lat'][:] - (yULClone - 0.5*cellsizeInput))) # ; print(minY)
+        minY    = min(abs(f.variables['lat'][:] - (yULClone - 0.5*cellsizeInput)))
         yIdxSta = int(np.where(abs(f.variables['lat'][:] - (yULClone - 0.5*cellsizeInput)) == minY)[0])
         yIdxEnd = int(math.ceil(yIdxSta + rowsClone /(cellsizeInput/cellsizeClone)))
-        cropData = f.variables[varName][yIdxSta:yIdxEnd,xIdxSta:xIdxEnd]
+        if len(cropData.shape) > 2:
+            cropData = f.variables[varName][...,yIdxSta:yIdxEnd,xIdxSta:xIdxEnd]
+        else:
+            cropData = f.variables[varName][yIdxSta:yIdxEnd,xIdxSta:xIdxEnd]
         factor = int(round(float(cellsizeInput)/float(cellsizeClone)))
 
         if factor > 1: logger.debug('Resample: input cell size = '+str(float(cellsizeInput))+' ; output/clone cell size = '+str(float(cellsizeClone)))
 
     # numpy array
     outnp = regridData2FinerGrid(factor,cropData,MV)
-    
+
     f = None
     cropData = None 
     return (outnp)
@@ -508,8 +517,16 @@ def netcdf2PCRobjClone(ncFile,varName,dateInput,\
         colsInput = len(f.variables['lon'])
         xULInput = f.variables['lon'][0]-0.5*cellsizeInput
         yULInput = f.variables['lat'][0]+0.5*cellsizeInput
-        # check whether both maps have the same attributes 
-        if cellsizeClone != cellsizeInput: sameClone = False
+        # check whether both maps have the same attributes
+
+        # NB: the original code (PCRGLOBWB) used the following line to test
+        # equality between cellsize:
+        # if cellsizeClone != cellsizeInput: sameClone = False
+        # but this is not sensible when dealing with decimal degrees
+        # (e.g. 5 arcminute -> 0.08333333) and netCDF files which may have
+        # varying levels of precision depending on the creation options of the
+        # user. Instead, test almost equality:
+        if abs(cellsizeClone - cellsizeInput) > 1e-8: sameClone = False
         if rowsClone != rowsInput: sameClone = False
         if colsClone != colsInput: sameClone = False
         if xULClone != xULInput: sameClone = False
@@ -524,14 +541,18 @@ def netcdf2PCRobjClone(ncFile,varName,dateInput,\
 
         # crop to cloneMap:
         #~ xIdxSta = int(np.where(f.variables['lon'][:] == xULClone + 0.5*cellsizeInput)[0])
-        minX    = min(abs(f.variables['lon'][:] - (xULClone + 0.5*cellsizeInput))) # ; print(minX)
+        minX    = min(abs(f.variables['lon'][:] - (xULClone + 0.5*cellsizeInput)))
         xIdxSta = int(np.where(abs(f.variables['lon'][:] - (xULClone + 0.5*cellsizeInput)) == minX)[0])
         xIdxEnd = int(math.ceil(xIdxSta + colsClone /(cellsizeInput/cellsizeClone)))
         #~ yIdxSta = int(np.where(f.variables['lat'][:] == yULClone - 0.5*cellsizeInput)[0])
-        minY    = min(abs(f.variables['lat'][:] - (yULClone - 0.5*cellsizeInput))) # ; print(minY)
+        minY    = min(abs(f.variables['lat'][:] - (yULClone - 0.5*cellsizeInput)))
         yIdxSta = int(np.where(abs(f.variables['lat'][:] - (yULClone - 0.5*cellsizeInput)) == minY)[0])
         yIdxEnd = int(math.ceil(yIdxSta + rowsClone /(cellsizeInput/cellsizeClone)))
-        cropData = f.variables[varName][idx,yIdxSta:yIdxEnd,xIdxSta:xIdxEnd]
+        # cropData = f.variables[varName][idx,yIdxSta:yIdxEnd,xIdxSta:xIdxEnd]
+        if len(cropData.shape) > 2:
+            cropData = f.variables[varName][idx,...,yIdxSta:yIdxEnd,xIdxSta:xIdxEnd]
+        else:
+            cropData = f.variables[varName][idx,yIdxSta:yIdxEnd,xIdxSta:xIdxEnd]
 
         factor = int(round(float(cellsizeInput)/float(cellsizeClone)))
         if factor > 1: logger.debug('Resample: input cell size = '+str(float(cellsizeInput))+' ; output/clone cell size = '+str(float(cellsizeClone)))
@@ -980,7 +1001,8 @@ def readPCRmapClone(v,cloneMapFileName,tmpDir,absolutePath=None,isLddMap=False,c
         PCRmap = None                                                   # 29 July: I made an experiment by changing the type of this object. 
     elif not re.match(r"[0-9.-]*$",v):
         if absolutePath != None: v = getFullPath(v,absolutePath)
-        # print(v)
+        # print v
+        # print cloneMapFileName
         sameClone = isSameClone(v,cloneMapFileName)
         if sameClone == True:
             PCRmap = pcr.readmap(v)

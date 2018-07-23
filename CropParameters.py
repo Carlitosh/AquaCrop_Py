@@ -35,7 +35,7 @@ class CropParameters(object):
                     self.var.cropParameterFileNC,
                     param,
                     cloneMapFileName=self.var.cloneMap)
-
+        
     def adjust_planting_and_harvesting_date(self):
         pd = np.copy(self.var.PlantingDate)
         hd = np.copy(self.var.HarvestDate)
