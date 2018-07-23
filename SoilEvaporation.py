@@ -35,22 +35,23 @@ class SoilEvaporation(object):
         if np.any(self.var.GrowingSeasonDayOne):
             self.reset_initial_conditions()
         
-        # arr_ones = np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))
-        # dz = self.var.dz[:,None,None,None] * arr_ones
-        # dzsum = self.var.dzsum[:,None,None,None] * arr_ones
+        arr_ones = np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))
+        dz = self.var.dz[None,:,None,None] * arr_ones[:,None,:,:]
+        dzsum = self.var.dzsum[None,:,None,None] * arr_ones[:,None,:,:]
 
         # Find compartments covered by evaporation layer
-        comp_sto = (np.round((self.var.dzsum_xy - self.var.dz_xy) * 1000) < np.round(np.broadcast_to(self.var.EvapZ[:,None,:,:], self.var.th.shape) * 1000))
-        factor = 1 - ((self.var.dzsum_xy - np.broadcast_to(self.var.EvapZ[:,None,:,:], self.var.th.shape)) / self.var.dz_xy)
+        evapz_comp = self.var.EvapZ[:,None,:,:] * np.ones((self.var.nComp))[None,:,None,None]
+        comp_sto = (np.round((dzsum - dz) * 1000) < np.round(evapz_comp * 1000))
+        factor = 1 - ((dzsum - evapz_comp) / dz)
         factor = np.clip(factor, 0, 1) * comp_sto
 
         # Water storages in evaporation layer (mm)
-        Wevap_Act = np.sum((factor * 1000 * self.var.th * self.var.dz_xy), axis=1)
+        Wevap_Act = np.sum((factor * 1000 * self.var.th * dz), axis=1)
         self.var.Wevap_Act = np.clip(Wevap_Act, 0, None)
-        self.var.Wevap_Sat = np.sum((factor * 1000 * self.var.th_s_comp * self.var.dz_xy), axis=1)
-        self.var.Wevap_Fc = np.sum((factor * 1000 * self.var.th_fc_comp * self.var.dz_xy), axis=1)
-        self.var.Wevap_Wp = np.sum((factor * 1000 * self.var.th_wp_comp * self.var.dz_xy), axis=1)
-        self.var.Wevap_Dry = np.sum((factor * 1000 * self.var.th_dry_comp * self.var.dz_xy), axis=1)
+        self.var.Wevap_Sat = np.sum((factor * 1000 * self.var.th_s_comp * dz), axis=1)
+        self.var.Wevap_Fc = np.sum((factor * 1000 * self.var.th_fc_comp * dz), axis=1)
+        self.var.Wevap_Wp = np.sum((factor * 1000 * self.var.th_wp_comp * dz), axis=1)
+        self.var.Wevap_Dry = np.sum((factor * 1000 * self.var.th_dry_comp * dz), axis=1)
 
     def prepare_stage_two_evaporation(self):
         self.evap_layer_water_content()
@@ -94,6 +95,7 @@ class SoilEvaporation(object):
 
         cond4 = (self.var.GrowingSeasonIndex & self.var.PrematSenes)
         EsPot[cond4] = np.clip(EsPot, None, EsPotMax)[cond4]
+        # self.EsPot = EsPot
         return EsPot
 
     def adjust_potential_soil_evaporation_for_irrigation(self, EsPot):
@@ -119,13 +121,17 @@ class SoilEvaporation(object):
         return EsPotMul
 
     def extract_water(self, ToExtract, ToExtractStg):
-
+        arr_ones = np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))
         arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
+        dz = self.var.dz[None,:,None,None] * arr_ones[:,None,:,:]
+        dzsum = self.var.dzsum[None,:,None,None] * arr_ones[:,None,:,:]
 
         # Determine fraction of compartments covered by evaporation layer
-        comp_sto = (np.round((self.var.dzsum_xy - self.var.dz_xy) * 1000) < np.round(np.broadcast_to(self.var.EvapZmin[:,None,:,:], self.var.th.shape) * 1000))
-        factor = 1 - ((self.var.dzsum_xy - np.broadcast_to(self.var.EvapZmin[:,None,:,:], self.var.th.shape)) / self.var.dz_xy)
+        evapzmin_comp = self.var.EvapZmin[:,None,:,:] * np.ones((self.var.nComp))[None,:,None,None]
+        comp_sto = (np.round((dzsum - dz) * 1000) < np.round(evapzmin_comp * 1000))
+        factor = 1 - ((dzsum - evapzmin_comp) / dz)
         factor = np.clip(factor, 0, 1) * comp_sto
+
         comp_sto = np.sum(comp_sto, axis=1)
         comp = 0
         while np.any((comp < comp_sto) & (ToExtractStg > 0) & (ToExtract > 0)):
@@ -133,8 +139,8 @@ class SoilEvaporation(object):
             cond101 = ((comp < comp_sto) & (ToExtractStg > 0) & (ToExtract > 0))
 
             # Water available in compartment for extraction (mm)
-            Wdry = 1000 * self.var.th_dry_comp[:,comp,...] * self.var.dz_xy[:,comp,...]  
-            W = 1000 * self.var.th[:,comp,...] * self.var.dz_xy[:,comp,...]
+            Wdry = 1000 * self.var.th_dry_comp[:,comp,...] * dz[:,comp,...]  
+            W = 1000 * self.var.th[:,comp,...] * dz[:,comp,...]
             AvW = np.copy(arr_zeros)
             AvW[cond101] = ((W - Wdry) * factor[:,comp,...])[cond101]
             AvW = np.clip(AvW, 0, None)
@@ -153,7 +159,7 @@ class SoilEvaporation(object):
             ToExtractStg[cond1012] -= AvW[cond1012]
 
             # Update water content
-            self.var.th[:,comp,...][cond101] = (W / (1000 * self.var.dz_xy[:,comp,...]))[cond101]
+            self.var.th[:,comp,...][cond101] = (W / (1000 * dz[:,comp,...]))[cond101]
             comp += 1
 
     def relative_depletion(self):
@@ -161,6 +167,11 @@ class SoilEvaporation(object):
         # Get current water storage
         self.evap_layer_water_content()
         # Get water storage (mm) at start of stage 2 evaporation
+        # print self.var.Wstage2[0,0,0]
+        # print self.var.Wevap_Act[0,0,0]
+        # print self.var.Wevap_Sat[0,0,0]
+        # print self.var.Wevap_Fc[0,0,0]
+        # print self.var.REW[0,0,0]
         Wupper = (self.var.Wstage2 * (self.var.Wevap_Sat - (self.var.Wevap_Fc - self.var.REW)) + (self.var.Wevap_Fc - self.var.REW))
         # Get water storage (mm) when there is no evaporation
         Wlower = np.copy(self.var.Wevap_Dry)
@@ -168,6 +179,9 @@ class SoilEvaporation(object):
         Wrel_divd = (self.var.Wevap_Act - Wlower)
         Wrel_divs = (Wupper - Wlower)
         Wrel = np.divide(Wrel_divd, Wrel_divs, out=np.zeros_like(Wrel_divs), where=Wrel_divs!=0)
+        # print Wrel[0,0,0]
+        # print Wlower[0,0,0]
+        # print Wupper[0,0,0]
         return Wrel, Wlower, Wupper    
             
     def dynamic(self):
@@ -243,8 +257,8 @@ class SoilEvaporation(object):
         self.var.EvapZ[cond] = self.var.EvapZmin[cond]
         
         # Stage 1 evaporation
-        # dz = self.var.dz[None,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))[None,:,:,:]
-        # dzsum = self.var.dzsum[None,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))[None,:,:,:]
+        dz = self.var.dz[None,:,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))[:,None,:,:]
+        dzsum = self.var.dzsum[None,:,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))[:,None,:,:]
 
         # Determine total water to be extracted
         ToExtract = EsPot - self.var.EsAct
@@ -288,11 +302,7 @@ class SoilEvaporation(object):
         #     ToExtract,
         #     EvapTimeSteps=20)
 
-        print ToExtract[0,0,0]
-        print self.var.th[0,0,0,0]
         # Extract water
-        print ToExtract[0,0,0]
-        print self.var.th[0,0,0,0]
         EvapTimeSteps = 20
         cond11 = (ToExtract > 0)
         if np.any(cond11):
@@ -323,13 +333,12 @@ class SoilEvaporation(object):
                 # Get water to extract (NB Edt is zero in cells which do not
                 # need stage 2, so no need for index)
                 ToExtractStg2 = (Kr * Edt)
-                print ToExtractStg2[0,0,0]
                 self.extract_water(ToExtract, ToExtractStg2)
                 # thnew, EsAct, ToExtract, ToExtractStg2 = extract_water(
                 #     thnew, th_dry, dz, dzsum, EvapZmin, EsAct, ToExtract, ToExtractStg2)
 
         # return thnew, EsAct
-        print self.var.th[0,0,0,0]
+
         
         # Store potential evaporation for irrigation calculations on next day
         self.var.Epot = np.copy(EsPot)

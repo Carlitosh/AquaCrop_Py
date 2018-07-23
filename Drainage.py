@@ -32,10 +32,10 @@ class Drainage(object):
         
     def dynamic(self):
         """Function to redistribute stored soil water"""
-        dims = self.var.th.shape
+        # dims = self.var.th.shape
         thnew = np.copy(self.var.th)
         drainsum = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
-        for comp in range(dims[0]):
+        for comp in range(self.var.nComp):
 
             # Calculate drainage ability of compartment ii
             dthdt = self.compute_dthdt(self.var.th[:,comp,...], self.var.th_s_comp[:,comp,...], self.var.th_fc_comp[:,comp,...], self.var.th_fc_adj[:,comp,...], self.var.tau_comp[:,comp,...])

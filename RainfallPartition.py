@@ -36,7 +36,7 @@ class RainfallPartition(object):
         # curve number
         comp_sto = (np.round(self.var.dzsum_xy * 1000) <= np.round(zcn * 1000))
         cond111 = np.all((comp_sto == False), axis=1)
-        cond111 = np.broadcast_to(cond111, comp_sto.shape)
+        cond111 = np.broadcast_to(cond111[:,None,:,:], comp_sto.shape)
         comp_sto[cond111] = True
 
         # Calulcate weighting factors by compartment

@@ -15,8 +15,7 @@ class CapillaryRise(object):
         self.var = CapillaryRise_variable
 
     def initial(self):
-        arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
-        self.var.CrTot  = np.copy(arr_zeros)
+        self.var.CrTot = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
 
     def maximum_capillary_rise(ksat, aCR, bCR, zGW, z):
         """Function to compute maximum capillary rise for a given soil 
@@ -30,8 +29,6 @@ class CapillaryRise(object):
           z    : depth to midpoint of the soil layer
 
         """
-        # dims = ksat.shape
-        # nr, nlat, nlon = dims[0], dims[1], dims[2]
         MaxCR = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         cond1 = ((ksat > 0) & (zGW > 0) & ((zGW - z) < 4))
         cond11 = (cond1 & (z >= zGW))
@@ -43,8 +40,7 @@ class CapillaryRise(object):
         return MaxCR
 
     def store_water_from_capillary_rise(th, th_fc, th_fc_adj, th_wp, fshape_cr, MaxCR, flux_out, zGW, zBot, dz):
-        # dims = th.shape
-        # nc, nlat, nlon = dims[0], dims[1], dims[2]
+
         thnew = np.copy(th)
 
         cond1 = ((np.round(MaxCR * 1000) > 0) & (np.round(flux_out * 1000) == 0))
@@ -84,17 +80,17 @@ class CapillaryRise(object):
         """
         if self.var.WaterTable:
             
-            dims = self.var.th.shape
-            nc, nr, nlat, nlon = dims[0], dims[1], dims[2], dims[3]
+            # dims = self.var.th.shape
+            # nc, nr, nlat, nlon = dims[0], dims[1], dims[2], dims[3]
             zBot = np.sum(self.var.dz)
             zBotMid = zBot - (self.var.dz[-1] / 2)  # depth to midpoint of bottom layer
             thnew = np.copy(self.var.th)
 
             # Get maximum capillary rise for bottom compartment
             MaxCR = self.maximum_capillary_rise(
-                self.var.ksat[-1,:],
-                self.var.aCR[-1,:],
-                self.var.bCR[-1,:],
+                self.var.ksat[:,-1,...],
+                self.var.aCR[:,-1,...],
+                self.var.bCR[:,-1,...],
                 self.var.zGW,
                 zBotMid)
 
@@ -110,45 +106,45 @@ class CapillaryRise(object):
             while np.any(zTopLayer < self.var.zGW) & (layeri < (self.var.nLayer - 1)):
                 layeri += 1
                 LimCR = self.maximum_capillary_rise(
-                    self.var.ksat_comp[layeri,:],
-                    self.var.aCR_comp[layeri,:],
-                    self.var.bCR_comp[layeri,:],
+                    self.var.ksat[:,layeri,...],
+                    self.var.aCR[:,layeri,...],
+                    self.var.bCR[:,layeri,...],
                     self.var.zGW,
                     zTopLayer)
                 MaxCR = np.clip(MaxCR, None, LimCR)
                 zTopLayer += self.var.zLayer[layeri]
 
-            compi = nc - 1
-            CrTot = np.zeros((nr, nlat, nlon))
-            while ((np.any(np.round(MaxCR * 1000) > 0)) & (np.any(np.round(self.var.FluxOut[compi,:] * 1000) == 0)) & (compi >= 0)):
+            compi = self.var.nComp - 1
+            CrTot = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
+            while ((np.any(np.round(MaxCR * 1000) > 0)) & (np.any(np.round(self.var.FluxOut[:,compi,...] * 1000) == 0)) & (compi >= 0)):
 
-                cond1 = ((np.round(MaxCR * 1000) > 0) & (np.round(self.var.FluxOut[compi,:] * 1000) == 0))
+                cond1 = ((np.round(MaxCR * 1000) > 0) & (np.round(self.var.FluxOut[:,compi,...] * 1000) == 0))
                 thnew_comp, CRcomp, MaxCR = self.store_water_from_capillary_rise(
-                    self.var.th[compi,:],
-                    self.var.th_fc_comp[compi,:],
-                    self.var.th_fc_adj[compi,:],
-                    self.var.th_wp_comp[compi,:],
-                    self.var.fshape_cr_comp[compi,:],
+                    self.var.th[:,compi,...],
+                    self.var.th_fc_comp[:,compi,...],
+                    self.var.th_fc_adj[:,compi,...],
+                    self.var.th_wp_comp[:,compi,...],
+                    self.var.fshape_cr_comp[:,compi,...],
                     MaxCR,
-                    self.var.FluxOut[compi,:],
+                    self.var.FluxOut[:,compi,...],
                     self.var.zGW,
                     zBot,
                     self.var.dz[compi])
 
-                thnew[compi,:][cond1] = thnew_comp[cond1]
+                thnew[:,compi,...][cond1] = thnew_comp[cond1]
                 CrTot[cond1] += CRcomp[cond1]
 
                 # Update bottom elevation of compartment and compartment counter
-                zBot -= dz[compi]
+                zBot -= self.var.dz[compi]
                 compi -= 1
 
                 # Update restriction on maximum capillary rise
                 if compi >= 0:
                     zBotMid = zBot - (self.var.dz[compi] / 2)
                     LimCR = self.maximum_capillary_rise(
-                        self.var.ksat_comp[compi,:],
-                        self.var.aCR_comp[compi,:],
-                        self.var.bCR_comp[compi,:],
+                        self.var.ksat_comp[:,compi,...],
+                        self.var.aCR_comp[:,compi,...],
+                        self.var.bCR_comp[:,compi,...],
                         self.var.zGW,
                         zBotMid)
                     cond11 = (cond1 & (MaxCR > LimCR))
