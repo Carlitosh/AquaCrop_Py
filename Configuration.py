@@ -8,12 +8,13 @@
 import ConfigParser
 import os
 import sys
+import string
 import VirtualOS as vos
 import time
 import datetime
 import shutil
 import glob
-
+import warnings
 import logging
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,9 @@ class Configuration(object):
 
     def set_configuration(self, system_arguments = None):
 
+        # repair key names of initial conditions
+        self.repair_ini_key_names()
+        
         # set all paths
         self.set_input_files()
         self.create_output_directories()
@@ -57,9 +61,6 @@ class Configuration(object):
 
         # copy ini file
         self.backup_configuration()
-
-        # repair key names of initial conditions
-        self.repair_ini_key_names()
 
     def initialize_logging(self, log_file_location = "Default", system_arguments = None):
         """Initialize logging. Prints to both the console and a log 
@@ -178,7 +179,7 @@ class Configuration(object):
         # groundwater input file
         item = 'groundwaterNC'
         if self.groundwaterOptions[item] != "None":
-            self.groundwaterOptions[item] = vos.getFullPath(self.groundwaterOptions[item], self.globalOptions['inputDir'])
+            self.groundwaterOptions[item] = vos.getFullPath(self.groundwaterOptions[item], self.groundwaterOptions['groundwaterInputDir'])
 
         # soil parameter input file
         item = 'soilAndTopoNC'
@@ -284,35 +285,44 @@ class Configuration(object):
         # ===================
         
         if 'WaterTable' not in self.groundwaterOptions.keys():
-            # TODO: add warning to say that groundwater is not considered
-            # TODO: add check that groundwater file is supplied if WaterTable = 1
+            warnings.warn('configuration option "WaterTable" not found: ignoring groundwater calculations')
             self.groundwaterOptions['WaterTable'] = "0"
-        
-        if self.groundwaterOptions['WaterTable'] == "0":
-            watertable = False
-        elif self.groundwaterOptions['WaterTable'] == "1":
+
+        watertable = False
+        if self.groundwaterOptions['WaterTable'] == "1":
             watertable = True
         else:
-            # TODO: print warning ("e.g. WaterTable must equal 1 or 0")
-            self.groundwaterOptions['WaterTable'] == "0"
             watertable = False
+            if not self.groundwaterOptions['WaterTable'] == "0":
+                warnings.warn('configuration option "WaterTable" should equal 0 or 1')
+                self.groundwaterOptions['WaterTable'] = "0"
                  
-
-        if watertable and 'VariableWaterTable' not in self.groundwaterOptions.keys():
-            # TODO: add warning (also, is this appropriate?)
-            self.groundwaterOptions['WaterTable'] = "0"
-            watertable = False
-
         if watertable and 'groundwaterVariableName' not in self.groundwaterOptions.keys():
-            # TODO: add warning (also, is this appropriate?)
-            self.groundwaterOptions['WaterTable'] = "0"
-            watertable = False
-
-        if watertable and 'groundwaterNC' not in self.groundwaterOptions.keys():
-            # TODO: add warning
+            warnings.warn('configuration option "groundwaterVariableName" not found: ignoring groundwater calculations')
             self.groundwaterOptions['WaterTable'] = "0"
             watertable = False
             
+        if watertable and 'VariableWaterTable' not in self.groundwaterOptions.keys():
+            warnings.warn('configuration option "VariableWaterTable" not found: assuming water table is static')
+            self.groundwaterOptions['VariableWaterTable'] = "0"
+
+        if watertable and 'groundwaterNC' not in self.groundwaterOptions.keys():
+            warnings.warn('configuration option "groundwaterNC" not found: ignoring groundwater calculations')
+            self.groundwaterOptions['WaterTable'] = "0"
+            watertable = False
+
+        if 'groundwaterInputDir' not in self.groundwaterOptions.keys():
+            self.groundwaterOptions['groundwaterInputDir'] = self.globalOptions['inputDir']
+
+        if 'DailyForcingData' not in self.groundwaterOptions.keys():
+            self.groundwaterOptions['DailyForcingData'] = "0"
+        else:
+            if self.groundwaterOptions['DailyForcingData'] == "1":
+                pl = [tup[1] for tup in string.Formatter().parse(self.groundwaterOptions['groundwaterNC']) if tup[1] is not None]
+                if not all(elem in ['day','month','year'] for elem in pl):
+                    print 'configuration option "groundwaterNC" should contain day, month, year placeholders'
+                    raise
+                
         # irrigation options
         # ==================
         

@@ -2,7 +2,8 @@
 # -*- coding: utf-8 -*-
 
 # AquaCrop crop growth model
-
+import os
+import time
 import numpy as np
 import VirtualOS as vos
 
@@ -15,65 +16,91 @@ class Groundwater(object):
         self.var = Groundwater_variable
 
     def initial(self):
-
-        # NB added additional option to config: VariableWaterTable (= 1|0, i.e. True|False)
-
         self.var.WaterTable = bool(int(self.var._configuration.groundwaterOptions['WaterTable']))
         self.var.VariableWaterTable = bool(int(self.var._configuration.groundwaterOptions['VariableWaterTable']))
+        self.var.DailyForcingData = bool(int(self.var._configuration.groundwaterOptions['DailyForcingData']))
 
         if self.var.WaterTable:
             self.var.gwFileNC = self.var._configuration.groundwaterOptions['groundwaterNC']
             self.var.gwVarName = self.var._configuration.groundwaterOptions['groundwaterVariableName']
 
-        # daily time step
-        self.var.usingDailyTimeStepForcingData = False
-        if self.var._configuration.timeStep == 1.0 and self.var._configuration.timeStepUnit == "day":
-            self.var.usingDailyTimeStepForcingData = True
+        # # daily time step
+        # self.var.usingDailyTimeStepForcingData = False
+        # if self.var._configuration.timeStep == 1.0 and self.var._configuration.timeStepUnit == "day":
+        #     self.var.usingDailyTimeStepForcingData = True
 
-        # option to use netcdf file that is defined per year (redundant?)
-        self.var.groundwater_set_per_year  = False
-            
-    # def update(self,currTimeStep):
-    #     pass
+    def read(self):
 
-    def dynamic(self):
-
-        # TODO: write coupling method for AMBHAS
-        
         # method for finding time indexes in the groundwater netdf file:
         # - the default one
         method_for_time_index = None
         # - based on the ini/configuration file (if given)
-
-        if 'time_index_method_for_groundwater_netcdf' in self.var._configuration.groundwaterOptions.keys() and\
-                                                           self.var._configuration.groundwaterOptions['time_index_method_for_groundwater_netcdf'] != "None":
-            method_for_time_index = self.var._configuration.groundwaterOptions['time_index_method_for_groundwater_netcdf']
-
+        # if 'time_index_method_for_groundwater_netcdf' in self.var._configuration.groundwaterOptions.keys() and\
+        #                                                    self.var._configuration.groundwaterOptions['time_index_method_for_groundwater_netcdf'] != "None":
+        #     method_for_time_index = self.var._configuration.groundwaterOptions['time_index_method_for_groundwater_netcdf']
+        
         # reading groundwater:
         if self.var.WaterTable:
-            
             if self.var.VariableWaterTable:
-                if self.var.groundwater_set_per_year:
-                    nc_file_per_year = self.var.gwFileNC %(float(currTimeStep.year), float(currTimeStep.year))
-                    self.var.zGW = vos.netcdf2PCRobjClone(nc_file_per_year,\
-                                                      self.var.gwVarName,\
-                                                      str(currTimeStep.fulldate),\
-                                                      useDoy = method_for_time_index,\
-                                                      cloneMapFileName = self.var.cloneMap,\
-                                                      LatitudeLongitude = True)
+
+                if self.var.DailyForcingData:
+
+                    day, month, year = self.var._modelTime.day, self.var._modelTime.month, self.var._modelTime.year
+
+                    # Fill named placeholders (NB we have already checked that
+                    # the specified filename contains these placeholders)
+                    gwFileNC = self.var.gwFileNC.format(day=day, month=month, year=year)
+                    print gwFileNC
+
+                    # Check whether the file is present in the filesystem; if
+                    # it doesn't, enter a while loop which periodically checks
+                    # whether the file exists. We specify a maximum wait time
+                    # in order to prevent the model hanging if the file never
+                    # materialises.
+                    
+                    exists = os.path.exists(gwFileNC)
+                    max_wait_time = 60
+                    wait_time = 0.1
+                    total_wait_time = 0
+                    while exists is False and total_wait_time <= max_wait_time:
+                        time.sleep(wait_time)
+                        exists = os.path.exists(gwFileNC)
+                        total_wait_time += wait_time
+
+                    if not exists:
+                        print "groundwater file doesn't exist and maximum wait time exceeded"
+                        raise
+
+                    # TODO: check with BGS whether the netCDF from their groundwater model will
+                    # have a time dimension (if not, use vos.netcdf2PCRobjCloneWithoutTime)
+                    self.var.zGW = vos.netcdf2PCRobjCloneWithoutTime(gwFileNC,
+                                                                     self.var.gwVarName,
+                                                                     cloneMapFileName = self.var.cloneMap,
+                                                                     LatitudeLongitude = True)
+                    print self.var.zGW[0,0]
+                    # self.var.zGW = vos.netcdf2PCRobjClone(gwFileNC,
+                    #                                       self.var.gwVarName,
+                    #                                       str(self.var._modelTime.fulldate),
+                    #                                       useDoy = method_for_time_index,
+                    #                                       cloneMapFileName = self.var.cloneMap,
+                    #                                       LatitudeLongitude = True)
+                        
                 else:
                     self.var.zGW = vos.netcdf2PCRobjClone(self.var.gwFileNC,\
-                                                      self.var.gwVarName,\
-                                                      str(currTimeStep.fulldate),\
-                                                      useDoy = method_for_time_index,\
-                                                      cloneMapFileName = self.var.cloneMap,\
-                                                      LatitudeLongitude = True)
+                                                          self.var.gwVarName,\
+                                                          str(currTimeStep.fulldate),\
+                                                          useDoy = method_for_time_index,\
+                                                          cloneMapFileName = self.var.cloneMap,\
+                                                          LatitudeLongitude = True)
                     
             else:
                 self.var.zGW = vos.netcdf2PCRobjCloneWithoutTime(self.var.gwFileNC,\
-                                                             self.var.gwVarName,\
-                                                             cloneMapFileName = self.var.cloneMap,\
-                                                             LatitudeLongitude = True)
+                                                                 self.var.gwVarName,\
+                                                                 cloneMapFileName = self.var.cloneMap,\
+                                                                 LatitudeLongitude = True)
                 
         else:
-            self.var.zGW = None # TODO: check that this is OK in other parts of the program
+            self.var.zGW = None
+    
+    def dynamic(self):
+        self.read()

@@ -60,7 +60,7 @@ class SoilAndTopoParameters(object):
                                                   var,
                                                   cloneMapFileName=self.var.cloneMap)
             vars(self.var)[var] = np.broadcast_to(d, (self.var.nCrop, self.var.nLat, self.var.nLon))
-            
+
         # map layers to compartments - the result is a 1D array with length
         # equal to nComp where the value of each element is the index of the
         # corresponding layer. For the time being we use the layer in which
@@ -93,13 +93,14 @@ class SoilAndTopoParameters(object):
         # "Calculate upper and lower curve numbers"
         self.var.CNbot = np.round(1.4 * (np.exp(-14 * np.log(10))) + (0.507 * self.var.CN) - (0.00374 * self.var.CN ** 2) + (0.0000867 * self.var.CN ** 3))
         self.var.CNtop = np.round(5.6 * (np.exp(-14 * np.log(10))) + (2.33 * self.var.CN) - (0.0209 * self.var.CN ** 2) + (0.000076 * self.var.CN ** 3))
-
-        # transform certain soil properties to (ncomp, ncrop, nlat, nlon)
-        soil_params = ['th_s','th_fc','th_wp','th_dry','ksat','tau','fshape_cr']
+        
+        # transform certain soil properties to (ncrop, ncomp, nlat, nlon)
+        soil_params = ['th_s','th_fc','th_wp','th_dry','ksat','tau']
+        # soil_params = ['th_s','th_fc','th_wp','th_dry','ksat','tau','fshape_cr']
         for nm in soil_params:
             newnm = nm + '_comp'
             vars(self.var)[newnm] = vars(self.var)[nm][:,self.var.layerIndex,...]
-        
+
     def compute_capillary_rise_parameters(self):
         # Function adapted from AOS_ComputeVariables.m, lines 60-127
 
@@ -155,8 +156,8 @@ class SoilAndTopoParameters(object):
         self.var.bCR[cond43] = (-1.9165 + (0.7063 * np.log(150)))
 
         # Expand to soil compartments
-        self.var.aCR_comp = self.var.aCR[self.var.layerIndex,:]
-        self.var.bCR_comp = self.var.bCR[self.var.layerIndex,:]
+        self.var.aCR_comp = self.var.aCR[:,self.var.layerIndex,...]
+        self.var.bCR_comp = self.var.bCR[:,self.var.layerIndex,...]
 
     def dynamic(self):
         pass

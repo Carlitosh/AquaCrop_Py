@@ -55,9 +55,22 @@ class Meteo(object):
         self.var.precipitation_set_per_year  = False
         self.var.temperature_set_per_year    = False
         self.var.refETPotFileNC_set_per_year = False
+
+    def read_meteo_conversion_factors(self, meteoOptions):
+        """Function to read conversion factors from configuration
+        file
+        """
+        if 'precipitationConstant' in meteoOptions: self.var.preConst = meteoOptions['precipitationConstant']
+        if 'precipitationFactor' in meteoOptions: self.var.preFactor = meteoOptions['precipitationFactor']
+        if 'temperatureConstant' in meteoOptions: self.var.tmpConst = meteoOptions['temperatureConstant']
+        if 'temperatureFactor' in meteoOptions: self.var.tmpFactor = meteoOptions['temperatureFactor']
+        if 'ETpotConstant' in meteoOptions: self.var.refETPotConst = meteoOptions['ETpotConstant']
+        if 'ETpotFactor' in meteoOptions: self.var.refETPotFactor = meteoOptions['ETpotFactor']
         
     def read_meteo_variable_names(self, meteoOptions):
-
+        """Function to read netCDF variable names from the 
+        configuration file
+        """
         if 'precipitationVariableName' in meteoOptions: self.preVarName = meteoOptions['precipitationVariableName']
         if 'tminVariableName' in meteoOptions: self.tmnVarName = meteoOptions['tminVariableName'  ]
         if 'tmaxVariableName' in meteoOptions: self.tmxVarName = meteoOptions['tmaxVariableName'  ]
@@ -69,8 +82,7 @@ class Meteo(object):
         # - the default one
         method_for_time_index = None
         # - based on the ini/configuration file (if given)
-        if 'time_index_method_for_precipitation_netcdf' in self.var._configuration.meteoOptions.keys() and\
-                                                           self.var._configuration.meteoOptions['time_index_method_for_precipitation_netcdf'] != "None":
+        if 'time_index_method_for_precipitation_netcdf' in self.var._configuration.meteoOptions.keys() and self.var._configuration.meteoOptions['time_index_method_for_precipitation_netcdf'] != "None":
             method_for_time_index = self.var._configuration.meteoOptions['time_index_method_for_precipitation_netcdf']
         
         # reading precipitation:
@@ -141,39 +153,32 @@ class Meteo(object):
                                                cloneMapFileName = self.var.cloneMap,\
                                                LatitudeLongitude = True)
 
-        self.var.tmin    = self.var.tmpConst + self.var.tmpFactor * np.where(self.var.landmask, self.var.tmin, np.nan)
-        self.var.tmax    = self.var.tmpConst + self.var.tmpFactor * np.where(self.var.landmask, self.var.tmax, np.nan)
+        self.var.tmin = self.var.tmpConst + self.var.tmpFactor * np.where(self.var.landmask, self.var.tmin, np.nan)
+        self.var.tmax = self.var.tmpConst + self.var.tmpFactor * np.where(self.var.landmask, self.var.tmax, np.nan)
 
-        if 'time_index_method_for_ref_pot_et_netcdf' in self.var._configuration.meteoOptions.keys() and\
-                                                        self.var._configuration.meteoOptions['time_index_method_for_ref_pot_et_netcdf'] != "None":
+        # round to nearest mm
+        self.var.tmin = np.round(self.var.tmin * 1000.) / 1000.
+        self.var.tmax = np.round(self.var.tmax * 1000.) / 1000.
+
+        if 'time_index_method_for_ref_pot_et_netcdf' in self.var._configuration.meteoOptions.keys() and self.var._configuration.meteoOptions['time_index_method_for_ref_pot_et_netcdf'] != "None":
             method_for_time_index = self.var._configuration.meteoOptions['time_index_method_for_ref_pot_et_netcdf']
 
         if self.var.refETPotFileNC_set_per_year: 
             nc_file_per_year = self.var.etpFileNC %(int(self.var._modelTime.year), int(self.var._modelTime.year))
-            self.var.referencePotET = vos.netcdf2PCRobjClone(\
-                                  nc_file_per_year, self.var.refETPotVarName,\
-                                  str(self.var._modelTime.fulldate), 
-                                  useDoy = method_for_time_index,
-                                  cloneMapFileName = self.var.cloneMap,\
-                                  LatitudeLongitude = True)
+            self.var.referencePotET = vos.netcdf2PCRobjClone(
+                nc_file_per_year,
+                self.var.refETPotVarName,
+                str(self.var._modelTime.fulldate), 
+                useDoy = method_for_time_index,
+                cloneMapFileName = self.var.cloneMap,
+                LatitudeLongitude = True)
         else:
-            self.var.referencePotET = vos.netcdf2PCRobjClone(\
-                                  self.var.etpFileNC,self.var.refETPotVarName,\
-                                  str(self.var._modelTime.fulldate), 
-                                  useDoy = method_for_time_index,
-                                  cloneMapFileName=self.var.cloneMap,\
-                                  LatitudeLongitude = True)
+            self.var.referencePotET = vos.netcdf2PCRobjClone(
+                self.var.etpFileNC,
+                self.var.refETPotVarName,
+                str(self.var._modelTime.fulldate), 
+                useDoy = method_for_time_index,
+                cloneMapFileName=self.var.cloneMap,
+                LatitudeLongitude = True)
 
         self.var.referencePotET = self.var.refETPotConst + self.var.refETPotFactor * np.where(self.var.landmask, self.var.referencePotET, np.nan)
-
-        self.var.tmin = np.round(self.var.tmin * 1000.) / 1000.
-        self.var.tmax = np.round(self.var.tmax * 1000.) / 1000.
-        
-        # self.var.precipitation  = np.where(self.var.landmask, self.var.precipitation, np.nan)
-        # self.var.tmin           = np.where(self.var.landmask, self.var.tmin, np.nan)
-        # self.var.tmax           = np.where(self.var.landmask, self.var.tmax, np.nan)
-        # self.var.referencePotET = np.where(self.var.landmask, self.var.referencePotET, np.nan)
-        
-        # self.var.precipitation  = np.maximum(0.0, self.var.precipitation)
-        # self.var.referencePotET = np.maximum(0.0, self.var.referencePotET)
-        

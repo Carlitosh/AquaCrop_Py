@@ -18,7 +18,7 @@ class CheckGroundwaterTable(object):
 
     def initial(self):
         arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
-        self.var.th_fc_adj = self.var.th_fc[self.var.layerIndex,:]
+        self.var.th_fc_adj = np.copy(self.var.th_fc_comp)
         self.var.WTinSoil = np.copy(arr_zeros.astype(bool))
 
     def reset_initial_conditions(self):
@@ -33,6 +33,7 @@ class CheckGroundwaterTable(object):
         if self.var.WaterTable:
             # Copy depth to groundwater, and add crop dimension for convenience
             self.var.zGW = self.var.zGW[None,:,:] * np.ones((self.var.nCrop))[:,None,None]
+            zGW_comp = self.var.zGW[:,None,:,:] * np.ones((self.var.nComp))[None,:,None,None]
 
             # get the mid point of each compartment
             zBot = np.cumsum(self.var.dz)
@@ -41,7 +42,8 @@ class CheckGroundwaterTable(object):
             zMid = zMid[None,:,None,None] * np.ones((self.var.nCrop,self.var.nLat,self.var.nLon))[:,None,:,:]
 
             # Check if water table is within modelled soil profile
-            WTinSoilComp = (zMid >= self.var.zGW)
+            WTinSoilComp = (zMid >= zGW_comp)
+            # WTinSoilComp = (zMid >= self.var.zGW)
             self.var.th[WTinSoilComp] = self.var.th_s_comp[WTinSoilComp]
 
             # Flatten WTinSoilComp to provide an array with dimensions
@@ -59,7 +61,8 @@ class CheckGroundwaterTable(object):
             pF = 2 + 0.3 * (self.var.th_fc_comp - 0.1) / 0.2
             Xmax_cond3 = np.exp(pF * np.log(10)) / 100
             Xmax[cond3] = Xmax_cond3[cond3]
-            cond4 = (self.var.zGW < 0) | ((self.var.zGW - zMid) >= Xmax)
+            cond4 = (zGW_comp < 0) | ((zGW_comp - zMid) >= Xmax)
+            # cond4 = (self.var.zGW < 0) | ((self.var.zGW - zMid) >= Xmax)
 
             # Index of the compartment to which each element belongs (shallow ->
             # deep, i.e. 1 is the shallowest)
@@ -82,10 +85,12 @@ class CheckGroundwaterTable(object):
             # to ensure that True elements in 'cond4' do not also belong to 'cond5',
             # 'cond6' or 'cond7'. We use numpy.logical_not(...) for this purpose.
             cond5 = (self.var.th_fc_comp >= self.var.th_s_comp) & np.logical_not(cond4)
-            cond6 = (zMid >= self.var.zGW) & np.logical_not(cond4 | cond5)
+            cond6 = (zMid >= zGW_comp) & np.logical_not(cond4 | cond5)
+            # cond6 = (zMid >= self.var.zGW) & np.logical_not(cond4 | cond5)
             cond7 = np.logical_not(cond4 | cond5 | cond6)
             dV = self.var.th_s_comp - self.var.th_fc_comp
-            dFC = (dV / (Xmax ** 2)) * ((zMid - (self.var.zGW - Xmax)) ** 2)
+            dFC = (dV / (Xmax ** 2)) * ((zMid - (zGW_comp - Xmax)) ** 2)
+            # dFC = (dV / (Xmax ** 2)) * ((zMid - (self.var.zGW - Xmax)) ** 2)
 
             self.var.th_fc_adj[cond4] = self.var.th_fc_comp[cond4]
             self.var.th_fc_adj[cond5] = self.var.th_fc_comp[cond5]
