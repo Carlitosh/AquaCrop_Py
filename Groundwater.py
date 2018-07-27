@@ -43,6 +43,8 @@ class Groundwater(object):
         if self.var.WaterTable:
             if self.var.VariableWaterTable:
 
+                # DailyForcingData is a logical indicating whether a separate
+                # netCDF is used for each time step - use this for coupling
                 if self.var.DailyForcingData:
 
                     day, month, year = self.var._modelTime.day, self.var._modelTime.month, self.var._modelTime.year
@@ -50,7 +52,6 @@ class Groundwater(object):
                     # Fill named placeholders (NB we have already checked that
                     # the specified filename contains these placeholders)
                     gwFileNC = self.var.gwFileNC.format(day=day, month=month, year=year)
-                    print gwFileNC
 
                     # Check whether the file is present in the filesystem; if
                     # it doesn't, enter a while loop which periodically checks
@@ -69,34 +70,25 @@ class Groundwater(object):
 
                     if not exists:
                         print "groundwater file doesn't exist and maximum wait time exceeded"
-                        raise
+                        raise   # TODO: make error class
 
-                    # TODO: check with BGS whether the netCDF from their groundwater model will
-                    # have a time dimension (if not, use vos.netcdf2PCRobjCloneWithoutTime)
                     self.var.zGW = vos.netcdf2PCRobjCloneWithoutTime(gwFileNC,
                                                                      self.var.gwVarName,
                                                                      cloneMapFileName = self.var.cloneMap,
                                                                      LatitudeLongitude = True)
-                    print self.var.zGW[0,0]
-                    # self.var.zGW = vos.netcdf2PCRobjClone(gwFileNC,
-                    #                                       self.var.gwVarName,
-                    #                                       str(self.var._modelTime.fulldate),
-                    #                                       useDoy = method_for_time_index,
-                    #                                       cloneMapFileName = self.var.cloneMap,
-                    #                                       LatitudeLongitude = True)
                         
                 else:
-                    self.var.zGW = vos.netcdf2PCRobjClone(self.var.gwFileNC,\
-                                                          self.var.gwVarName,\
-                                                          str(currTimeStep.fulldate),\
-                                                          useDoy = method_for_time_index,\
-                                                          cloneMapFileName = self.var.cloneMap,\
+                    self.var.zGW = vos.netcdf2PCRobjClone(self.var.gwFileNC,
+                                                          self.var.gwVarName,
+                                                          str(currTimeStep.fulldate),
+                                                          useDoy = method_for_time_index,
+                                                          cloneMapFileName = self.var.cloneMap,
                                                           LatitudeLongitude = True)
                     
             else:
-                self.var.zGW = vos.netcdf2PCRobjCloneWithoutTime(self.var.gwFileNC,\
-                                                                 self.var.gwVarName,\
-                                                                 cloneMapFileName = self.var.cloneMap,\
+                self.var.zGW = vos.netcdf2PCRobjCloneWithoutTime(self.var.gwFileNC,
+                                                                 self.var.gwVarName,
+                                                                 cloneMapFileName = self.var.cloneMap,
                                                                  LatitudeLongitude = True)
                 
         else:
