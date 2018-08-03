@@ -161,6 +161,17 @@ def get_time_index(ncFile, date, useDoy):
     logger.debug('Using the date index '+str(idx))
     return(idx)
 
+def netcdfDim2NumPy(ncFile, dimName, absolutePath = None):
+    if absolutePath != None: ncFile = getFullPath(ncFile, absolutePath)
+    if ncFile in filecache.keys():
+        f = filecache[ncFile]
+    else:
+        f = nc.Dataset(ncFile)
+        filecache[ncFile] = f
+    dimName = str(dimName)
+    var = f.variables[dimName][:]
+    return var
+    
 def netcdf2PCRobjCloneWithoutTime(ncFile, varName,
                                   cloneMapFileName  = None,\
                                   LatitudeLongitude = True,\

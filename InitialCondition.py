@@ -27,16 +27,16 @@ class InitialCondition(object):
         self.var.initialConditionFileNC = self.var._configuration.globalOptions['initialConditionNC']
         th = vos.netcdf2PCRobjCloneWithoutTime(
             self.var.initialConditionFileNC,'th', cloneMapFileName=self.var.cloneMap)
-        init_cond_type = self.var._configuration.globalOptions['initialConditionType']
-        init_cond_interp_method = self.var._configuration.globalOptions['initialConditionInterpMethod']
+        # init_cond_type = self.var._configuration.globalOptions['initialConditionType']
+        # init_cond_interp_method = self.var._configuration.globalOptions['initialConditionInterpMethod']
 
-        if init_cond_type is 'Num':
-            th = th
-        elif init_cond_type is 'Pct':
-            # NB original Matlab code allows users to supply initial conditions
-            # at specified depth intervals or for specified layer. At the moment
-            # we only allow the latter, although this may change in the future.
-            th = self.var.th_wp + ((th / 100) * (self.var.th_fc - self.var.th_wp))
+        # if init_cond_type is 'Num':
+        #     th = th
+        # elif init_cond_type is 'Pct':
+        #     # NB original Matlab code allows users to supply initial conditions
+        #     # at specified depth intervals or for specified layer. At the moment
+        #     # we only allow the latter, although this may change in the future.
+        #     th = self.var.th_wp + ((th / 100) * (self.var.th_fc - self.var.th_wp))
 
         # NB original Matlab code also allows users to supply initial condition
         # as field capacity, wilting point or saturation. We do not explicitly

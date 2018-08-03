@@ -33,6 +33,7 @@ class Transpiration(object):
         self.var.AerDaysComp[cond_comp] = 0        
         self.var.Tpot[cond] = 0
         self.var.TrRatio[cond] = 1
+        # self.var.TrAct[cond] = 0  # TEMP - may not require?
         self.var.DaySubmerged[cond] = 0
         
     def aeration_stress(self):
@@ -185,6 +186,7 @@ class Transpiration(object):
         SxComp *= comp_sto
 
         # Extract water
+        self.var.TrAct.fill(0.)
         ToExtract = np.copy(TrPot)
         cond14_ini = (self.var.GrowingSeasonIndex & (ToExtract > 0))
         if (np.any(cond14_ini)):

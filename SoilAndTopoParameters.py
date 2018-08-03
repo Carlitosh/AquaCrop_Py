@@ -16,22 +16,26 @@ class SoilAndTopoParameters(object):
 
     def initial(self):
 
-        self.var.nLayer = int(self.var._configuration.soilOptions['nLayer'])
-        self.var.zLayer = self.var._configuration.soilOptions['zLayer'].split(',')
-        self.var.zLayer = np.array(map(np.float32, self.var.zLayer))
+        # self.var.nLayer = int(self.var._configuration.soilOptions['nLayer'])
+        # self.var.zLayer = self.var._configuration.soilOptions['zLayer'].split(',')
+        # self.var.zLayer = np.array(map(np.float32, self.var.zLayer))
 
-        self.var.nComp = int(self.var._configuration.soilOptions['nComp'])
-        self.var.dz = self.var._configuration.soilOptions['dz'].split(',')
-        self.var.dz = np.array(map(np.float64, self.var.dz))
-        self.var.dzsum = np.cumsum(self.var.dz)
+        # self.var.nComp = int(self.var._configuration.soilOptions['nComp'])
+        # self.var.dz = self.var._configuration.soilOptions['dz'].split(',')
+        # self.var.dz = np.array(map(np.float64, self.var.dz))
+        # self.var.dzsum = np.cumsum(self.var.dz)
 
+        # read parameters
+        self.var.soilAndTopoFileNC = self.var._configuration.soilOptions['soilAndTopoNC']
+        self.read()
+        
         # for convenience
         self.var.dz_xy = self.var.dz[None,:,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))[:,None,:,:]
         self.var.dzsum_xy = self.var.dzsum[None,:,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))[:,None,:,:]
         
-        # read parameters
-        self.var.soilAndTopoFileNC = self.var._configuration.soilOptions['soilAndTopoNC']
-        self.read()
+        # # read parameters
+        # self.var.soilAndTopoFileNC = self.var._configuration.soilOptions['soilAndTopoNC']
+        # self.read()
         self.compute_capillary_rise_parameters()
 
     def read(self):		
@@ -43,6 +47,30 @@ class SoilAndTopoParameters(object):
 
     def readSoil(self):
 
+        # Get layer and compartment thickness (zLayer and dz) from dimensions
+        # Layers:
+        zlayermid = vos.netcdfDim2NumPy(self.var.soilAndTopoFileNC,'layer')
+        nlayer = zlayermid.size
+        zlayer = np.zeros((nlayer))
+        runtot = 0
+        for layer in range(nlayer):
+            zlayer[layer] = (zlayermid[layer] - runtot) * 2
+            runtot = np.sum(zlayer[:(layer+1)])
+        self.var.nLayer = nlayer
+        self.var.zLayer = zlayer
+        
+        # Compartments:
+        zmid = vos.netcdfDim2NumPy(self.var.soilAndTopoFileNC,'compartment')
+        ncomp = zmid.size
+        dz = np.zeros((ncomp))
+        runtot = 0
+        for comp in range(ncomp):
+            dz[comp] = (zmid[comp] - runtot) * 2
+            runtot = np.sum(dz[:(comp+1)])
+        self.var.nComp = ncomp
+        self.var.dz = dz
+        self.var.dzsum = np.cumsum(dz)
+        
         # These parameters have dimensions depth,lat,lon
         soilParams1 = ['ksat', 'th_s', 'th_fc', 'th_wp']
         for var in soilParams1:
