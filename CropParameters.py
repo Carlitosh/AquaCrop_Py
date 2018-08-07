@@ -59,10 +59,22 @@ class CropParameters(object):
         self.var.HarvestDateAdj = hd
 
     def update_growing_season(self):
+
+        # TODO: this needs attention!!!
+        
+        isLeapYear1 = calendar.isleap(self.var._modelTime.year)
+        daysInYear = 365
+        if isLeapYear1: daysInYear = 366
         cond1 = ((self.var.PlantingDateAdj <= self.var._modelTime.doy) & (self.var._modelTime.doy <= self.var.HarvestDateAdj))
-        hd_arr = (np.datetime64(str(datetime.datetime(self.var._modelTime.year, 1, 1))) + np.array(self.var.HarvestDateAdj - 1, dtype='timedelta64[D]'))
-        cond3 = hd_arr <= np.datetime64(str(self.var._modelTime.endTime))        
-        self.var.GrowingSeason = ((cond1 & cond3))
+        cond2 = ((self.var._modelTime.doy + daysInYear) <= self.var.HarvestDateAdj)
+
+        hd_arr1 = (np.datetime64(str(datetime.datetime(self.var._modelTime.year, 1, 1))) + np.array(self.var.HarvestDateAdj - 1, dtype='timedelta64[D]'))
+        hd_arr2 = (np.datetime64(str(datetime.datetime(self.var._modelTime.year - 1, 1, 1))) + np.array(self.var.HarvestDateAdj - 1, dtype='timedelta64[D]'))
+        
+        cond3 = hd_arr1 <= np.datetime64(str(self.var._modelTime.endTime))
+        cond4 = hd_arr2 <= np.datetime64(str(self.var._modelTime.endTime))
+        
+        self.var.GrowingSeason = ((cond1 & cond3) | (cond2 & cond4))
 
         self.var.GrowingSeasonIndex = np.copy(self.var.GrowingSeason)
         self.var.GrowingSeasonIndex *= np.logical_not(self.var.CropDead | self.var.CropMature)
@@ -614,10 +626,24 @@ class FAO56CropParameters(CropParameters):
             self.var.PotYieldVarName = self.var._configuration.cropOptions['PotYieldVariableName']
         # self.var.co2_set_per_year  = False
 
+        # find out whether potential crop yield parameter is dynamic
+        self.var.AnnualChangeInPotYield = False
+        if 'AnnualChangeInPotYield' in self.var._configuration.cropOptions:
+            if self.var.AnnualChangeInPotYield == "True":
+                self.var.AnnualChangeInPotYield = True
+                
+        # # TODO: only read data if the year has changed        
+        # date = '%04i-%02i-%02i' %(self.var._modelTime.year, 1, 1)
+        # self.var.Yx = vos.netcdf2PCRobjClone(self.var.PotYieldFileNC,
+        #                                      self.var.PotYieldVarName,
+        #                                      date,
+        #                                      useDoy = None,
+        #                                      cloneMapFileName = self.var.cloneMap,
+        #                                      LatitudeLongitude = True)
+         
         arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         self.var.CropDead = arr_zeros.astype(bool)
-        self.var.CropMature = arr_zeros.astype(bool)
-        
+        self.var.CropMature = arr_zeros.astype(bool)        
         self.read() 
 
     def compute_growth_stage_length(self):
@@ -628,13 +654,22 @@ class FAO56CropParameters(CropParameters):
         self.var.L_late_day = np.round(self.var.L_late * nday)  # TODO
 
     def read_potential_crop_yield(self):
-        date = '%04i-%02i-%02i' %(self.var._modelTime.year, 1, 1)
-        self.var._Yx = vos.netcdf2PCRobjClone(self.var.PotYieldFileNC,
-                                              self.var.PotYieldVarName,
-                                              date,
-                                              useDoy = None,
-                                              cloneMapFileName = self.var.cloneMap,
-                                              LatitudeLongitude = True)
+        if self.var.AnnualChangeInPotYield:
+            if self.var._modelTime.timeStepPCR == 1 or self.var._modelTime.doy == 1:
+                date = '%04i-%02i-%02i' %(self.var._modelTime.year, 1, 1)
+                self.var.Yx = vos.netcdf2PCRobjClone(
+                    self.var.PotYieldFileNC,
+                    self.var.PotYieldVarName,
+                    date,
+                    useDoy = None,
+                    cloneMapFileName = self.var.cloneMap,
+                    LatitudeLongitude = True)
+        else:
+            if self.var._modelTime.timeStepPCR == 1:
+                self.var.Yx = vos.netcdf2PCRobjCloneWithoutTime(
+                    self.var.PotYieldFileNC,
+                    self.var.PotYieldVarName,
+                    cloneMapFileName = self.var.cloneMap)
 
     def dynamic(self):
         self.adjust_planting_and_harvesting_date()

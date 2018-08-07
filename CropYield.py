@@ -39,15 +39,10 @@ class FAO56CropYield(CropYield):
         self.var.Y = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
 
     def dynamic(self):
-
-        # TODO: only read data if the year has changed        
-        date = '%04i-%02i-%02i' %(self.var._modelTime.year, 1, 1)
-        self.var.Yx = vos.netcdf2PCRobjClone(self.var.PotYieldFileNC,
-                                             self.var.PotYieldVarName,
-                                             date,
-                                             useDoy = None,
-                                             cloneMapFileName = self.var.cloneMap,
-                                             LatitudeLongitude = True)
+        
         cond1 = self.var._modelTime.doy == self.var.HarvestDateAdj
         self.var.Y[cond1] = (self.var.Yx * (1 - self.var.Ky * (1 - self.var.ETactCum / self.var.ETpotCum)))[cond1]
         self.var.Y[np.logical_not(cond1)] = 0
+        print np.any(self.var.GrowingSeasonIndex, axis=(1,2))
+        print np.max(self.var.Y, axis=(1,2))
+        

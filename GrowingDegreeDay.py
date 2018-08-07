@@ -16,7 +16,7 @@ class GrowingDegreeDay(object):
 
     def initial(self):
         self.var.GDDcum = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
-        # self.var.GDDcum = np.zeros((self.var.nRotation, self.var.nLat, self.var.nLon))
+        self.var.GDD = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
 
     def reset_initial_conditions(self):
         self.var.GDDcum[self.var.GrowingSeasonDayOne] = 0
