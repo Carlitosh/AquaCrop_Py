@@ -11,6 +11,8 @@ import gc
 import pcraster as pcr
 import VirtualOS as vos
 
+from Messages import *
+
 from Model import Model
 from BiomassAccumulation import *
 from CanopyCover import *
