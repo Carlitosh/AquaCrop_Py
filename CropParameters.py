@@ -37,44 +37,42 @@ class CropParameters(object):
                     cloneMapFileName=self.var.cloneMap)
         
     def adjust_planting_and_harvesting_date(self):
-        pd = np.copy(self.var.PlantingDate)
-        hd = np.copy(self.var.HarvestDate)
-        st = self.var._modelTime.currTime
-        sd = self.var._modelTime.currTime.timetuple().tm_yday
 
-        # adjust values for leap year (objective is to preserve date)
-        isLeapYear1 = calendar.isleap(st.year)
-        isLeapYear2 = calendar.isleap(st.year + 1)
-        pd[(isLeapYear1 & (pd >= 60))] += 1  # TODO: check these
-        hd[(isLeapYear1 & (hd >= 60) & (hd > pd))] += 1
-        hd[(isLeapYear2 & (hd >= 60) & (hd < pd))] += 1
+        if self.var._modelTime.timeStepPCR == 1 or self.var._modelTime.doy == 1:
+            
+            pd = np.copy(self.var.PlantingDate)
+            hd = np.copy(self.var.HarvestDate)
+            st = self.var._modelTime.currTime
+            sd = self.var._modelTime.currTime.timetuple().tm_yday
 
-        self.var.PlantingDate = np.copy(pd)
-        self.var.HarvestDate = np.copy(hd)
-        
-        # if harvest day is less than planting day, harvest will take place
-        # in following year (leap year already accounted for, so add 365)
-        hd[hd < pd] += 365
-        self.var.PlantingDateAdj = pd
-        self.var.HarvestDateAdj = hd
+            # adjust values for leap year (objective is to preserve date)
+            isLeapYear1 = calendar.isleap(st.year)
+            isLeapYear2 = calendar.isleap(st.year + 1)
+            pd[(isLeapYear1 & (pd >= 60))] += 1  # TODO: check these
+            hd[(isLeapYear1 & (hd >= 60) & (hd > pd))] += 1
+            hd[(isLeapYear2 & (hd >= 60) & (hd < pd))] += 1
+
+            # if harvest day is less than planting day, harvest will take place
+            # in following year (leap year already accounted for, so add 365)
+            self.var.PlantingDateAdj = np.copy(pd)
+            self.var.HarvestDateAdj = np.copy(hd)
 
     def update_growing_season(self):
 
-        # TODO: this needs attention!!!
-        
-        isLeapYear1 = calendar.isleap(self.var._modelTime.year)
-        daysInYear = 365
-        if isLeapYear1: daysInYear = 366
-        cond1 = ((self.var.PlantingDateAdj <= self.var._modelTime.doy) & (self.var._modelTime.doy <= self.var.HarvestDateAdj))
-        cond2 = ((self.var._modelTime.doy + daysInYear) <= self.var.HarvestDateAdj)
+        # TODO: check both PlantingDateAdj and HarvestDateAdj are not the same!        
+        cond1 = ((self.var.PlantingDateAdj < self.var.HarvestDateAdj)
+                 & ((self.var.PlantingDateAdj <= self.var._modelTime.doy)
+                    & (self.var._modelTime.doy <= self.var.HarvestDateAdj)))
+        cond2 = ((self.var.PlantingDateAdj > self.var.HarvestDateAdj)
+                 & ((self.var.PlantingDateAdj <= self.var._modelTime.doy)
+                    | (self.var._modelTime.doy <= self.var.HarvestDateAdj)))
 
-        hd_arr1 = (np.datetime64(str(datetime.datetime(self.var._modelTime.year, 1, 1))) + np.array(self.var.HarvestDateAdj - 1, dtype='timedelta64[D]'))
-        hd_arr2 = (np.datetime64(str(datetime.datetime(self.var._modelTime.year - 1, 1, 1))) + np.array(self.var.HarvestDateAdj - 1, dtype='timedelta64[D]'))
+        # ***TODO: introduce another condition to check whether current growing season starts before simulation start time***
         
-        cond3 = hd_arr1 <= np.datetime64(str(self.var._modelTime.endTime))
-        cond4 = hd_arr2 <= np.datetime64(str(self.var._modelTime.endTime))
+        hd_arr = (np.datetime64(str(datetime.datetime(self.var._modelTime.year, 1, 1))) + np.array(self.var.HarvestDateAdj - 1, dtype='timedelta64[D]'))        
+        cond3 = hd_arr <= np.datetime64(str(self.var._modelTime.endTime))
         
-        self.var.GrowingSeason = ((cond1 & cond3) | (cond2 & cond4))
+        self.var.GrowingSeason = ((cond1 & cond3) | (cond2 & cond3))
 
         self.var.GrowingSeasonIndex = np.copy(self.var.GrowingSeason)
         self.var.GrowingSeasonIndex *= np.logical_not(self.var.CropDead | self.var.CropMature)
@@ -121,7 +119,6 @@ class AQCropParameters(CropParameters):
         self.var.crop_parameter_names = self.var.crop_parameters_to_read + self.var.crop_parameters_to_compute
         arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         for param in self.var.crop_parameter_names:
-            # nm = '_' + param
             vars(self.var)[param] = arr_zeros
             
         self.read()
@@ -478,6 +475,7 @@ class AQCropParameters(CropParameters):
         """
         pd = np.copy(self.var.PlantingDateAdj)
         hd = np.copy(self.var.HarvestDateAdj)
+        hd[hd < pd] += 365
         sd = self.var._modelTime.currTime.timetuple().tm_yday
 
         # Update certain crop parameters if using GDD mode
@@ -489,7 +487,8 @@ class AQCropParameters(CropParameters):
             max_harvest_date = int(np.max(hd))
 
             if (max_harvest_date > 0):
-                
+
+                # Dimension (day,crop,lat,lon)
                 day_idx = np.arange(sd, max_harvest_date + 1)[:,None,None,None] * np.ones_like(self.var.PlantingDate)[None,:,:,:]
                 growing_season_idx = ((day_idx >= pd) & (day_idx <= hd))
 
@@ -648,6 +647,7 @@ class FAO56CropParameters(CropParameters):
 
     def compute_growth_stage_length(self):
         nday = self.var.HarvestDateAdj - self.var.PlantingDateAdj
+        nday[nday < 0] += 365
         self.var.L_ini_day = np.round(self.var.L_ini * nday)
         self.var.L_dev_day = np.round(self.var.L_dev * nday)
         self.var.L_mid_day = np.round(self.var.L_mid * nday)

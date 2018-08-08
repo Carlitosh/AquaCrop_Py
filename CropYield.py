@@ -43,6 +43,6 @@ class FAO56CropYield(CropYield):
         cond1 = self.var._modelTime.doy == self.var.HarvestDateAdj
         self.var.Y[cond1] = (self.var.Yx * (1 - self.var.Ky * (1 - self.var.ETactCum / self.var.ETpotCum)))[cond1]
         self.var.Y[np.logical_not(cond1)] = 0
-        print np.any(self.var.GrowingSeasonIndex, axis=(1,2))
-        print np.max(self.var.Y, axis=(1,2))
+        # print self.var.GrowingSeasonIndex[:,10,10]
+        # print np.max(self.var.Y, axis=(1,2))
         
