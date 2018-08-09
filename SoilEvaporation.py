@@ -65,7 +65,7 @@ class SoilEvaporation(object):
 
         # No canopy cover outside of growing season so potential soil
         # evaporation only depends on reference evapotranspiration
-        et0 = self.var.referencePotET[None,:,:] * np.ones((self.var.nCrop))[:,None,None]
+        et0 = self.var.referencePotET[None,:,:] * np.ones((self.var.nCrop))[:,None,None]        
         EsPot = (self.var.Kex * et0)
 
         # Calculate maximum potential soil evaporation and potential soil
@@ -166,12 +166,8 @@ class SoilEvaporation(object):
 
         # Get current water storage
         self.evap_layer_water_content()
+
         # Get water storage (mm) at start of stage 2 evaporation
-        # print self.var.Wstage2[0,0,0]
-        # print self.var.Wevap_Act[0,0,0]
-        # print self.var.Wevap_Sat[0,0,0]
-        # print self.var.Wevap_Fc[0,0,0]
-        # print self.var.REW[0,0,0]
         Wupper = (self.var.Wstage2 * (self.var.Wevap_Sat - (self.var.Wevap_Fc - self.var.REW)) + (self.var.Wevap_Fc - self.var.REW))
         # Get water storage (mm) when there is no evaporation
         Wlower = np.copy(self.var.Wevap_Dry)
@@ -179,9 +175,6 @@ class SoilEvaporation(object):
         Wrel_divd = (self.var.Wevap_Act - Wlower)
         Wrel_divs = (Wupper - Wlower)
         Wrel = np.divide(Wrel_divd, Wrel_divs, out=np.zeros_like(Wrel_divs), where=Wrel_divs!=0)
-        # print Wrel[0,0,0]
-        # print Wlower[0,0,0]
-        # print Wupper[0,0,0]
         return Wrel, Wlower, Wupper    
             
     def dynamic(self):
@@ -213,6 +206,7 @@ class SoilEvaporation(object):
             tAdj = (self.var.DAP - self.var.DelayedCDs) # * growing_season_index
         elif self.var.CalendarType == 2:
             tAdj = (self.var.GDDcum - self.var.DelayedGDDs) # * growing_season_index
+
         EsPot = self.potential_soil_evaporation_rate(tAdj)
         
         # Adjust potential soil evaporation for mulches and/or partial wetting
@@ -261,7 +255,10 @@ class SoilEvaporation(object):
         dzsum = self.var.dzsum[None,:,None,None] * np.ones((self.var.nCrop, self.var.nLat, self.var.nLon))[:,None,:,:]
 
         # Determine total water to be extracted
+        # print EsPot[0,0,0]
+        # print self.var.EsAct[0,0,0]
         ToExtract = EsPot - self.var.EsAct
+        # print ToExtract[0,0,0]
 
         # Determine total water to be extracted in stage one (limited by
         # surface layer water storage)
@@ -302,9 +299,16 @@ class SoilEvaporation(object):
         #     ToExtract,
         #     EvapTimeSteps=20)
 
+        # print ToExtract[0,0,0]
+        # print self.var.EvapZmax[0,0,0]
+        # print self.var.EvapZmin[0,0,0]
+        # print self.var.EvapZ[0,0,0]
+        # print self.var.fevap[0,0,0]
+        # print self.var.fWrelExp[0,0,0]
+
         # Extract water
         EvapTimeSteps = 20
-        cond11 = (ToExtract > 0)
+        cond11 = (ToExtract > 0)        
         if np.any(cond11):
             Edt = ToExtract / EvapTimeSteps
             # Loop sub-daily time steps
@@ -332,14 +336,25 @@ class SoilEvaporation(object):
 
                 # Get water to extract (NB Edt is zero in cells which do not
                 # need stage 2, so no need for index)
+                # print '********'
+                # print self.var.Wevap_Act[0,0,0]
+                # print self.var.Wevap_Sat[0,0,0]
+                # print self.var.Wevap_Fc[0,0,0]
+                # print self.var.Wevap_Dry[0,0,0]
+                # print self.var.Wstage2[0,0,0]
+                # print Wrel[0,0,0]
+                # print Kr[0,0,0]
+                # print Edt[0,0,0]
                 ToExtractStg2 = (Kr * Edt)
+                # print ToExtractStg2[0,0,0]
                 self.extract_water(ToExtract, ToExtractStg2)
+                # print self.var.th[0,0,0,0]
                 # thnew, EsAct, ToExtract, ToExtractStg2 = extract_water(
                 #     thnew, th_dry, dz, dzsum, EvapZmin, EsAct, ToExtract, ToExtractStg2)
 
+        # print self.var.th[0,0,0,0]
         # return thnew, EsAct
 
-        
         # Store potential evaporation for irrigation calculations on next day
         self.var.Epot = np.copy(EsPot)
 

@@ -140,7 +140,7 @@ class HarvestIndex(object):
         # 2 Adjustment for stomatal closure
         tmax2 = np.copy(self.var.YldFormCD)
         cond2 = (cond0 & (self.var.DAP <= (self.var.HIendCD + 1)) & (tmax2 > 0) & (self.var.Fpre > 0.99) & (self.var.CC > 0.001) & (self.var.b_HI > 0))
-        dCor = ((np.exp(0.1 * np.log(self.var.Ksw_Sto))) * (1 - np.divide((1 - self.var.Ksw_Sto), self.var.b_HI, out=np.copy(arr_zeros), where=self.var.b_HI!=0)))
+        dCor = ((np.exp(0.1 * np.log(self.var.Ksw_Sto, out=np.zeros_like(self.var.Ksw_Sto), where=self.var.Ksw_Sto!=0))) * (1 - np.divide((1 - self.var.Ksw_Sto), self.var.b_HI, out=np.copy(arr_zeros), where=self.var.b_HI!=0)))
         self.var.sCor2[cond2] += np.divide(dCor, tmax2, out=np.copy(arr_zeros), where=tmax2!=0)[cond2]
         DayCor = (self.var.DAP - 1 - self.var.HIstartCD)
         self.var.fpost_dwn[cond2] = (np.divide(tmax2, DayCor, out=np.copy(arr_zeros), where=DayCor!=0) * self.var.sCor2)[cond2]

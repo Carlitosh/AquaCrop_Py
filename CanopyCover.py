@@ -123,6 +123,10 @@ class CanopyCover(object):
         cond21 = (cond2 & (CC_NSprev <= self.var.CC0))
         self.var.CC_NS[cond21] = (self.var.CC0 * np.exp(self.var.CGC * dtCC))[cond21]
 
+        # print self.var.CC0[0,0,0]
+        # print self.var.CGC[0,0,0]
+        # print dtCC[0,0,0]
+        
         # Canopy growing
         cond22 = (cond2 & np.logical_not(cond21))
         tmp_tCC = tCC - self.var.Emergence

@@ -87,7 +87,8 @@ class SoilAndTopoParameters(object):
             d = vos.netcdf2PCRobjCloneWithoutTime(self.var.soilAndTopoFileNC,
                                                   var,
                                                   cloneMapFileName=self.var.cloneMap)
-            vars(self.var)[var] = np.broadcast_to(d, (self.var.nCrop, self.var.nLat, self.var.nLon))
+            d = np.broadcast_to(d, (self.var.nCrop, self.var.nLat, self.var.nLon))
+            vars(self.var)[var] = np.copy(d)#np.broadcast_to(d, (self.var.nCrop, self.var.nLat, self.var.nLon))
 
         # map layers to compartments - the result is a 1D array with length
         # equal to nComp where the value of each element is the index of the
@@ -117,6 +118,8 @@ class SoilAndTopoParameters(object):
         # The following is adapted from AOS_ComputeVariables.m, lines 25
         self.var.th_dry = self.var.th_wp / 2
 
+        cond = (self.var.AdjREW == 0)
+        self.var.REW[cond] = (np.round((1000 * (self.var.th_fc[:,0,...] - self.var.th_dry[:,0,...]) * self.var.EvapZsurf)))[cond]
         # The following is adapted from AOS_ComputeVariables.m, lines 147-151
         # "Calculate upper and lower curve numbers"
         self.var.CNbot = np.round(1.4 * (np.exp(-14 * np.log(10))) + (0.507 * self.var.CN) - (0.00374 * self.var.CN ** 2) + (0.0000867 * self.var.CN ** 3))

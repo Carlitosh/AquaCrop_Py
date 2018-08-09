@@ -131,7 +131,7 @@ class AQCropParameters(CropParameters):
         # The following adapted from lines 160-240 of AOS_ComputeVariables.m
 
         # Fractional canopy cover size at emergence
-        self.var.CC0 = np.round(10000 * self.var.PlantPop * self.var.SeedSize * 10 ** -8) / 10000
+        self.var.CC0 = np.round(10000. * (self.var.PlantPop * self.var.SeedSize) * 10 ** -8) / 10000
         
         # Root extraction terms
         S1 = np.copy(self.var.SxTopQ)

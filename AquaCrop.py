@@ -137,25 +137,36 @@ class AquaCrop(Model):
         self.growth_stage_module.dynamic()
         self.initial_condition_module.dynamic()
 
+        # print self.th[0,:,0,0][0:5]
         self.check_groundwater_table_module.dynamic()
+        # print self.th[0,:,0,0][0:5]
         self.pre_irrigation_module.dynamic()
         self.drainage_module.dynamic()
+        # print self.th[0,:,0,0][0:5]
         self.rainfall_partition_module.dynamic()
-
+        # print self.th[0,:,0,0][0:5]
         self.root_zone_water_module.dynamic()
         self.irrigation_module.dynamic()
+        # print self.th[0,:,0,0][0:5]
 
         self.infiltration_module.dynamic()
+        # print self.th[0,:,0,0][0:5]
         self.capillary_rise_module.dynamic()
+        # print self.th[0,:,0,0][0:5]
 
         self.germination_module.dynamic()
         self.growth_stage_module.dynamic()
         self.root_development_module.dynamic()
         self.root_zone_water_module.dynamic()
         self.water_stress_module.dynamic(beta=True)
+        # print self.CC_NS[0,0,0]
         self.canopy_cover_module.dynamic()
+        # print self.CC_NS[0,0,0]
+        # print self.th[0,:,0,0][0:5]
 
+        # print self.th[0,:,0,0][0]
         self.soil_evaporation_module.dynamic()
+        # print self.th[0,:,0,0][0]
         self.root_zone_water_module.dynamic()
 
         self.water_stress_module.dynamic(beta=True)

@@ -36,6 +36,7 @@ class GrowingDegreeDay(object):
         elif self.var.GDDmethod == 3:
             tmax = np.clip(tmax, self.var.Tbase, self.var.Tupp)
             tmin = np.clip(tmin, None, self.var.Tupp)
+            Tmean = ((tmax + tmin) / 2)
             Tmean = np.clip(Tmean, self.var.Tbase, None)
         self.var.GDD = (Tmean - self.var.Tbase)
         

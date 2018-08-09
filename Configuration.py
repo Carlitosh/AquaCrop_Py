@@ -280,7 +280,13 @@ class Configuration(object):
                 self.timeStepUnit = None
 
         # TODO: additional ini key names
-        
+
+        # initial condition options
+        # =========================
+
+        if 'InterpMethod' not in self.globalOptions.keys():
+            self.globalOptions['InterpMethod'] = "layer"
+            
         # groundwater options
         # ===================
         
