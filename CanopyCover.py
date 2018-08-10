@@ -65,7 +65,7 @@ class CanopyCover(object):
         CC = np.clip(CC, 0, 1)
         return CC
 
-    def canopy_cover_required_time(self, CC0, CCx, CGC, dt, tSum, Mode):
+    def canopy_cover_required_time(self, CC0, CCx, CGC, CDC, dt, tSum, Mode):
         """Function to find required time to reach CC at end of previous 
         day, given current CGC or CDC
         """
@@ -87,23 +87,25 @@ class CanopyCover(object):
             CGCx[cond2] = np.divide(CGCx_divd, CGCx_divs, out=np.copy(arr_zeros), where=CGCx_divs!=0)[cond2]
             tReq = (tSum - dt) * np.divide(CGCx, CGC, out=np.copy(arr_zeros), where=CGC!=0)
         elif Mode == 'CDC':
+            
             x1 = np.divide(self.var.CCprev, CCx, out=np.copy(arr_zeros), where=CCx!=0)
-            x2 = 1 + (1 - np.divide(self.var.CCprev, CCx, out=np.copy(arr_zeros), where=CCx!=0)) / 0.05
+            x2 = 1 + (1 - x1) / 0.05
             tReq_divd = np.log(x2, out=np.copy(arr_zeros), where=x2!=0)
-            tReq_divs = np.divide(self.var.CDC, CCx, out=np.copy(arr_zeros), where=CCx!=0)
+            tReq_divs = np.divide(CDC, CCx, out=np.copy(arr_zeros), where=CCx!=0)
             tReq = np.divide(tReq_divd, tReq_divs, out=np.copy(arr_zeros), where=tReq_divs!=0)
+            
         return tReq
 
-    def adjust_CCx(self, CC0, CCx, CGC, dt, tSum, CanopyDevEnd):
+    def adjust_CCx(self, CC0, CCx, CGC, CDC, dt, tSum, CanopyDevEnd):
         """Function to adjust CCx value for changes in CGC due to water 
         stress during the growing season
         """
         # Get time required to reach CC on previous day, then calculate
         # adjusted CCx
-        tCCtmp = self.canopy_cover_required_time(CC0, CCx, CGC, dt, tSum, 'CGC')
+        tCCtmp = self.canopy_cover_required_time(CC0, CCx, CGC, CDC, dt, tSum, 'CGC')
         cond1 = (tCCtmp > 0)
         tCCtmp[cond1] += ((CanopyDevEnd - tSum) + dt)[cond1]
-        CCxAdj = self.canopy_cover_development(CC0, CCx, CGC, self.var.CDC, tCCtmp, 'Growth')
+        CCxAdj = self.canopy_cover_development(CC0, CCx, CGC, CDC, tCCtmp, 'Growth')
         CCxAdj[np.logical_not(cond1)] = 0
         return CCxAdj
     
@@ -123,10 +125,6 @@ class CanopyCover(object):
         cond21 = (cond2 & (CC_NSprev <= self.var.CC0))
         self.var.CC_NS[cond21] = (self.var.CC0 * np.exp(self.var.CGC * dtCC))[cond21]
 
-        # print self.var.CC0[0,0,0]
-        # print self.var.CGC[0,0,0]
-        # print dtCC[0,0,0]
-        
         # Canopy growing
         cond22 = (cond2 & np.logical_not(cond21))
         tmp_tCC = tCC - self.var.Emergence
@@ -186,7 +184,7 @@ class CanopyCover(object):
 
         # Adjust CCx for change in CGC
         cond5221 = (cond522 & (CGCadj > 0))
-        CCxAdj = self.adjust_CCx(self.var.CC0adj, self.var.CCx, CGCadj, dtCC, tCCadj, self.var.CanopyDevEnd)
+        CCxAdj = self.adjust_CCx(self.var.CC0adj, self.var.CCx, CGCadj, self.var.CDC, dtCC, tCCadj, self.var.CanopyDevEnd)
         # CCxAdj = self.adjust_CCx(self.var.CCprev, self.var.CC0adj, self.var.CCx, CGCadj, self.var.CDC, dtCC, tCCadj, self.var.CanopyDevEnd)
         cond52211 = (cond5221 & (CCxAdj > 0))
         # Approaching maximum canopy size
@@ -199,7 +197,7 @@ class CanopyCover(object):
         # Determine time required to reach CC on previous day, given CGCadj
         # value
         cond522112 = (cond52211 & np.logical_not(cond522111))
-        tReq = self.canopy_cover_required_time(self.var.CC0adj, CCxAdj, CGCadj, dtCC, tCCadj, 'CGC')
+        tReq = self.canopy_cover_required_time(self.var.CC0adj, CCxAdj, CGCadj, self.var.CDC, dtCC, tCCadj, 'CGC')
         tmp_tCC = tReq + dtCC
 
         # Determine new canopy size
@@ -263,7 +261,8 @@ class CanopyCover(object):
         cond7112 = (cond711 & (self.var.Ksw_Sen > 0.99999))
         CDCadj[cond7112] = 0.0001
         cond7113 = (cond711 & np.logical_not(cond7112))
-        CDCadj[cond7113] = ((1 - (self.var.Ksw_Sen ** 8)) * self.var.CDC)[cond7113]
+
+        CDCadj[cond7113] = ((1. - (self.var.Ksw_Sen ** 8)) * self.var.CDC)[cond7113]
 
         # Get new canopy cover size after senescence
         cond7114 = (cond711 & (self.var.CCxEarlySen < 0.001))
@@ -271,7 +270,7 @@ class CanopyCover(object):
 
         # Get time required to reach CC at end of previous day, given CDCadj
         cond7115 = (cond711 & np.logical_not(cond7114))
-        tReq = self.canopy_cover_required_time(self.var.CC0adj, self.var.CCxEarlySen, self.var.CGC, dtCC, tCCadj, 'CDC')
+        tReq = self.canopy_cover_required_time(self.var.CC0adj, self.var.CCxEarlySen, self.var.CGC, CDCadj, dtCC, tCCadj, 'CDC')
 
         # Calculate GDD's for canopy decline and determine new canopy size
         tmp_tCC = tReq + dtCC
@@ -380,6 +379,8 @@ class CanopyCover(object):
         self.var.CropDead[cond63] = True
 
         # Canopy senescence due to water stress (actual)
+        # ##############################################
+        
         cond7 = (self.var.GrowingSeasonIndex & (tCCadj >= self.var.Emergence))
 
         # Check for early canopy senescence starting/continuing due to severe
@@ -397,6 +398,9 @@ class CanopyCover(object):
         # Increment early senescence GDD counter
         self.var.tEarlySen[cond711] += dtCC[cond711]
 
+        # **TEST**
+        self.var.water_stress_module.dynamic(beta=False)
+        
         self.update_CC_after_senescence(tCCadj, dtCC)
 
         # ##################################

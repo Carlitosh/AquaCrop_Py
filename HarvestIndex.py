@@ -42,8 +42,6 @@ class HarvestIndex(object):
         """Function to calculate adjustment to harvest index for 
         failure of pollination due to water or temperature stress
         """
-        # dims = self.var.GrowingSeasonIndex.shape
-        # nr, nlat, nlon = dims[0], dims[1], dims[2]
         arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         FracFlow = np.copy(arr_zeros)
         t1 = np.copy(arr_zeros)
@@ -77,7 +75,7 @@ class HarvestIndex(object):
         FracFlow[cond13] = F[cond13]
 
         # Calculate pollination adjustment for current day
-        dFpol = arr_zeros##np.zeros((self.nCrop, self.nLat, self.nLon))
+        dFpol = np.copy(arr_zeros)##np.zeros((self.nCrop, self.nLat, self.nLon))
         cond2 = (cond0 & (self.var.CC >= self.var.CCmin))
         Ks = np.minimum(self.var.Ksw_Pol, self.var.Kst_PolC, self.var.Kst_PolH)
         dFpol[cond2] = (Ks * FracFlow * (1 + (self.var.exc / 100)))[cond2]
@@ -206,7 +204,7 @@ class HarvestIndex(object):
         # reference value for current day
         cond12 = (cond1 & (self.var.CropType == 1))
         HIadj[cond12] = HIi[cond12]
-
+        
         # Otherwise no build-up of harvest index if outside yield formation
         # period
         cond2 = (self.var.GrowingSeasonIndex & np.logical_not(cond1))

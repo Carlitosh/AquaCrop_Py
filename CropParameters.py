@@ -89,7 +89,7 @@ class AQCropParameters(CropParameters):
     def initial(self):
 
         super(AQCropParameters, self).initial()
-        
+
         # TODO: move these to main model class?
         self.var.CalendarType = int(self.var._configuration.cropOptions['CalendarType'])
         self.var.SwitchGDD = bool(int(self.var._configuration.cropOptions['SwitchGDD']))
@@ -114,12 +114,13 @@ class AQCropParameters(CropParameters):
             'CanopyDevEnd','CanopyDevEndCD','Canopy10Pct','Canopy10PctCD','MaxCanopy',
             'MaxCanopyCD','HIstartCD','HIend','HIendCD','YldFormCD',
             'FloweringEnd','Flowering','FloweringCD','CGC','CDC',
-            'PlantingDateAdj','HarvestDateAdj']  # TODO: CGC and CDC are in both list - try removing them here?
+            'PlantingDateAdj','HarvestDateAdj',
+            'CurrentConc']  # TODO: CGC and CDC are in both list - try removing them here?
 
         self.var.crop_parameter_names = self.var.crop_parameters_to_read + self.var.crop_parameters_to_compute
         arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         for param in self.var.crop_parameter_names:
-            vars(self.var)[param] = arr_zeros
+            vars(self.var)[param] = np.copy(arr_zeros)
             
         self.read()
         self.compute_crop_parameters()
@@ -201,7 +202,11 @@ class AQCropParameters(CropParameters):
         # Consider crop type
         ftype = (40 - self.var.WP) / (40 - 20)
         ftype = np.clip(ftype, 0, 1)
-        self.var.fCO2 = 1 + ftype * (fCO2 - 1)
+        fCO2 = 1 + ftype * (fCO2 - 1)
+        
+        self.var.fCO2[self.var.GrowingSeasonDayOne] = fCO2[self.var.GrowingSeasonDayOne]
+        conc = (self.var.conc[None,:,:] * np.ones((self.var.nCrop))[:,None,None])
+        self.var.CurrentConc[self.var.GrowingSeasonDayOne] = conc[self.var.GrowingSeasonDayOne]
         
     def calculate_HI_linear(self):
         """Function to calculate time to switch to linear harvest index 
@@ -224,7 +229,7 @@ class AQCropParameters(CropParameters):
             HIest = (HInew + (tmax - ti) * (HInew - HIprev))
             HIprev = HInew
 
-        self.var.tLinSwitch = ti
+        self.var.tLinSwitch = ti - 1  # Line 19 of AOS_CalculateHILinear.m
         # self.var.tLinSwitch[self.var.CropType != 3] = np.nan
             
         # Determine linear build-up rate
@@ -247,7 +252,7 @@ class AQCropParameters(CropParameters):
             cond1 = (HIest < (0.98 * self.var.HI0))
             self.var.HIGC += 0.001
             HIest = ((self.var.HIini * self.var.HI0) / (self.var.HIini + (self.var.HI0 - self.var.HIini) * np.exp(-self.var.HIGC * tHI)))
-            
+
         self.var.HIGC[HIest >= self.var.HI0] -= 0.001
 
     def compute_crop_calendar(self):
@@ -265,18 +270,19 @@ class AQCropParameters(CropParameters):
 
         # "Time from sowing to end of yield formation"
         self.var.HIend = self.var.HIstart + self.var.YldForm
-
         cond2 = (self.var.CropType == 3)
 
         # TODO: declare these in __init__
         arr_zeros = np.zeros_like(self.var.CropType)
-        self.var.FloweringEnd = arr_zeros 
-        self.var.FloweringEndCD = arr_zeros
-        self.var.FloweringCD = arr_zeros
-                
+        self.var.FloweringEnd = np.copy(arr_zeros)
+        self.var.FloweringEndCD = np.copy(arr_zeros)
+        self.var.FloweringCD = np.copy(arr_zeros)
         self.var.FloweringEnd[cond2] = (self.var.HIstart + self.var.Flowering)[cond2]
-        self.var.FloweringEndCD[cond2] = self.var.FloweringEndCD[cond2]
+        # print self.var.FloweringEnd[0,0,0]
+        self.var.FloweringEndCD[cond2] = self.var.FloweringEnd[cond2]
+        # print self.var.FloweringEnd[0,0,0]
         self.var.FloweringCD[cond2] = self.var.Flowering[cond2]
+        # print self.var.FloweringEnd[0,0,0]
         
         # Mode = self.var.CalendarType
         # if Mode == 1:
@@ -303,24 +309,43 @@ class AQCropParameters(CropParameters):
             hd = np.copy(self.var.HarvestDate)
             sd = self.var._modelTime.startTime.timetuple().tm_yday
 
-            # if start day of simulation is greater than planting day the
-            # first complete growing season will not be until the
-            # following year
-            pd[sd > pd] += 365
-            hd[sd > pd] += 365
-
-            # if start day is less than or equal to planting day, but
-            # harvest day is less than planting day, the harvest day will
-            # occur in the following year
-            hd[((sd <= pd) & (hd < pd))] += 365
-
-            # adjust values for leap year
+            # NEW:
             isLeapYear1 = calendar.isleap(self.var._modelTime.startTime.year)
             isLeapYear2 = calendar.isleap(self.var._modelTime.startTime.year + 1)
-            pd[(isLeapYear1 & (pd >= 60))] += 1  # TODO: check these
-            hd[(isLeapYear1 & (hd >= 60))] += 1
-            pd[(isLeapYear2 & (pd >= 425))] += 1
-            hd[(isLeapYear2 & (hd >= 425))] += 1            
+
+            if isLeapYear1:
+                pd[pd >= 60] += 1
+                hd[(hd > pd) & (hd >= 60)] += 1
+
+            if isLeapYear2:
+                hd[(hd < pd) & (hd >= 60)] += 1
+                
+            hd[hd < pd] += 365  # already accounted for leap years so this should be OK
+
+            cond = sd > pd
+            print cond[0,0,0]
+            pd[cond] += 365
+            hd[cond] += 365
+
+            # OLD:
+            # # if start day of simulation is greater than planting day the
+            # # first complete growing season will not be until the
+            # # following year
+            # pd[sd > pd] += 365
+            # hd[sd > pd] += 365
+
+            # # if start day is less than or equal to planting day, but
+            # # harvest day is less than planting day, the harvest day will
+            # # occur in the following year
+            # hd[((sd <= pd) & (hd < pd))] += 365
+
+            # # adjust values for leap year
+            # isLeapYear1 = calendar.isleap(self.var._modelTime.startTime.year)
+            # isLeapYear2 = calendar.isleap(self.var._modelTime.startTime.year + 1)
+            # pd[(isLeapYear1 & (pd >= 60))] += 1  # TODO: check these
+            # hd[(isLeapYear1 & (hd >= 60))] += 1
+            # pd[(isLeapYear2 & (pd >= 425))] += 1
+            # hd[(isLeapYear2 & (hd >= 425))] += 1            
 
             max_harvest_date = int(np.max(hd))
             day_idx = np.arange(sd, max_harvest_date + 1)[:,None,None,None] * np.ones_like(self.var.PlantingDate)[None,:,:,:]
@@ -466,8 +491,12 @@ class AQCropParameters(CropParameters):
                 FloweringEnd = floweringend_idx - pd + 1
 
                 # "2 Duration of flowering in calendar days"
+                # print self.var.FloweringEnd[0,0,0]
+                # print FloweringEnd[0,0,0]
+                # print self.var.HIstartCD[0,0,0]
                 self.var.FloweringCD[cond1] = (FloweringEnd - self.var.HIstartCD)[cond1]
-
+                # print self.var.FloweringCD[0,0,0]
+                
     def update_crop_parameters(self):
         """Function to update certain crop parameters for current 
         time step (equivalent to lines 97-163 in 
@@ -578,7 +607,9 @@ class AQCropParameters(CropParameters):
 
                 # 2 Duration of flowering in calendar days
                 self.var.FloweringCD[cond11] = (FloweringEnd - self.var.HIstartCD)[cond11]
-
+                # print FloweringEnd[0,0,0]
+                # print self.var.HIstartCD[0,0,0]                            
+                # print self.var.FloweringCD[0,0,0]
                 # Harvest index growth coefficient
                 self.calculate_HIGC()
 
@@ -590,10 +621,12 @@ class AQCropParameters(CropParameters):
         as counters pertaining to crop growth
         """
         # Update crop parameters for currently grown crops
-        self.compute_water_productivity_adjustment_factor()
+        # self.compute_water_productivity_adjustment_factor()
         self.adjust_planting_and_harvesting_date()
         self.update_growing_season()
+        self.compute_water_productivity_adjustment_factor()
         self.update_crop_parameters()
+        print self.var.GrowingSeasonIndex[0,0,0]
         
 class FAO56CropParameters(CropParameters):
 
@@ -615,7 +648,7 @@ class FAO56CropParameters(CropParameters):
         self.var.crop_parameter_names = self.var.crop_parameters_to_read + self.var.crop_parameters_to_compute
         arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         for param in self.var.crop_parameter_names:
-            vars(self.var)[param] = arr_zeros
+            vars(self.var)[param] = np.copy(arr_zeros)
 
         # potential yield
         self.var.crop_parameter_names += ['Yx']
@@ -641,8 +674,8 @@ class FAO56CropParameters(CropParameters):
         #                                      LatitudeLongitude = True)
          
         arr_zeros = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
-        self.var.CropDead = arr_zeros.astype(bool)
-        self.var.CropMature = arr_zeros.astype(bool)        
+        self.var.CropDead = np.copy(arr_zeros).astype(bool)
+        self.var.CropMature = np.copy(arr_zeros).astype(bool)        
         self.read() 
 
     def compute_growth_stage_length(self):

@@ -30,10 +30,11 @@ class CarbonDioxide(object):
 
         # TODO: only read data if the year has changed
         
-        date = '%04i-%02i-%02i' %(self.var._modelTime.year, 1, 1)
-        self.var.conc = vos.netcdf2PCRobjClone(self.var.co2FileNC,
-                                           self.var.co2VarName,
-                                           date,
-                                           useDoy = None,
-                                           cloneMapFileName = self.var.cloneMap,
-                                           LatitudeLongitude = True)
+        if self.var._modelTime.timeStepPCR == 1 or self.var._modelTime.doy == 1:
+            date = '%04i-%02i-%02i' %(self.var._modelTime.year, 1, 1)
+            self.var.conc = vos.netcdf2PCRobjClone(self.var.co2FileNC,
+                                               self.var.co2VarName,
+                                               date,
+                                               useDoy = None,
+                                               cloneMapFileName = self.var.cloneMap,
+                                               LatitudeLongitude = True)

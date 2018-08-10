@@ -109,9 +109,12 @@ class Transpiration(object):
         # 1. No prior water stress
         Kcb = np.copy(self.var.Kcb)
         cond2 = (self.var.GrowingSeasonIndex & (self.var.AgeDays_NS > 5))
-        Kcb[cond2] = (self.var.Kcb - ((self.var.AgeDays_NS - 5) * (self.var.fage / 100)) * self.var.CCxW_NS)[cond2]
-        conc = self.var.conc[None,:,:] * np.ones((self.var.nCrop))[:,None,None]
-        co2_mult = (1 - 0.05 * ((conc -self.var.RefConc) / (550 - self.var.RefConc)))
+        Kcb[cond2] = (self.var.Kcb - ((self.var.AgeDays_NS - 5.) * (self.var.fage / 100.)) * self.var.CCxW_NS)[cond2]
+        
+        conc = np.copy(self.var.CurrentConc)
+        # conc = self.var.conc[None,:,:] * np.ones((self.var.nCrop))[:,None,None]
+        co2_mult = (1. - 0.05 * ((conc - self.var.RefConc) / (550. - self.var.RefConc)))
+        
         cond4 = (self.var.GrowingSeasonIndex & (conc > self.var.RefConc))
         Kcb[cond4] *= co2_mult[cond4]
         self.var.TrPot_NS = Kcb * self.var.CCadj_NS * et0 * self.var.GrowingSeasonIndex
@@ -119,15 +122,20 @@ class Transpiration(object):
         # 2. Potential prior water stress and/or delayed development
         Kcb = np.copy(self.var.Kcb)
         cond2 = (self.var.GrowingSeasonIndex & (self.var.AgeDays > 5))
-        Kcb[cond2] = (self.var.Kcb - ((self.var.AgeDays - 5) * (self.var.fage / 100)) * self.var.CCxW)[cond2]
+        Kcb[cond2] = (self.var.Kcb - ((self.var.AgeDays - 5.) * (self.var.fage / 100)) * self.var.CCxW)[cond2]
         Kcb[cond4] *= co2_mult[cond4]
         self.var.TrPot0 = Kcb * self.var.CCadj * et0 * self.var.GrowingSeasonIndex
+        # print 'TrPot_NS   %f' % self.var.TrPot_NS[0,0,0] # OK
         
         # Correct potential transpiration for dying green canopy effects
         cond9 = (self.var.GrowingSeasonIndex & (self.var.CC < self.var.CCxW))
         cond91 = (cond9 & (self.var.CCxW > 0.001) & (self.var.CC > 0.001))
         x = np.divide(self.var.CC, self.var.CCxW, out=np.zeros_like(self.var.CCxW), where=self.var.CCxW!=0)
         self.var.TrPot0[cond91] *= (x ** self.var.a_Tr)[cond91]
+
+        # print 'Kcb        %f' % Kcb[0,0,0]
+        # print 'CCadj      %f' % self.var.CCadj[0,0,0]
+        # print 'TrPot0     %f' % self.var.TrPot0[0,0,0]
 
         # surface layer transpiration
         # ###########################
@@ -187,6 +195,7 @@ class Transpiration(object):
 
         # Extract water
         self.var.TrAct.fill(0.)
+        # print 'TrPot   %f' % TrPot[0,0,0]
         ToExtract = np.copy(TrPot)
         cond14_ini = (self.var.GrowingSeasonIndex & (ToExtract > 0))
         if (np.any(cond14_ini)):
@@ -337,3 +346,5 @@ class Transpiration(object):
 
         # Store potential transpiration for irrigation calculations on next day
         self.var.Tpot = np.copy(self.var.TrPot0)
+
+        # print 'TrAct   %f' % self.var.TrAct[0,0,0]

@@ -50,7 +50,7 @@ class BiomassAccumulation(object):
         WPadj[cond2] = self.var.WP[cond2]
         
         # Adjust WP for CO2 effects)
-        WPadj *= self.var.fCO2
+        WPadj *= self.var.fCO2 
 
         # Calculate biomass accumulation on current day
         dB_NS = WPadj * (self.var.TrPot_NS / et0) * self.var.Kst_Bio  # TODO: check correct TrPot is being used

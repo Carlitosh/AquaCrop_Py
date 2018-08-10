@@ -29,7 +29,7 @@ class WaterStress(object):
         et0 = (self.var.referencePotET[None,:,:] * np.ones((self.var.nCrop))[:,None,None])
         
         dims = et0.shape
-        nr, nlat, nlon = dims[0], dims[1], dims[2]
+        nr, nlat, nlon = dims[0], dims[1], dims[2]  # TODO: get rid of this
 
         # Adjust stress thresholds for Et0 on current day (don't do this for
         # pollination water stress coefficient)
@@ -41,7 +41,7 @@ class WaterStress(object):
         # Adjust senescence threshold if early senescence triggered
         if beta:
             cond2 = (self.var.tEarlySen > 0)
-            p_up[2,:][cond2] = (p_up[2,:] * (1. - (self.var.beta / 100)))[cond2]
+            p_up[2,:][cond2] = (p_up[2,:] * (1. - (self.var.beta / 100.)))[cond2]
 
         # Limit adjusted values
         p_up = np.clip(p_up, 0, 1)
@@ -54,7 +54,7 @@ class WaterStress(object):
         Drel[cond1] = 0
 
         # Partial water stress
-        cond2 = (self.var.Dr >  (p_up * self.var.TAW)) & (self.var.Dr < (p_lo * self.var.TAW)) & np.logical_not(cond1)
+        cond2 = (self.var.Dr > (p_up * self.var.TAW)) & (self.var.Dr < (p_lo * self.var.TAW)) & np.logical_not(cond1)
         x1 = p_lo - np.divide(self.var.Dr, self.var.TAW, out=np.zeros_like(Drel), where=self.var.TAW!=0)
         x2 = p_lo - p_up
         Drel[cond2] = (1 - np.divide(x1, x2, out=np.zeros_like(Drel), where=x2!=0))[cond2]
@@ -65,10 +65,10 @@ class WaterStress(object):
 
         # Calculate root zone stress coefficients
         idx = np.arange(0,3)
-        x1 = np.exp(Drel[idx,:] * fshape_w[idx,:]) - 1
-        x2 = np.exp(fshape_w[idx,:]) - 1
-        Ks = (1 - np.divide(x1, x2, out=np.zeros_like(x2), where=x2!=0))
-
+        x1 = np.exp(Drel[idx,:] * fshape_w[idx,:]) - 1.
+        x2 = np.exp(fshape_w[idx,:]) - 1.
+        Ks = (1. - np.divide(x1, x2, out=np.zeros_like(x2), where=x2!=0))
+        # print 'Ksw_Sen in WaterStress %f' % Ks[2,0,0,0]
         # Water stress coefficients (leaf expansion, stomatal closure,
         # senescence, pollination failure)
         self.var.Ksw_Exp = np.copy(Ks[0,:])
