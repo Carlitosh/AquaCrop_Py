@@ -47,13 +47,11 @@ class CropParameters(object):
 
             # adjust values for leap year (objective is to preserve date)
             isLeapYear1 = calendar.isleap(st.year)
-            isLeapYear2 = calendar.isleap(st.year + 1)
+            # isLeapYear2 = calendar.isleap(st.year + 1)
             pd[(isLeapYear1 & (pd >= 60))] += 1  # TODO: check these
             hd[(isLeapYear1 & (hd >= 60) & (hd > pd))] += 1
-            hd[(isLeapYear2 & (hd >= 60) & (hd < pd))] += 1
-
-            # if harvest day is less than planting day, harvest will take place
-            # in following year (leap year already accounted for, so add 365)
+            # hd[(isLeapYear2 & (hd >= 60) & (hd < pd))] += 1
+            
             self.var.PlantingDateAdj = np.copy(pd)
             self.var.HarvestDateAdj = np.copy(hd)
 
@@ -77,7 +75,8 @@ class CropParameters(object):
         self.var.GrowingSeasonIndex = np.copy(self.var.GrowingSeason)
         self.var.GrowingSeasonIndex *= np.logical_not(self.var.CropDead | self.var.CropMature)
 
-        self.var.GrowingSeasonDayOne = self.var._modelTime.doy == self.var.PlantingDate
+        self.var.GrowingSeasonDayOne = self.var._modelTime.doy == self.var.PlantingDateAdj
+        # self.var.GrowingSeasonDayOne = self.var._modelTime.doy == self.var.PlantingDate
         self.var.DAP[self.var.GrowingSeasonDayOne] = 0
         self.var.GrowingSeasonIndex[self.var.GrowingSeasonDayOne] = True
 
@@ -278,11 +277,8 @@ class AQCropParameters(CropParameters):
         self.var.FloweringEndCD = np.copy(arr_zeros)
         self.var.FloweringCD = np.copy(arr_zeros)
         self.var.FloweringEnd[cond2] = (self.var.HIstart + self.var.Flowering)[cond2]
-        # print self.var.FloweringEnd[0,0,0]
         self.var.FloweringEndCD[cond2] = self.var.FloweringEnd[cond2]
-        # print self.var.FloweringEnd[0,0,0]
         self.var.FloweringCD[cond2] = self.var.Flowering[cond2]
-        # print self.var.FloweringEnd[0,0,0]
         
         # Mode = self.var.CalendarType
         # if Mode == 1:
@@ -323,7 +319,6 @@ class AQCropParameters(CropParameters):
             hd[hd < pd] += 365  # already accounted for leap years so this should be OK
 
             cond = sd > pd
-            print cond[0,0,0]
             pd[cond] += 365
             hd[cond] += 365
 
@@ -491,11 +486,7 @@ class AQCropParameters(CropParameters):
                 FloweringEnd = floweringend_idx - pd + 1
 
                 # "2 Duration of flowering in calendar days"
-                # print self.var.FloweringEnd[0,0,0]
-                # print FloweringEnd[0,0,0]
-                # print self.var.HIstartCD[0,0,0]
                 self.var.FloweringCD[cond1] = (FloweringEnd - self.var.HIstartCD)[cond1]
-                # print self.var.FloweringCD[0,0,0]
                 
     def update_crop_parameters(self):
         """Function to update certain crop parameters for current 
@@ -607,9 +598,7 @@ class AQCropParameters(CropParameters):
 
                 # 2 Duration of flowering in calendar days
                 self.var.FloweringCD[cond11] = (FloweringEnd - self.var.HIstartCD)[cond11]
-                # print FloweringEnd[0,0,0]
-                # print self.var.HIstartCD[0,0,0]                            
-                # print self.var.FloweringCD[0,0,0]
+
                 # Harvest index growth coefficient
                 self.calculate_HIGC()
 
@@ -626,7 +615,6 @@ class AQCropParameters(CropParameters):
         self.update_growing_season()
         self.compute_water_productivity_adjustment_factor()
         self.update_crop_parameters()
-        print self.var.GrowingSeasonIndex[0,0,0]
         
 class FAO56CropParameters(CropParameters):
 

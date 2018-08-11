@@ -249,11 +249,11 @@ class CanopyCover(object):
 
         CCsen = np.zeros((self.var.nCrop, self.var.nLat, self.var.nLon))
         cond7 = (self.var.GrowingSeasonIndex & (tCCadj >= self.var.Emergence))
-
+        
         # Check for early canopy senescence starting/continuing due to severe
         # water stress
         cond71 = (cond7 & ((tCCadj < self.var.Senescence) | (self.var.tEarlySen > 0)))
-
+        
         # Early canopy senescence
         cond711 = (cond71 & (self.var.Ksw_Sen < 1))
 
