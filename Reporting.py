@@ -215,7 +215,6 @@ class Reporting(object):
                                            short_name,
                                            dims,
                                            self.__getattribute__(var),
-                                           # pcr.pcr2numpy(self.__getattribute__(var),vos.MV),
                                            timeStamp)
 
         if self.outMonthAvgNC[0] != "None":
@@ -229,7 +228,7 @@ class Reporting(object):
                     self.netcdfObj.data2NetCDF(self.outNCDir+"/"+str(var)+"_monthAvg_output.nc",
                                                short_name,
                                                dims,
-                                               self.__getattribute__(var),
+                                               self.__getattribute__(var+'_monthAvg'),
                                                timeStamp)
                     
 
@@ -242,7 +241,7 @@ class Reporting(object):
                     self.netcdfObj.data2NetCDF(self.outNCDir+"/"+str(var)+"_monthEnd_output.nc",
                                                short_name,
                                                dims,
-                                               self.__getattribute__(var),
+                                               self.__getattribute__(var+'_monthEnd'),
                                                timeStamp)
                     
         if self.outMonthTotNC[0] != "None":
@@ -255,7 +254,7 @@ class Reporting(object):
                     self.netcdfObj.data2NetCDF(self.outNCDir+"/"+str(var)+"_monthTot_output.nc",
                                                short_name,
                                                dims,
-                                               self.__getattribute__(var),
+                                               self.__getattribute__(var+'_monthAvg'),
                                                timeStamp)                    
 
         if self.outMonthMaxNC[0] != "None":
@@ -268,7 +267,7 @@ class Reporting(object):
                     self.netcdfObj.data2NetCDF(self.outNCDir+"/"+str(var)+"_monthMax_output.nc",
                                                short_name,
                                                dims,
-                                               self.__getattribute__(var),
+                                               self.__getattribute__(var+'_monthMax'),
                                                timeStamp)                    
                 
         if self.outYearAvgNC[0] != "None":
@@ -282,7 +281,7 @@ class Reporting(object):
                     self.netcdfObj.data2NetCDF(self.outNCDir+"/"+str(var)+"_yearAvg_output.nc",
                                                short_name,
                                                dims,
-                                               self.__getattribute__(var),
+                                               self.__getattribute__(var+'_yearAvg'),
                                                timeStamp)
                     
 
@@ -295,7 +294,7 @@ class Reporting(object):
                     self.netcdfObj.data2NetCDF(self.outNCDir+"/"+str(var)+"_yearEnd_output.nc",
                                                short_name,
                                                dims,
-                                               self.__getattribute__(var),
+                                               self.__getattribute__(var+'_yearEnd'),
                                                timeStamp)
                     
         if self.outYearTotNC[0] != "None":
@@ -308,19 +307,21 @@ class Reporting(object):
                     self.netcdfObj.data2NetCDF(self.outNCDir+"/"+str(var)+"_yearTot_output.nc",
                                                short_name,
                                                dims,
-                                               self.__getattribute__(var),
+                                               self.__getattribute__(var+'_yearAvg'),
                                                timeStamp)                    
 
         if self.outYearMaxNC[0] != "None":
             for var in self.outYearMaxNC:
                 if self._modelTime.doy == 1: vars(self)[var+'_yearMax'].fill(0)
-                vars(self)[var+'_yearMax'].clip(vars(self)[var], None)
+                vars(self)[var+'_yearMax'] = np.clip(vars(self)[var+'_yearMax'], vars(self)[var], None)
                 if self._modelTime.endYear:
                     short_name = varDicts.netcdf_short_name[var]
                     dims = varDicts.netcdf_dimensions[var]
+                    # print self.__getattribute__(var).shape
                     self.netcdfObj.data2NetCDF(self.outNCDir+"/"+str(var)+"_yearMax_output.nc",
                                                short_name,
                                                dims,
-                                               self.__getattribute__(var),
+                                               # self.__getattribute__(var),
+                                               self.__getattribute__(var+'_yearMax'),
                                                timeStamp)                    
             

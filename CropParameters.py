@@ -72,6 +72,9 @@ class CropParameters(object):
         
         self.var.GrowingSeason = ((cond1 & cond3) | (cond2 & cond3))
 
+        # print self.var.PlantingDateAdj[:,10,10]
+        # print self.var.HarvestDateAdj[:,10,10]
+                
         self.var.GrowingSeasonIndex = np.copy(self.var.GrowingSeason)
         self.var.GrowingSeasonIndex *= np.logical_not(self.var.CropDead | self.var.CropMature)
 

@@ -26,10 +26,11 @@ class Model(object):
                                             configuration.tmpDir,
                                             configuration.globalOptions['inputDir'],
                                             True)
+        self.landmask = self.landmask > 0  # boolean
+        
         attr = vos.getMapAttributesALL(self.cloneMap)
         self.nLat = int(attr['rows'])
         self.nLon = int(attr['cols'])
-
         
     @property
     def configuration(self):
